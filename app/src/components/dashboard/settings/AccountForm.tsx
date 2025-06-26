@@ -7,14 +7,13 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRef, useState } from "react";
-
+import Update from "@/components/global-components/Update"; // Adjust the import path as necessary
 import defaultPhoto from "@/app/assets/carousal3.png";
 
 const formSchema = z.object({
   fullName: z.string().min(1, "Full Name is required"),
   email: z.string().email("Invalid email"),
   address: z.string().min(1, "Address is required"),
-  role: z.string().min(1, "Role is required"),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -22,6 +21,9 @@ type FormData = z.infer<typeof formSchema>;
 export default function AccountForm() {
   const [fileName, setFileName] = useState("Profile.Pic.jpg");
   const [photoURL, setPhotoURL] = useState<string | null>(null);
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [formData, setFormData] = useState<FormData | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -31,10 +33,6 @@ export default function AccountForm() {
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
   });
-
-  const onSubmit = (data: FormData) => {
-    console.log("Form Data:", data);
-  };
 
   const handleImageClick = () => {
     fileInputRef.current?.click();
@@ -48,9 +46,24 @@ export default function AccountForm() {
     }
   };
 
+  // Trigger modal on button click
+  const handleUpdateClick = handleSubmit((data) => {
+    setFormData(data);
+    setIsUpdateModalOpen(true);
+  });
+
+  // Submit confirmed
+  const handleConfirmUpdate = () => {
+    if (formData) {
+      console.log("Confirmed Form Data:", formData);
+      // Submit data to backend here if needed
+      setIsUpdateModalOpen(false);
+    }
+  };
+
   return (
     <>
-      <div className="h-full pl-4 pb-4 font-outfit">
+      <div className="h-full pl-4 pb-4 font-outfit bg-white">
         {/* Upload Section */}
         <div
           className="flex h-[110px] justify-between bg-white rounded items-center pl-8"
@@ -82,11 +95,10 @@ export default function AccountForm() {
               className="hidden"
             />
           </div>
-
           {/* Right section: Button */}
           <Button
-            type="submit"
-            onClick={handleSubmit(onSubmit)}
+            type="button"
+            onClick={handleUpdateClick}
             className="bg-[#465FFF] text-white"
           >
             Update
@@ -95,13 +107,13 @@ export default function AccountForm() {
 
         {/* Form Section */}
         <div
-          className="bg-white rounded mt-8 h-auto pl-8 pt-2"
+          className="bg-white rounded mt-8 h-auto pl-8 pt-2 pb-8"
           style={{ boxShadow: "-6px 6px 12px rgba(151, 158, 173, 0.3)" }}
         >
           <h2 className="font-semibold text-xl mb-4 pt-6">
             Change Your Information here
           </h2>
-          <form className="space-y-3 pr-4" onSubmit={handleSubmit(onSubmit)}>
+          <form className="space-y-3 pr-4">
             <div>
               <label className="block font-medium mb-2 text-[13px]">
                 Full Name<span className="text-red-600 text-[20px]">*</span>
@@ -147,22 +159,27 @@ export default function AccountForm() {
               )}
             </div>
 
-            <div className="">
+            <div>
               <label className="block font-medium mb-2 text-[13px]">
                 Role<span className="text-red-600 text-[20px]">*</span>
               </label>
               <Input
-                {...register("role")}
-                placeholder="Verifier"
-                className="h-[48px]"
+                value="Verifier"
+                readOnly
+                className="h-[48px] bg-gray-100 cursor-not-allowed text-gray-700"
               />
-              {errors.role && (
-                <p className="text-sm text-red-500">{errors.role.message}</p>
-              )}
             </div>
           </form>
         </div>
       </div>
+
+      {/* ✅ Update Modal */}
+      <Update
+        open={isUpdateModalOpen}
+        onOpenChange={setIsUpdateModalOpen}
+        onCancel={() => setIsUpdateModalOpen(false)}
+        onLogout={handleConfirmUpdate} // treat logout as "confirm" here
+      />
     </>
   );
 }

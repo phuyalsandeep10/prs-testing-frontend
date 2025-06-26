@@ -577,7 +577,7 @@ const Safari = () => {
             gradientUnits="userSpaceOnUse"
             gradientTransform="translate(23.8183 19.1552) scale(15.8073 15.8073)"
           >
-            <stop stop-color="#2ABCE1" />
+            <stop stopColor="#2ABCE1" />
             <stop offset="0.11363" stopColor="#2ABBE1" />
             <stop offset="1" stopColor="#3375F8" />
           </radialGradient>
