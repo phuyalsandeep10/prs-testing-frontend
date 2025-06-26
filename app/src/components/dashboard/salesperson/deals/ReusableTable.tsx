@@ -6,27 +6,98 @@ import {
   getCoreRowModel,
   flexRender,
   ColumnDef,
-  RowData,
   Row,
 } from "@tanstack/react-table";
+import { gsap } from "gsap";
 // import DropDown from "@/components/salesperson/DropDown";
 
 // inheritance reusable data props as row data
-interface ReusableTableProps<TData extends RowData> {
+interface ReusableTableProps<TData, NestedData = any> {
   data: TData[]; //Array of data items of generic type TData
   columns: ColumnDef<TData, unknown>[]; // Array of column definitions, typed with TData
+  nestedColumns?: ColumnDef<NestedData, any>[];
+  getNestedData?: (row: TData) => NestedData[];
+  expandedRowId?: string | null;
+  setExpandedRowId?: (id: string | null) => void;
+  showNestedTable?: (row: TData) => boolean;
   isLoading?: boolean; // Optional loading state
   error?: string | null; // Optional error message
   rowClassName?: (row: Row<TData>) => string;
 }
+
+function AnimatedNestedRow<TData, NestedData>({
+  isExpanded,
+  ...props
+}: {
+  isExpanded: boolean;
+  columns: ColumnDef<TData, unknown>[];
+  nestedColumns?: ColumnDef<NestedData, any>[];
+  getNestedData?: (row: TData) => NestedData[];
+  row: Row<TData>;
+}) {
+  const { row, getNestedData, columns, nestedColumns } = props;
+  const nestedRowRef = React.useRef<HTMLTableRowElement>(null);
+  const nestedContentRef = React.useRef<HTMLDivElement>(null);
+  const [shouldRender, setShouldRender] = React.useState(false);
+
+  React.useLayoutEffect(() => {
+    if (isExpanded) {
+      setShouldRender(true);
+    } else {
+      if (nestedContentRef.current) {
+        gsap.to(nestedContentRef.current, {
+          height: 0,
+          opacity: 0,
+          duration: 0.4,
+          ease: "power2.inOut",
+          onComplete: () => {
+            setShouldRender(false);
+          },
+        });
+      }
+    }
+  }, [isExpanded]);
+
+  React.useLayoutEffect(() => {
+    if (shouldRender && nestedContentRef.current) {
+      gsap.from(nestedContentRef.current, {
+        height: 0,
+        opacity: 0,
+        duration: 0.4,
+        ease: "power2.inOut",
+      });
+    }
+  }, [shouldRender]);
+
+  if (!shouldRender || !getNestedData) {
+    return null;
+  }
+
+  return (
+    <tr ref={nestedRowRef}>
+      <td colSpan={columns.length} className="p-0">
+        <div ref={nestedContentRef} className="h-auto overflow-hidden">
+          <ReusableTable
+            data={getNestedData(row.original)}
+            columns={nestedColumns!}
+          />
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 //reusable and generic table component
-export function ReusableTable<TData extends RowData>({
+export function ReusableTable<TData, NestedData>({
   data,
   columns,
+  nestedColumns,
+  getNestedData,
+  rowClassName,
+  expandedRowId,
   isLoading = false,
   error = null,
-  rowClassName,
-}: ReusableTableProps<TData>) {
+}: ReusableTableProps<TData, NestedData>) {
   const table = useReactTable({
     data,
     columns,
@@ -37,15 +108,21 @@ export function ReusableTable<TData extends RowData>({
   if (error) return <div className="p-4 text-red-500">{error}</div>;
 
   return (
-    <div className="overflow-x-auto border rounded-md">
+    <div className={`${rowClassName ? "rounded-md" : "none"} border `}>
       <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-[#DADFFF]">
+        <thead
+          className={`${
+            rowClassName ? "bg-[#DADFFF]" : "bg-[#D1D1D1] text-[13px]"
+          }`}
+        >
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
                 <th
                   key={header.id}
-                  className="px-4 py-3 text-left text-[16px] leading-[24px] text-[#31323A] capitalize font-medium max-w-1/2 max-h-1/2 w-full h-full"
+                  className={`${
+                    rowClassName ? "px-4" : "px-4 py-3"
+                  } text-left text-[16px] leading-[24px] text-[#31323A] capitalize font-medium`}
                 >
                   {header.isPlaceholder
                     ? null
@@ -58,28 +135,35 @@ export function ReusableTable<TData extends RowData>({
             </tr>
           ))}
         </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
+        <tbody className="bg-white divide-x divide-gray-200">
           {table.getRowModel().rows.map((row) => {
+            const isExpanded = expandedRowId === row.id;
             return (
-              <tr
-                key={row.id}
-                className={rowClassName ? rowClassName(row) : ""}
-              >
-                {row.getVisibleCells().map((cell) => {
-                  console.log(cell);
-                  return (
+              <React.Fragment key={row.id}>
+                <tr className={rowClassName ? rowClassName(row) : ""}>
+                  {row.getVisibleCells().map((cell) => (
                     <td
                       key={cell.id}
-                      className="px-4 py-2 whitespace-nowrap font-medium text-[15px] leading-5 capitalize"
+                      className={`${
+                        rowClassName ? "px-4" : " px-4 py-2"
+                      } relative text-left text-[13px] leading-[24px] text-[#31323A] capitalize font-medium `}
                     >
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()
                       )}
                     </td>
-                  );
-                })}
-              </tr>
+                  ))}
+                </tr>
+
+                <AnimatedNestedRow
+                  row={row}
+                  isExpanded={isExpanded}
+                  columns={columns}
+                  nestedColumns={nestedColumns}
+                  getNestedData={getNestedData}
+                />
+              </React.Fragment>
             );
           })}
         </tbody>
