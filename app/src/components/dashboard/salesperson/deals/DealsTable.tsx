@@ -1,14 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import Edit from "@/assets/icons/edit.svg";
 import add from "@/assets/icons/add.svg";
-import expand from "@/assets/icons/expand.svg";
 import Image from "next/image";
 import { format } from "date-fns";
-import ReusableTable from "./ReusableTable";
-import { gsap } from "gsap";
+import { ReusableTable } from "@/components/dashboard/salesperson/deals/ReusableTable"; // adjust path
+import ExpandButton from "@/components/dashboard/salesperson/deals/ExpandButton"; // adjust path
 
 // type define for table head, row and header cell // Parent table data structure
 interface MainUsers {
@@ -274,164 +273,166 @@ const DealsTable = () => {
   const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
   // Main table columns
-  const columns: ColumnDef<MainUsers>[] = [
-    {
-      accessorKey: "Deal Name", // The key in your data object to access the value for this column
-      header: "Deal Name", // The column header label displayed in the table
-      cell: (info) => info.getValue(), // Function to render the cell content: here it returns the value of "Remarks" for the current row
-    },
-    {
-      accessorKey: "Client Name",
-      header: "Client Name",
-      cell: (info) => info.getValue(),
-    },
-    {
-      accessorKey: "Pay Status",
-      header: "Pay Status",
-      cell: (info) => info.getValue(),
-    },
-    {
-      accessorKey: "Remarks",
-      header: "Remarks",
-      cell: (info) => {
-        const value = info.getValue() as string;
-        return (
-          <div className="flex flex-col">
-            <span className="text-[15px] leading-5 capitalize">
-              {`${value.slice(0, 10)}...`}
-            </span>
-          </div>
-        );
+  const columns: ColumnDef<MainUsers>[] = useMemo(
+    () => [
+      {
+        accessorKey: "Deal Name", // The key in your data object to access the value for this column
+        header: "Deal Name", // The column header label displayed in the table
+        cell: (info) => info.getValue(), // Function to render the cell content: here it returns the value of "Remarks" for the current row
       },
-    },
-    {
-      accessorKey: "Deal Value",
-      header: "Deal Value",
-      cell: (info) => info.getValue(),
-    },
-    {
-      accessorKey: "Deal Date",
-      header: "Deal Date",
-      cell: (info) => format(info.getValue() as number, "MMM dd, yyyy"),
-    },
-    {
-      accessorKey: "Payment",
-      header: "Payment",
-      cell: (info) => {
-        const parts = (info.getValue() as string).split(" ");
-
-        return (
-          <div className="flex flex-col">
-            {parts.map((part: string, i: number) => {
-              // lowercase for case-insensitive check
-              const lower = part.toLowerCase();
-
-              // decide color
-              let colorClass = "";
-              if (lower.includes("first")) colorClass = "text-green-600";
-              if (lower.includes("second")) colorClass = "text-red-600";
-
-              return (
-                <React.Fragment key={i}>
-                  <span className={` ${colorClass} `}>{part}</span>
-                </React.Fragment>
-              );
-            })}
-          </div>
-        );
+      {
+        accessorKey: "Client Name",
+        header: "Client Name",
+        cell: (info) => info.getValue(),
       },
-    },
-    {
-      accessorKey: "Pay Method",
-      header: "Pay Method",
-      cell: (info) => info.getValue(),
-    },
-    {
-      accessorKey: "Due Date",
-      header: "Due Date",
-      cell: (info) => format(info.getValue() as number, "MMM dd, yyyy"),
-    },
-    {
-      accessorKey: "Version",
-      header: "Version",
-      cell: (info) => info.getValue(),
-    },
-    {
-      accessorKey: "Sales Person",
-      header: "Sales Person",
-      cell: (info) => info.getValue(),
-    },
-    {
-      accessorKey: "actions",
-      header: "Actions",
-      cell: ({ row }) => (
-        <div className="flex gap-2">
-          <button>
-            <Image src={Edit} alt="Filter-fill" />
-          </button>
-          <button>
-            <Image src={add} alt="Filter-fill" />
-          </button>
-          <button
-            onClick={(e) => {
-              gsap.fromTo(
-                e.currentTarget,
-                { scale: 0.9 },
-                { scale: 1, duration: 0.25, ease: "power1.inOut" }
-              );
-              setExpandedRowId((prev) => (prev === row.id ? null : row.id));
-            }}
-          >
-            <Image src={expand} alt="Filter-fill" />
-          </button>
-        </div>
-      ),
-    },
-  ];
+      {
+        accessorKey: "Pay Status",
+        header: "Pay Status",
+        cell: (info) => info.getValue(),
+      },
+      {
+        accessorKey: "Remarks",
+        header: "Remarks",
+        cell: (info) => {
+          const value = info.getValue() as string;
+          return (
+            <div className="flex flex-col">
+              <span className="text-[15px] leading-5 capitalize">
+                {`${value.slice(0, 10)}...`}
+              </span>
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "Deal Value",
+        header: "Deal Value",
+        cell: (info) => info.getValue(),
+      },
+      {
+        accessorKey: "Deal Date",
+        header: "Deal Date",
+        cell: (info) => format(info.getValue() as number, "MMM dd, yyyy"),
+      },
+      {
+        accessorKey: "Payment",
+        header: "Payment",
+        cell: (info) => {
+          const parts = (info.getValue() as string).split(" ");
+
+          return (
+            <div className="flex flex-col">
+              {parts.map((part: string, i: number) => {
+                // lowercase for case-insensitive check
+                const lower = part.toLowerCase();
+
+                // decide color
+                let colorClass = "";
+                if (lower.includes("first")) colorClass = "text-green-600";
+                if (lower.includes("second")) colorClass = "text-red-600";
+
+                return (
+                  <React.Fragment key={i}>
+                    <span className={` ${colorClass} `}>{part}</span>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "Pay Method",
+        header: "Pay Method",
+        cell: (info) => info.getValue(),
+      },
+      {
+        accessorKey: "Due Date",
+        header: "Due Date",
+        cell: (info) => format(info.getValue() as number, "MMM dd, yyyy"),
+      },
+      {
+        accessorKey: "Version",
+        header: "Version",
+        cell: (info) => info.getValue(),
+      },
+      {
+        accessorKey: "Sales Person",
+        header: "Sales Person",
+        cell: (info) => info.getValue(),
+      },
+      {
+        accessorKey: "Actions",
+        header: "Actions",
+        size: 120,
+        cell: ({ row }) => {
+          return (
+            <div className="flex gap-2">
+              <button>
+                <Image src={Edit} alt="Edit" />
+              </button>
+              <button>
+                <Image src={add} alt="Add" />
+              </button>
+              <ExpandButton
+                onToggle={() =>
+                  setExpandedRowId((prev) => (prev === row.id ? null : row.id))
+                }
+              />
+            </div>
+          );
+        },
+      },
+    ],
+    []
+  );
 
   // Nested table columns
-  const nestedColumns: ColumnDef<NestedDealData>[] = [
-    {
-      accessorKey: "Payment",
-      header: "Payment",
-    },
-    {
-      accessorKey: "Payment Date",
-      header: "Payment Date",
-    },
-    {
-      accessorKey: "Payment Created",
-      header: "Payment Created",
-    },
-    {
-      accessorKey: "Payment Value",
-      header: "Payment Value",
-    },
-    {
-      accessorKey: "Payment Version",
-      header: "Payment Version",
-    },
-    {
-      accessorKey: "Payment Status",
-      header: "Payment Status",
-    },
-    {
-      accessorKey: "Receipt Link",
-      header: "Receipt Link",
-    },
-    {
-      accessorKey: "Verified By",
-      header: () => <span className="text-[#009959]">Verified By</span>,
-    },
-    {
-      accessorKey: "Remarks",
-      header: "Remarks",
-    },
-    {
-      accessorKey: "Verification Remarks",
-      header: "Verification Remarks",
-    },
-  ];
+  const nestedColumns: ColumnDef<NestedDealData>[] = useMemo(
+    () => [
+      {
+        accessorKey: "Payment",
+        header: "Payment",
+      },
+      {
+        accessorKey: "Payment Date",
+        header: "Payment Date",
+      },
+      {
+        accessorKey: "Payment Created",
+        header: "Payment Created",
+      },
+      {
+        accessorKey: "Payment Value",
+        header: "Payment Value",
+      },
+      {
+        accessorKey: "Payment Version",
+        header: "Payment Version",
+      },
+      {
+        accessorKey: "Payment Status",
+        header: "Payment Status",
+      },
+      {
+        accessorKey: "Receipt Link",
+        header: "Receipt Link",
+      },
+      {
+        accessorKey: "Verified By",
+        header: () => <span className="text-[#009959]">Verified By</span>,
+      },
+      {
+        accessorKey: "Remarks",
+        header: "Remarks",
+      },
+      {
+        accessorKey: "Verification Remarks",
+        header: "Verification Remarks",
+      },
+    ],
+    []
+  );
   return (
     <ReusableTable
       data={Mainusers} // The main dataset to render in the table

@@ -12,10 +12,10 @@ import { gsap } from "gsap";
 // import DropDown from "@/components/salesperson/DropDown";
 
 // inheritance reusable data props as row data
-interface ReusableTableProps<TData, NestedData = any> {
+interface ReusableTableProps<TData, NestedData> {
   data: TData[]; //Array of data items of generic type TData
   columns: ColumnDef<TData, unknown>[]; // Array of column definitions, typed with TData
-  nestedColumns?: ColumnDef<NestedData, any>[];
+  nestedColumns?: ColumnDef<NestedData, unknown>[];
   getNestedData?: (row: TData) => NestedData[];
   expandedRowId?: string | null;
   setExpandedRowId?: (id: string | null) => void;
@@ -25,58 +25,45 @@ interface ReusableTableProps<TData, NestedData = any> {
   rowClassName?: (row: Row<TData>) => string;
 }
 
-function AnimatedNestedRow<TData, NestedData>({
+const NestedRow = <TData, NestedData>({
+  row,
   isExpanded,
-  ...props
+  columns,
+  nestedColumns,
+  getNestedData,
 }: {
+  row: Row<TData>;
   isExpanded: boolean;
   columns: ColumnDef<TData, unknown>[];
-  nestedColumns?: ColumnDef<NestedData, any>[];
+  nestedColumns?: ColumnDef<NestedData, unknown>[];
   getNestedData?: (row: TData) => NestedData[];
-  row: Row<TData>;
-}) {
-  const { row, getNestedData, columns, nestedColumns } = props;
-  const nestedRowRef = React.useRef<HTMLTableRowElement>(null);
+}) => {
   const nestedContentRef = React.useRef<HTMLDivElement>(null);
-  const [shouldRender, setShouldRender] = React.useState(false);
 
   React.useLayoutEffect(() => {
     if (isExpanded) {
-      setShouldRender(true);
+      gsap.to(nestedContentRef.current, {
+        height: "auto",
+        duration: 0.4,
+        ease: "power2.inOut",
+      });
     } else {
-      if (nestedContentRef.current) {
-        gsap.to(nestedContentRef.current, {
-          height: 0,
-          opacity: 0,
-          duration: 0.4,
-          ease: "power2.inOut",
-          onComplete: () => {
-            setShouldRender(false);
-          },
-        });
-      }
-    }
-  }, [isExpanded]);
-
-  React.useLayoutEffect(() => {
-    if (shouldRender && nestedContentRef.current) {
-      gsap.from(nestedContentRef.current, {
+      gsap.to(nestedContentRef.current, {
         height: 0,
-        opacity: 0,
         duration: 0.4,
         ease: "power2.inOut",
       });
     }
-  }, [shouldRender]);
+  }, [isExpanded]);
 
-  if (!shouldRender || !getNestedData) {
+  if (!getNestedData) {
     return null;
   }
 
   return (
-    <tr ref={nestedRowRef}>
+    <tr>
       <td colSpan={columns.length} className="p-0">
-        <div ref={nestedContentRef} className="h-auto overflow-hidden">
+        <div ref={nestedContentRef} className="h-0 overflow-hidden">
           <ReusableTable
             data={getNestedData(row.original)}
             columns={nestedColumns!}
@@ -85,7 +72,7 @@ function AnimatedNestedRow<TData, NestedData>({
       </td>
     </tr>
   );
-}
+};
 
 //reusable and generic table component
 export function ReusableTable<TData, NestedData>({
@@ -109,7 +96,7 @@ export function ReusableTable<TData, NestedData>({
 
   return (
     <div className={`${rowClassName ? "rounded-md" : "none"} border `}>
-      <table className="min-w-full divide-y divide-gray-200">
+      <table className="min-w-full divide-y divide-gray-200 table-fixed">
         <thead
           className={`${
             rowClassName ? "bg-[#DADFFF]" : "bg-[#D1D1D1] text-[13px]"
@@ -156,13 +143,15 @@ export function ReusableTable<TData, NestedData>({
                   ))}
                 </tr>
 
-                <AnimatedNestedRow
-                  row={row}
-                  isExpanded={isExpanded}
-                  columns={columns}
-                  nestedColumns={nestedColumns}
-                  getNestedData={getNestedData}
-                />
+                {getNestedData && (
+                  <NestedRow
+                    row={row}
+                    isExpanded={isExpanded}
+                    columns={columns}
+                    nestedColumns={nestedColumns}
+                    getNestedData={getNestedData}
+                  />
+                )}
               </React.Fragment>
             );
           })}

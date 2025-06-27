@@ -21,7 +21,7 @@ const DealsHeader: React.FC<DealHeaderProps> = ({
   return (
     <>
       <div className="flex pt-[20px] pb-9.5">
-        <div className="basis-1/2 pb-6">
+        <div className="basis-1/2">
           <h1 className="font-[600] text-[20px] leading-[28px] pb-2 text-[#000000]">
             {PageTitle}
           </h1>
