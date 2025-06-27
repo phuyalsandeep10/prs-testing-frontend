@@ -41,6 +41,34 @@ const AuditSection = () => {
         status: "Success",
         txnid: "TXN005",
       },
+      {
+        timestamp: "2025-10-26 14:34",
+        verifier: "Verifier C",
+        actions: "Verified",
+        status: "Success",
+        txnid: "TXN005",
+      },
+      {
+        timestamp: "2025-10-26 14:34",
+        verifier: "Verifier C",
+        actions: "Verified",
+        status: "Success",
+        txnid: "TXN005",
+      },
+      {
+        timestamp: "2025-10-26 14:34",
+        verifier: "Verifier C",
+        actions: "Verified",
+        status: "Success",
+        txnid: "TXN005",
+      },
+      {
+        timestamp: "2025-10-26 14:34",
+        verifier: "Verifier C",
+        actions: "Verified",
+        status: "Success",
+        txnid: "TXN005",
+      },
     ];
   };
 

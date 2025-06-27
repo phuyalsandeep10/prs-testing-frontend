@@ -12,6 +12,7 @@ type Slice = {
   innerRadius: number;
   outerRadius: number;
   color: string;
+  fontSize?: number;
 };
 
 const constantSlices: Omit<Slice, "value" | "outerRadius">[] = [
@@ -81,9 +82,14 @@ const fetchChartData = async (): Promise<
 };
 
 const PaymentDistribution: React.FC = () => {
-  const [selected, setSelected] = useState<{ text: string; color: string }>({
+  const [selected, setSelected] = useState<{
+    text: string;
+    color: string;
+    fontSize?: number;
+  }>({
     text: "Click a slice",
     color: "#009959",
+    fontSize: 20,
   });
   const sliceRefs = useRef<(SVGPathElement | null)[]>([]);
 
@@ -119,7 +125,7 @@ const PaymentDistribution: React.FC = () => {
     outerRadius: outerRadiusScale(values[index]),
   }));
 
-  const arcGenerator = d3.arc<any>().cornerRadius(2).padAngle(0.01);
+  const arcGenerator = d3.arc<any>().padAngle(0);
   const chartSize = 440;
   const center = chartSize / 2;
 
@@ -161,7 +167,7 @@ const PaymentDistribution: React.FC = () => {
             return (
               <path
                 key={index}
-                ref={(el) => (sliceRefs.current[index] = el)}
+                ref={(el) => void (sliceRefs.current[index] = el)}
                 d={path!}
                 fill={slice.color}
                 style={{ cursor: "pointer" }}
@@ -169,6 +175,7 @@ const PaymentDistribution: React.FC = () => {
                   setSelected({
                     text: `${slice.value}%`,
                     color: slice.color,
+                    fontSize: 20,
                   })
                 }
                 onMouseEnter={() => handleHover(index, true)}
@@ -180,7 +187,7 @@ const PaymentDistribution: React.FC = () => {
           <text
             textAnchor="middle"
             dominantBaseline="middle"
-            fontSize="18"
+            fontSize={selected.fontSize || 20}
             fontWeight="bold"
             fill={selected.color}
           >

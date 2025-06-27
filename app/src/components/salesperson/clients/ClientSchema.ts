@@ -17,7 +17,13 @@ export const ClientSchema = z.object({
     .string()
     .min(1, { message: 'Nationality is required' }),
 
-  remarks: z
-    .string()
-    .optional(),
+  status: z.enum(['Pending', 'Bad Depth', 'Clear'], {
+    errorMap: () => ({ message: 'Please select a valid status' }),
+  }),
+
+  satisfaction: z.enum(['Neutral', 'Negative', 'Positive'], {
+    errorMap: () => ({ message: 'Please select a valid satisfaction' }),
+  }),
+
+  remarks: z.string().optional(),
 });

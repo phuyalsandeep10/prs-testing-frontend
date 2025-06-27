@@ -2,21 +2,22 @@
 import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
+import { z } from "zod";
 import { ClientSchema } from "./ClientSchema";
 import InputField from "@/components/ui/clientForm/InputField";
 import TextAreaField from "@/components/ui/clientForm/TextAreaField";
+import SelectField from "@/components/ui/clientForm/SelectField";
 import Button from "@/components/ui/clientForm/Button";
 
 type ClientFormData = z.infer<typeof ClientSchema>;
 
-const submitClientData = async (data: ClientFormData) => {
+const updateClientData = async (data: ClientFormData) => {
   await new Promise((resolve) => setTimeout(resolve, 1000));
-  return { success: true, message: "Client data submitted successfully" };
+  return { success: true, message: "Client data updated successfully" };
 };
 
-const Clientform = () => {
+const EditClient = () => {
   const {
     register,
     handleSubmit,
@@ -27,13 +28,13 @@ const Clientform = () => {
   });
 
   const mutation = useMutation({
-    mutationFn: submitClientData,
+    mutationFn: updateClientData,
     onSuccess: (response) => {
       console.log(response.message);
       reset();
     },
     onError: (error) => {
-      console.error("Submission failed:", error);
+      console.error("Update failed:", error);
     },
   });
 
@@ -60,12 +61,15 @@ const Clientform = () => {
         </svg>
       </h2>
       <hr className="mb-6" />
+
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        {/* Contact Info */}
         <div>
-          <h2 className="text-[#31323A] font-medium text-[16px] ">
+          <h2 className="text-[#31323A] font-medium text-[16px]">
             Contact Information
           </h2>
         </div>
+        {/* Client Name */}
         <div>
           <InputField
             id="clientName"
@@ -76,7 +80,7 @@ const Clientform = () => {
             required
           />
         </div>
-
+        {/* Email */}
         <div>
           <InputField
             id="email"
@@ -88,7 +92,7 @@ const Clientform = () => {
             required
           />
         </div>
-
+        {/* Contact Number & Nationality */}
         <div className="flex gap-4">
           <div>
             <InputField
@@ -115,13 +119,7 @@ const Clientform = () => {
             />
           </div>
         </div>
-
-        <div>
-          <h2 className="text-[#31323A] font-medium text-16px">
-            Additional Notes
-          </h2>
-        </div>
-
+        {/* Remarks */}
         <div>
           <TextAreaField
             id="remarks"
@@ -131,10 +129,44 @@ const Clientform = () => {
             error={errors.remarks}
           />
         </div>
+        <div className="flex flex-between justify-between pr-7">
+          {/* Status Dropdown */}
+          <div>
+            <SelectField
+              id="status"
+              label="Status"
+              required
+              placeholder="Select Status"
+              registration={register("status")}
+              error={errors.status}
+              options={[
+                { value: "Pending", label: "Pending" },
+                { value: "Bad Depth", label: "Bad Depth" },
+                { value: "Clear", label: "Clear" },
+              ]}
+            />
+          </div>
 
+          {/* Satisfaction Dropdown */}
+          <div>
+            <SelectField
+              id="satisfaction"
+              label="Satisfaction"
+              required
+              placeholder="Select Satisfaction"
+              registration={register("satisfaction")}
+              error={errors.satisfaction}
+              options={[
+                { value: "Neutral", label: "Neutral" },
+                { value: "Negative", label: "Negative" },
+                { value: "Positive", label: "Positive" },
+              ]}
+            />
+          </div>
+        </div>
         {mutation.isError && (
           <p className="text-red-600 text-sm">
-            Error submitting form. Please try again.
+            Error updating form. Please try again.
           </p>
         )}
 
@@ -151,7 +183,7 @@ const Clientform = () => {
             disabled={isSubmitting}
             className="bg-[#009959] text-white w-[119px]"
           >
-            {isSubmitting ? "Updating..." : "Save Client"}
+            {isSubmitting ? "Updating..." : "Update Client"}
           </Button>
         </div>
       </form>
@@ -159,4 +191,4 @@ const Clientform = () => {
   );
 };
 
-export default Clientform;
+export default EditClient;
