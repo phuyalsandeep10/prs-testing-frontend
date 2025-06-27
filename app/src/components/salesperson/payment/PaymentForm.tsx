@@ -424,7 +424,7 @@ const DealForm = () => {
                   </label>
                   {errors.uploadReceipt && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.uploadReceipt.message}
+                      {errors.uploadReceipt.message as string}
                     </p>
                   )}
                 </div>

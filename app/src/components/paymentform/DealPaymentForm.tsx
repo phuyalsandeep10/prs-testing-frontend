@@ -28,37 +28,37 @@ const DealPaymentForm = () => {
     {
       name: "Payment Date*",
       label: "Payment Date*",
-      type: "text",
+      type: "text" as const,
       placeholder: "19 - 08 - 2002",
     },
     {
       name: "Received Amount*",
       label: "Received Amount*",
-      type: "text",
+      type: "number" as const,
       placeholder: "john@$150,000",
     },
     {
       name: "Cheque No.*",
       label: "Cheque No.*",
-      type: "text",
+      type: "text" as const,
       placeholder: "121345235",
     },
     {
       name: "Attach Reciept*",
       label: "Attach Reciept*",
-      type: "file",
+      type: "text" as const,
       placeholder: "Tell us more",
     },
     {
       name: "Payment Type*",
       label: "Payment Type*",
-      type: "text",
+      type: "select" as const,
       placeholder: "Tell us more",
     },
     {
       name: "Remarks*",
       label: "Remarks*",
-      type: "text",
+      type: "textarea" as const,
       placeholder: "Tell us more",
     },
   ];

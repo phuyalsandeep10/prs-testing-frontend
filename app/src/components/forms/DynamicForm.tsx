@@ -20,6 +20,7 @@ interface DynamicFormProps<T extends ZodRawShape> {
   fields: FieldConfig[];
   onSubmit: (data: z.infer<ZodObject<T>>) => void;
   defaultValues?: Partial<z.infer<ZodObject<T>>>;
+  className?: string;
 }
 
 function DynamicForm<T extends ZodRawShape>({
@@ -27,15 +28,16 @@ function DynamicForm<T extends ZodRawShape>({
   fields,
   onSubmit,
   defaultValues = {},
+  className = "space-y-4",
 }: DynamicFormProps<T>) {
   const form = useForm<z.infer<ZodObject<T>>>({
     resolver: zodResolver(schema),
-    defaultValues,
+    defaultValues: defaultValues as any,
   });
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit as any)} className={className}>
         {fields.map((field) => (
           <FormFieldRenderer key={field.name} field={field} />
         ))}

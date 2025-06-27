@@ -6,8 +6,8 @@ import Edit from "@/assets/icons/edit.svg";
 import add from "@/assets/icons/add.svg";
 import Image from "next/image";
 import { format } from "date-fns";
-import { ReusableTable } from "@/components/salesperson/deals/ReusableTable"; // adjust path
-import ExpandButton from "@/components/salesperson/deals/ExpandButton"; // adjust path
+import { ReusableTable } from "@/components/dashboard/salesperson/deals/ReusableTable";
+import ExpandButton from "@/components/dashboard/salesperson/deals/ExpandButton";
 
 // type define for table head, row and header cell // Parent table data structure
 interface MainUsers {
