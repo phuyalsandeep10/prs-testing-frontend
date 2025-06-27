@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { Bell, Gift } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Bell, Gift } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,10 +9,14 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useRef, useState } from "react";
+import Notifications from "@/components/global-components/Notification";
 
 export default function Header() {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const bellRef = useRef<HTMLButtonElement>(null!);
   return (
     <header className="sticky top-0 z-30 flex h-20 items-center justify-end gap-4 border-b bg-white px-4 sm:px-6 lg:px-8">
       <div className="flex items-center gap-4">
@@ -20,16 +24,34 @@ export default function Header() {
           <Gift className="h-6 w-6" />
           <span className="sr-only">Offers</span>
         </Button>
-        <Button variant="ghost" size="icon" className="rounded-full">
+
+        <Button
+          ref={bellRef}
+          variant="ghost"
+          size="icon"
+          className="rounded-full"
+          onClick={() => setIsModalOpen(true)}
+        >
           <Bell className="h-6 w-6" />
           <span className="sr-only">Notifications</span>
         </Button>
+        <Notifications
+          isOpen={isModalOpen}
+          onOpenChange={setIsModalOpen}
+          anchorRef={bellRef}
+        />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-3 relative rounded-full p-2 h-auto">
+            <Button
+              variant="ghost"
+              className="flex items-center gap-3 relative rounded-full p-2 h-auto"
+            >
               <Avatar className="h-10 w-10">
-                <AvatarImage src="https://github.com/shadcn.png" alt="Yubesh Koirala" />
+                <AvatarImage
+                  src="https://github.com/shadcn.png"
+                  alt="Yubesh Koirala"
+                />
                 <AvatarFallback>YK</AvatarFallback>
               </Avatar>
               <div className="text-left">
