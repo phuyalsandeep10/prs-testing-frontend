@@ -1,6 +1,7 @@
-import React from 'react';
+import React from "react";
+import Providers from "@/app/providers";
 
 export default function VerifierLayout({ children }: { children: React.ReactNode }) {
-  // This layout can be customized for the verifier role.
-  return <>{children}</>;
+  return <Providers>{children}</Providers>;
 }
+
