@@ -12,7 +12,7 @@ import Button from "@/components/ui/clientForm/Button";
 
 type ClientFormData = z.infer<typeof ClientSchema>;
 
-const updateClientData = async (data: ClientFormData) => {
+const updateClientData = async (_data: ClientFormData) => {
   await new Promise((resolve) => setTimeout(resolve, 1000));
   return { success: true, message: "Client data updated successfully" };
 };
@@ -29,11 +29,11 @@ const EditClient = () => {
 
   const mutation = useMutation({
     mutationFn: updateClientData,
-    onSuccess: (response) => {
+    onSuccess: (response: { success: boolean; message: string }) => {
       console.log(response.message);
       reset();
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error("Update failed:", error);
     },
   });

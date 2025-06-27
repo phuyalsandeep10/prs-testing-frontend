@@ -9,7 +9,7 @@ import { DealSchema } from "./DealSchema";
 
 type DealFormData = z.infer<typeof DealSchema>;
 
-const submitDealData = async (data: DealFormData) => {
+const submitDealData = async (_data: DealFormData) => {
   await new Promise((resolve) => setTimeout(resolve, 1000));
   return { success: true, message: "Deal data submitted successfully" };
 };
@@ -26,11 +26,11 @@ const DealForm = () => {
 
   const mutation = useMutation({
     mutationFn: submitDealData,
-    onSuccess: (response) => {
+    onSuccess: (response: { success: boolean; message: string }) => {
       console.log(response.message);
       reset();
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error("Submission failed:", error);
     },
   });
@@ -424,7 +424,7 @@ const DealForm = () => {
                   </label>
                   {errors.uploadReceipt && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.uploadReceipt.message}
+                      {errors.uploadReceipt.message as string}
                     </p>
                   )}
                 </div>

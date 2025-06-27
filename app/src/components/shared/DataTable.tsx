@@ -51,8 +51,8 @@ export interface DataTableConfig {
   loadingMessage?: string;
 }
 
-export interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[];
+export interface DataTableProps<TData, _TValue> {
+  columns: ColumnDef<TData, _TValue>[];
   data: TData[];
   config?: DataTableConfig;
   loading?: boolean;
@@ -102,11 +102,11 @@ const SearchInput: React.FC<SearchInputProps> = ({
 );
 
 // ==================== COLUMN VISIBILITY TOGGLE ====================
-interface ColumnVisibilityToggleProps<TData> {
+interface ColumnVisibilityToggleProps<_TData> {
   table: any; // ReactTable instance
 }
 
-function ColumnVisibilityToggle<TData>({ table }: ColumnVisibilityToggleProps<TData>) {
+function ColumnVisibilityToggle<_TData>({ table }: ColumnVisibilityToggleProps<_TData>) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -194,7 +194,7 @@ const PaginationControls: React.FC<PaginationControlsProps> = ({ table }) => (
 );
 
 // ==================== MAIN DATA TABLE COMPONENT ====================
-export function DataTable<TData, TValue>({
+export function DataTable<TData, _TValue>({
   columns,
   data,
   config = {},
@@ -203,7 +203,7 @@ export function DataTable<TData, TValue>({
   onSearch,
   toolbar,
   footer,
-}: DataTableProps<TData, TValue>) {
+}: DataTableProps<TData, _TValue>) {
   const finalConfig = { ...defaultConfig, ...config };
   
   // ==================== STATE ====================
@@ -218,7 +218,7 @@ export function DataTable<TData, TValue>({
     if (!finalConfig.enableSelection) return columns;
     
     // Add selection column if enabled
-    const selectionColumn: ColumnDef<TData, TValue> = {
+    const selectionColumn: ColumnDef<TData, _TValue> = {
       id: "select",
       header: ({ table }) => (
         <Checkbox

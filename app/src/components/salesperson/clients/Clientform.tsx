@@ -11,7 +11,7 @@ import Button from "@/components/ui/clientForm/Button";
 
 type ClientFormData = z.infer<typeof ClientSchema>;
 
-const submitClientData = async (data: ClientFormData) => {
+const submitClientData = async (_data: ClientFormData) => {
   await new Promise((resolve) => setTimeout(resolve, 1000));
   return { success: true, message: "Client data submitted successfully" };
 };
@@ -28,11 +28,11 @@ const Clientform = () => {
 
   const mutation = useMutation({
     mutationFn: submitClientData,
-    onSuccess: (response) => {
+    onSuccess: (response: { success: boolean; message: string }) => {
       console.log(response.message);
       reset();
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error("Submission failed:", error);
     },
   });
