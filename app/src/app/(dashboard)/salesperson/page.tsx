@@ -1,10 +1,15 @@
+import DealsHeader from "@/components/dashboard/salesperson/deals/DealsHeader";
+import DealsTable from "@/components/dashboard/salesperson/deals/DealsTable";
+
 export default function SalespersonDashboard() {
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight text-gray-900">Salesperson Dashboard</h1>
-      <div className="mt-8">
-        <div className="h-96 rounded-lg border-4 border-dashed border-gray-200" />
-      </div>
+      <DealsHeader
+        PageTitle="Deal Managment"
+        PageDescription="Manage your user base, teams and access all the details of each user."
+      />
+      <DealsTable />
+      {/* <DropDown /> */}
     </div>
   );
 }
