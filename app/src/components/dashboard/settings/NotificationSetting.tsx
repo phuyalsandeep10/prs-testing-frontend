@@ -66,7 +66,7 @@ const NotificationSettings: React.FC = () => {
             </div>
             <Switch
               checked={settings.desktopNotification}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 updateSetting("desktopNotification", checked)
               }
               className={cn("shrink-0 data-[state=checked]:bg-[#465FFF]")}
@@ -85,7 +85,7 @@ const NotificationSettings: React.FC = () => {
             </div>
             <Switch
               checked={settings.unreadNotificationBadge}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 updateSetting("unreadNotificationBadge", checked)
               }
               className={cn("shrink-0 data-[state=checked]:bg-[#465FFF]")}
@@ -143,7 +143,7 @@ const NotificationSettings: React.FC = () => {
             </div>
             <Switch
               checked={settings.communicationEmails}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 updateSetting("communicationEmails", checked)
               }
               className={cn("shrink-0 data-[state=checked]:bg-[#465FFF]")}
@@ -166,7 +166,7 @@ const NotificationSettings: React.FC = () => {
             </div>
             <Switch
               checked={settings.announcementsUpdates}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 updateSetting("announcementsUpdates", checked)
               }
               className={cn("shrink-0 data-[state=checked]:bg-[#465FFF]")}
@@ -199,7 +199,7 @@ const NotificationSettings: React.FC = () => {
             </div>
             <Switch
               checked={settings.allNotificationSounds}
-              onCheckedChange={(checked) =>
+              onCheckedChange={(checked: boolean) =>
                 updateSetting("allNotificationSounds", checked)
               }
               className={cn("shrink-0 data-[state=checked]:bg-[#465FFF] ")}

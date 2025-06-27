@@ -62,7 +62,7 @@ const columns: ColumnDef<Client>[] = [
       return (
         <div className="flex items-center gap-3">
           <Image
-            src={client.avatarUrl}
+            src={client.avatarUrl || '/avatars/default.png'}
             alt={client.name}
             width={28}
             height={28}
@@ -83,10 +83,10 @@ const columns: ColumnDef<Client>[] = [
     header: "Status",
     cell: ({ row }) => {
       const status = row.getValue("status") as Client["status"];
-      const statusColor = {
-        Clear: "text-green-600",
-        Pending: "text-orange-500",
-        "Bad Depth": "text-red-600",
+      const statusColor: Record<Client["status"], string> = {
+        "clear": "text-green-600",
+        "pending": "text-orange-500",
+        "bad-depth": "text-red-600",
       };
       return <span className={statusColor[status]}>{status}</span>;
     },
@@ -110,10 +110,10 @@ const columns: ColumnDef<Client>[] = [
     header: "Satisfaction",
     cell: ({ row }) => {
       const satisfaction = row.getValue("satisfaction") as Client["satisfaction"];
-      const satisfactionColor = {
-        Positive: "text-green-600",
-        Neutral: "text-orange-500",
-        Negative: "text-red-600",
+      const satisfactionColor: Record<Client["satisfaction"], string> = {
+        "positive": "text-green-600",
+        "neutral": "text-orange-500",
+        "negative": "text-red-600",
       };
       return <span className={satisfactionColor[satisfaction]}>{satisfaction}</span>;
     },

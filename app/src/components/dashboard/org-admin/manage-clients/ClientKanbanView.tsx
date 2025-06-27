@@ -11,9 +11,9 @@ interface ClientKanbanViewProps {
 }
 
 const categoryColors: Record<ClientCategory, string> = {
-  "In consistent": "text-red-500",
-  "Loyal": "text-green-500",
-  "Occasional": "text-yellow-500",
+  "inconsistent": "text-red-500",
+  "loyal": "text-green-500",
+  "occasional": "text-yellow-500",
 };
 
 export function ClientKanbanView({ clients }: ClientKanbanViewProps) {
@@ -54,16 +54,16 @@ function KanbanCard({ client }: { client: Client }) {
         </div>
         <Badge
           className={`text-xs flex-shrink-0 ${
-            client.status === "Clear"
+            client.status === "clear"
               ? "bg-green-100 text-green-700"
-              : client.status === "Pending"
+              : client.status === "pending"
               ? "bg-yellow-100 text-yellow-700"
               : "bg-red-100 text-red-700"
           }`}
           variant={
-            client.status === "Clear"
+            client.status === "clear"
               ? "default"
-              : client.status === "Pending"
+              : client.status === "pending"
               ? "outline"
               : "destructive"
           }

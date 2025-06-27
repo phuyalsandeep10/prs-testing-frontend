@@ -1,45 +1,21 @@
-export interface Activity {
-  timestamp: string;
-  description: string;
-}
+// Import standardized types from centralized type definitions
+import { Client, Activity, ClientCategory, ClientStatus, ClientSatisfaction } from '@/types';
 
-export type ClientCategory = 'In consistent' | 'Loyal' | 'Occasional';
-export type ClientStatus = "Clear" | "Pending" | "Bad Depth";
-export type ClientSatisfaction = "Positive" | "Neutral" | "Negative";
-
-export interface Client {
-  id: string;
-  name: string;
-  email: string;
-  category: ClientCategory;
-  salesperson: string;
-  lastContact: string;
-  expectedClose: string;
-  value: number;
-  status: ClientStatus;
-  satisfaction: ClientSatisfaction;
-  remarks: string;
-  primaryContactName: string;
-  primaryContactPhone: string;
-  address: string;
-  activeDate: string;
-  activities: Activity[];
-  avatarUrl: string;
-  salesLeadsAvatars: string[];
-}
+// Re-export types for components that need them
+export type { Client, Activity, ClientCategory, ClientStatus, ClientSatisfaction };
 
 const mockClients: Client[] = [
   {
     id: 'PRS-00123',
     name: 'Bhanu Bhakta Acharya',
     email: 'bhanubhaktaacharya88@gmail.com',
-    category: 'Loyal',
+    category: 'loyal',
     salesperson: 'Kushal Shrestha',
     lastContact: 'May 28, 2025',
     expectedClose: 'Jun 15, 2025',
     value: 150000,
-    status: 'Clear',
-    satisfaction: 'Positive',
+    status: 'clear',
+    satisfaction: 'positive',
     remarks: 'Client is happy with the progress.',
     primaryContactName: 'Kushal Rai',
     primaryContactPhone: '+977 9842367167',
@@ -56,13 +32,13 @@ const mockClients: Client[] = [
     id: 'PRS-00124',
     name: 'Yubesh Koirala',
     email: 'yubesh.koirala@example.com',
-    category: 'In consistent',
+    category: 'inconsistent',
     salesperson: 'Abinash Babu Tiwari',
     lastContact: 'May 28, 2025',
     expectedClose: 'Jun 19, 2025',
     value: 150000,
-    status: 'Pending',
-    satisfaction: 'Neutral',
+    status: 'pending',
+    satisfaction: 'neutral',
     remarks: 'Awaiting feedback on the latest design.',
     primaryContactName: 'Yubesh Koirala',
     primaryContactPhone: '+977 9812345678',
@@ -76,13 +52,13 @@ const mockClients: Client[] = [
     id: 'PRS-00125',
     name: 'Abinash Babu Tiwari',
     email: 'abinash.tiwari@example.com',
-    category: 'Loyal',
+    category: 'loyal',
     salesperson: 'Yubesh Koirala',
     lastContact: 'May 28, 2025',
     expectedClose: 'Oct 15, 2025',
     value: 200000,
-    status: 'Clear',
-    satisfaction: 'Positive',
+    status: 'clear',
+    satisfaction: 'positive',
     remarks: 'Long-term client, very satisfied.',
     primaryContactName: 'Abinash Babu Tiwari',
     primaryContactPhone: '+977 9823456789',
@@ -96,13 +72,13 @@ const mockClients: Client[] = [
     id: 'PRS-00126',
     name: 'Reewaz Bhetwal',
     email: 'reewaz.bhetwal@example.com',
-    category: 'Occasional',
+    category: 'occasional',
     salesperson: 'Joshna Khadka',
     lastContact: 'May 28, 2025',
     expectedClose: 'Jul 15, 2025',
     value: 150000,
-    status: 'Bad Depth',
-    satisfaction: 'Negative',
+    status: 'bad-depth',
+    satisfaction: 'negative',
     remarks: 'Project has some issues.',
     primaryContactName: 'Reewaz Bhetwal',
     primaryContactPhone: '+977 9834567890',
