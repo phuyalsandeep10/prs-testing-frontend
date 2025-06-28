@@ -7,7 +7,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRef, useState } from "react";
-import Update from "@/components/global-components/Update"; // Adjust the import path as necessary
+import Update from "@/components/global-components/Update";
 import defaultPhoto from "@/app/assets/carousal3.png";
 
 const formSchema = z.object({
@@ -46,139 +46,139 @@ export default function AccountForm() {
     }
   };
 
-  // Trigger modal on button click
   const handleUpdateClick = handleSubmit((data) => {
     setFormData(data);
     setIsUpdateModalOpen(true);
   });
 
-  // Submit confirmed
   const handleConfirmUpdate = () => {
     if (formData) {
       console.log("Confirmed Form Data:", formData);
-      // Submit data to backend here if needed
       setIsUpdateModalOpen(false);
     }
   };
 
   return (
     <>
-      <div className="h-full pl-4 pb-4 font-outfit bg-white">
+      <div className="space-y-6 font-outfit">
         {/* Upload Section */}
-        <div
-          className="flex h-[110px] justify-between bg-white rounded items-center pl-8"
-          style={{ boxShadow: "-6px 6px 12px rgba(151, 158, 173, 0.3)" }}
-        >
-          {/* Left section: Image and text */}
-          <div className="flex items-center gap-4">
-            <div
-              onClick={handleImageClick}
-              className="cursor-pointer w-[65px] h-[65px] rounded-full overflow-hidden"
-            >
-              <Image
-                src={photoURL || defaultPhoto}
-                width={65}
-                height={65}
-                alt="Profile"
-                className="w-full h-full object-cover rounded-full"
+        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div
+                onClick={handleImageClick}
+                className="cursor-pointer w-[65px] h-[65px] rounded-full overflow-hidden border-2 border-gray-200 hover:border-[#4F46E5] transition-colors"
+              >
+                <Image
+                  src={photoURL || defaultPhoto}
+                  width={65}
+                  height={65}
+                  alt="Profile"
+                  className="w-full h-full object-cover rounded-full"
+                />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Upload a New Photo</h3>
+                <p className="text-sm text-gray-500">{fileName}</p>
+              </div>
+              <input
+                type="file"
+                accept="image/*"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
               />
             </div>
-            <div>
-              <p className="font-medium font-outfit">Upload a New Photo</p>
-              <p className="text-sm text-gray-500">{fileName}</p>
-            </div>
-            <input
-              type="file"
-              accept="image/*"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              className="hidden"
-            />
+            <Button
+              type="button"
+              onClick={handleUpdateClick}
+              className="bg-[#4F46E5] hover:bg-[#4F46E5]/90 text-white px-6 py-2"
+            >
+              Update
+            </Button>
           </div>
-          {/* Right section: Button */}
-          <Button
-            type="button"
-            onClick={handleUpdateClick}
-            className="bg-[#465FFF] text-white"
-          >
-            Update
-          </Button>
         </div>
 
         {/* Form Section */}
-        <div
-          className="bg-white rounded mt-8 h-auto pl-8 pt-2 pb-8"
-          style={{ boxShadow: "-6px 6px 12px rgba(151, 158, 173, 0.3)" }}
-        >
-          <h2 className="font-semibold text-xl mb-4 pt-6">
-            Change Your Information here
+        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+          <h2 className="text-xl font-semibold text-gray-900 mb-6">
+            Account Information
           </h2>
-          <form className="space-y-3 pr-4">
+          <form className="space-y-6">
             <div>
-              <label className="block font-medium mb-2 text-[13px]">
-                Full Name<span className="text-red-600 text-[20px]">*</span>
+              <label className="block text-sm font-medium text-[#4F46E5] mb-2">
+                Full Name<span className="text-red-500 ml-1">*</span>
               </label>
               <Input
                 {...register("fullName")}
-                placeholder="Name"
-                className="h-[48px]"
+                placeholder="Enter your full name"
+                className="h-[48px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5]"
               />
               {errors.fullName && (
-                <p className="text-sm text-red-500">
+                <p className="text-sm text-red-500 mt-1">
                   {errors.fullName.message}
                 </p>
               )}
             </div>
 
             <div>
-              <label className="block font-medium mb-2 text-[13px]">
-                Email<span className="text-red-600 text-[20px]">*</span>
+              <label className="block text-sm font-medium text-[#4F46E5] mb-2">
+                Email<span className="text-red-500 ml-1">*</span>
               </label>
               <Input
                 {...register("email")}
                 type="email"
-                placeholder="Example123@gmail.com"
-                className="h-[48px]"
+                placeholder="example@company.com"
+                className="h-[48px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5]"
               />
               {errors.email && (
-                <p className="text-sm text-red-500">{errors.email.message}</p>
+                <p className="text-sm text-red-500 mt-1">{errors.email.message}</p>
               )}
             </div>
 
             <div>
-              <label className="block font-medium mb-2 text-[13px]">
-                Address<span className="text-red-600 text-[20px]">*</span>
+              <label className="block text-sm font-medium text-[#4F46E5] mb-2">
+                Address<span className="text-red-500 ml-1">*</span>
               </label>
               <Input
                 {...register("address")}
-                placeholder="Itahari, Aanamnagar, Sunsari, Nepal"
-                className="h-[48px]"
+                placeholder="Enter your address"
+                className="h-[48px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5]"
               />
               {errors.address && (
-                <p className="text-sm text-red-500">{errors.address.message}</p>
+                <p className="text-sm text-red-500 mt-1">{errors.address.message}</p>
               )}
             </div>
 
             <div>
-              <label className="block font-medium mb-2 text-[13px]">
-                Role<span className="text-red-600 text-[20px]">*</span>
+              <label className="block text-sm font-medium text-[#4F46E5] mb-2">
+                Role
               </label>
               <Input
                 value="Verifier"
                 readOnly
-                className="h-[48px] bg-gray-100 cursor-not-allowed text-gray-700"
+                className="h-[48px] bg-gray-50 border-gray-300 text-gray-700 cursor-not-allowed"
               />
+            </div>
+
+            <div className="flex justify-end pt-4">
+              <Button
+                type="button"
+                onClick={handleUpdateClick}
+                className="bg-[#4F46E5] hover:bg-[#4F46E5]/90 text-white px-8 py-2"
+              >
+                Save Changes
+              </Button>
             </div>
           </form>
         </div>
       </div>
 
-      {/* ✅ Update Modal */}
       <Update
         open={isUpdateModalOpen}
         onOpenChange={setIsUpdateModalOpen}
         onCancel={() => setIsUpdateModalOpen(false)}
-        onLogout={handleConfirmUpdate} // treat logout as "confirm" here
+        onLogout={handleConfirmUpdate}
       />
     </>
   );

@@ -15,77 +15,58 @@ const menuItems: { label: string; key: Tab; description: string }[] = [
   {
     label: "Account Settings",
     key: "account",
-    description: "Details about your personal Information",
+    description: "Manage your personal information and profile details",
   },
   {
     label: "Password & Security",
     key: "password",
-    description: "Details about your personal Information",
+    description: "Update your password and security settings",
   },
   {
     label: "Notifications",
     key: "notifications",
-    description: "Details about your personal Information",
+    description: "Configure your notification preferences",
   },
   {
     label: "Sessions",
     key: "sessions",
-    description: "Details about your personal Information",
+    description: "Manage your active sessions and devices",
   },
 ];
 
 export default function SettingsSection({ selected, onChange }: SidebarProps) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 bg-white pt-0 pl-0 font-outfit">
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 bg-white rounded-lg shadow-sm border border-gray-200 p-6 font-outfit">
       {/* Sidebar Menu */}
-      <div className="space-y-6 w-[324px] pr-6">
+      <div className="space-y-3">
         {menuItems.map((item) => (
           <div
             key={item.key}
-            className={`cursor-pointer px-3 py-2 rounded transition ${
+            className={`cursor-pointer p-4 rounded-lg transition-all ${
               selected === item.key
-                ? "border-1 border-blue-600"
-                : "hover:bg-gray-100"
+                ? "bg-blue-50 border border-blue-200 shadow-sm"
+                : "hover:bg-gray-50 border border-transparent"
             }`}
             onClick={() => onChange(item.key)}
           >
             <p
-              className={`text-[18px] font-bold ${
-                selected === item.key ? "text-black" : "text-black"
+              className={`text-[16px] font-semibold ${
+                selected === item.key ? "text-[#4F46E5]" : "text-gray-900"
               }`}
             >
               {item.label}
             </p>
-            <p className="text-sm text-gray-500">{item.description}</p>
+            <p className="text-sm text-gray-500 mt-1">{item.description}</p>
           </div>
         ))}
       </div>
 
       {/* Content Area */}
-      <div className="col-span-2 space-y-6  overflow-y-auto">
-        {selected === "account" && (
-          <>
-            <AccountForm />
-          </>
-        )}
-
-        {selected === "password" && (
-          <>
-            <PasswordUpdateForm />
-          </>
-        )}
-
-        {selected === "notifications" && (
-          <>
-            <NotificationSettings />
-          </>
-        )}
-
-        {selected === "sessions" && (
-          <>
-            <Sessions />
-          </>
-        )}
+      <div className="col-span-3 overflow-y-auto">
+        {selected === "account" && <AccountForm />}
+        {selected === "password" && <PasswordUpdateForm />}
+        {selected === "notifications" && <NotificationSettings />}
+        {selected === "sessions" && <Sessions />}
       </div>
     </div>
   );

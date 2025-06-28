@@ -1,99 +1,173 @@
-import React, {useState} from "react";
-import DynamicForm from "./DynamicForm";
-import { FieldConfig } from "./types";
+import React, { useState } from "react";
 import { z } from "zod";
-import closeicon from "@/assets/icons/close icon.svg";
-import Image from "next/image";
+import { UnifiedForm } from "@/components/core";
+import type { FieldConfig, FormLayout, FormStyling, FormActions } from "@/components/core";
+import { X } from "lucide-react";
 
-const DealPaymentForm = () => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
+// Professional form schema with proper validation
+const dealPaymentSchema = z.object({
+  paymentDate: z.string().min(1, "Payment date is required"),
+  receivedAmount: z.string().min(1, "Received amount is required"),
+  chequeNo: z.string().min(1, "Cheque number is required"),
+  paymentType: z.enum(["cash", "cheque", "bank_transfer", "card"], {
+    required_error: "Payment type is required",
+  }),
+  remarks: z.string().min(1, "Remarks are required"),
+  attachReceipt: z
+    .any()
+    .refine((files) => files?.length === 1, {
+      message: "Receipt upload is required",
+    })
+    .refine((files) => {
+      const file = files?.[0];
+      return file && ['image/png', 'image/jpeg', 'application/pdf'].includes(file.type);
+    }, {
+      message: "Only PNG, JPEG, or PDF files are allowed",
+    }),
+});
 
-  const schema = z.object({
-    PaymentDate: z.string().min(1, "First name is required"),
-    ReceivedAmount: z.string().min(1, "First name is required"),
-    ChequeNo: z.string().min(1, "First name is required"),
-    PaymentType: z.string().min(1, "First name is required"),
-    Remarks: z.string().min(1, "First name is required"),
-    AttachReciept: z
-      .any()
-      .refine((files) => files?.length === 1, {
-        message: "Upload Receipt is required",
-      })
-      .refine((files) => files?.[0]?.name.toLowerCase().endsWith(".png"), {
-        message: "Only png files are allowed",
-      }),
-  });
+type DealPaymentFormData = z.infer<typeof dealPaymentSchema>;
 
-  const fields = [
+interface DealPaymentFormProps {
+  onClose?: () => void;
+  onSubmit?: (data: DealPaymentFormData) => void | Promise<void>;
+  loading?: boolean;
+}
+
+const DealPaymentForm: React.FC<DealPaymentFormProps> = ({ 
+  onClose, 
+  onSubmit,
+  loading = false 
+}) => {
+  // Professional field configuration
+  const fields: FieldConfig[] = [
     {
-      name: "Payment Date*",
-      label: "Payment Date*",
-      type: "text",
-      placeholder: "19 - 08 - 2002",
+      name: "paymentDate",
+      label: "Payment Date",
+      type: "date",
+      required: true,
+      description: "Select the date when payment was received",
     },
     {
-      name: "Received Amount*",
-      label: "Received Amount*",
-      type: "text",
-      placeholder: "john@$150,000",
+      name: "receivedAmount",
+      label: "Received Amount",
+      type: "number",
+      required: true,
+      placeholder: "$150,000",
+      description: "Enter the amount received",
     },
     {
-      name: "Cheque No.*",
-      label: "Cheque No.*",
+      name: "chequeNo",
+      label: "Cheque Number",
       type: "text",
+      required: true,
       placeholder: "121345235",
+      description: "Enter cheque number if applicable",
     },
     {
-      name: "Attach Reciept*",
-      label: "Attach Reciept*",
+      name: "paymentType",
+      label: "Payment Type",
+      type: "select",
+      required: true,
+      options: [
+        { value: "cash", label: "Cash" },
+        { value: "cheque", label: "Cheque" },
+        { value: "bank_transfer", label: "Bank Transfer" },
+        { value: "card", label: "Card Payment" },
+      ],
+      description: "Select the payment method used",
+    },
+    {
+      name: "attachReceipt",
+      label: "Attach Receipt",
       type: "file",
-      placeholder: "Tell us more",
+      required: true,
+      accept: ".png,.jpg,.jpeg,.pdf",
+      description: "Upload payment receipt (PNG, JPEG, or PDF)",
     },
     {
-      name: "Payment Type*",
-      label: "Payment Type*",
-      type: "text",
-      placeholder: "Tell us more",
-    },
-    {
-      name: "Remarks*",
-      label: "Remarks*",
-      type: "text",
-      placeholder: "Tell us more",
+      name: "remarks",
+      label: "Remarks",
+      type: "textarea",
+      required: true,
+      placeholder: "Add any additional notes or comments...",
+      description: "Provide any additional information about the payment",
     },
   ];
+
+  // Professional form layout
+  const layout: FormLayout = {
+    type: 'grid',
+    columns: 2,
+    spacing: 'lg',
+  };
+
+  // Professional styling
+  const styling: FormStyling = {
+    variant: 'professional',
+    size: 'lg',
+    theme: 'light',
+  };
+
+  // Professional form actions
+  const actions: FormActions = {
+    submit: {
+      text: 'Save Payment',
+      variant: 'default',
+      loading: loading,
+    },
+    reset: {
+      text: 'Clear Form',
+      show: true,
+    },
+    cancel: {
+      text: 'Cancel',
+      show: true,
+      onClick: onClose,
+    },
+  };
+
+  const handleSubmit = async (data: DealPaymentFormData) => {
+    try {
+      console.log("💰 Payment Form Data:", data);
+      if (onSubmit) {
+        await onSubmit(data);
+      }
+    } catch (error) {
+      console.error("Payment form submission error:", error);
+    }
+  };
+
   return (
-    <div className="w-[761px]">
-      <div className="flex justify-between items-center">
-        <h1 className="font-bold text-[20px] leading-[28px] text-[#465FFF] pt-[24px] pb-[34px]">
-          ADD PAYMENT
+    <div className="w-full max-w-4xl mx-auto">
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-blue-600 tracking-tight">
+          Add Payment Details
         </h1>
-        <span>
-          <Image src={closeicon} alt="close" />
-        </span>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            aria-label="Close form"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
       </div>
-      <DynamicForm
-        schema={schema}
+
+      {/* Unified Form */}
+      <UnifiedForm
+        schema={dealPaymentSchema}
         fields={fields}
-        onSubmit={(data) => console.log("📨 Contact Form:", data)}
-        className="flex flex-wrap w-[761px] gap-[36px]"
+        layout={layout}
+        styling={styling}
+        actions={actions}
+        onSubmit={handleSubmit}
+        loading={loading}
+        className="deal-payment-form"
       />
-      <div className="flex justify-end gap-4 mt-3 bg-gradient-to-r from-[#0C29E3] via-[#929FF4] to-[#C6CDFA] p-4 -ml-4 sm:-ml-6 md:-ml-8 lg:-ml-10 -mr-4 sm:-mr-6 md:-mr-6 lg:-mr-6">
-        <button
-          type="button"
-          //   onClick={handleClear}
-          className="bg-[#F61818] text-white w-[83px] p-2 h-[40px] rounded-[6px] text-[14px] font-semibold"
-        >
-          Clear
-        </button>
-        <button
-          type="submit"
-          //   disabled={isSubmitting}
-          className="bg-[#009959] text-white w-[119px] p-2 h-[40px] rounded-[6px] text-[14px] font-semibold"
-        >
-          {isSubmitting ? "Submitting..." : "Save Client"}
-        </button>
-      </div>
     </div>
   );
 };

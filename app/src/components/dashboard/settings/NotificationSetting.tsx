@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { cn } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,31 +36,27 @@ const NotificationSettings: React.FC = () => {
   };
 
   return (
-    <div className={cn("max-w-[736px]  h-auto space-y-6 pb-5 p-2 font-outfit")}>
+    <div className="space-y-6 font-outfit">
       {/* Notifications Section */}
-      <Card className={cn("border shadow-[-4px_4px_10px_rgba(0,0,0,0.1)] ")}>
-        <CardHeader className={cn("pb-4 px-4")}>
-          <CardTitle
-            className={cn(
-              "text-xl font-semibold text-gray-900 flex items-center gap-2"
-            )}
-          >
-            Notifications
+      <Card className="border border-gray-200 shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-3">
             <Settingnotification />
+            Notifications
           </CardTitle>
-          <p className={cn("text-md font-semibold text-[#A9A9A9]")}>
-            Please fill the form below to update password.
+          <p className="text-sm text-gray-600">
+            Configure how you receive notifications
           </p>
         </CardHeader>
-        <CardContent className={cn("px-4 space-y-6")}>
+        <CardContent className="space-y-6">
           {/* Enable Desktop Notification */}
-          <div className={cn("flex items-start justify-between gap-4")}>
-            <div className={cn("flex-1")}>
-              <Label className={cn("text-md font-semibold text-black")}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <Label className="text-base font-semibold text-gray-900">
                 Enable Desktop Notification
               </Label>
-              <p className={cn("text-sm text-[#7E7E7E] mt-1")}>
-                Receive Notification of the messages, contracts, documents.
+              <p className="text-sm text-gray-600 mt-1">
+                Receive notifications for messages, contracts, and documents.
               </p>
             </div>
             <Switch
@@ -69,17 +64,17 @@ const NotificationSettings: React.FC = () => {
               onCheckedChange={(checked: boolean) =>
                 updateSetting("desktopNotification", checked)
               }
-              className={cn("shrink-0 data-[state=checked]:bg-[#465FFF]")}
+              className="shrink-0 data-[state=checked]:bg-[#4F46E5]"
             />
           </div>
 
           {/* Enable Unread Notification Badge */}
-          <div className={cn("flex items-start justify-between gap-4")}>
-            <div className={cn("flex-1")}>
-              <Label className={cn("text-md font-semibold text-black")}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <Label className="text-base font-semibold text-gray-900">
                 Enable Unread Notification Badge
               </Label>
-              <p className={cn("text-sm text-[#7E7E7E] mt-1")}>
+              <p className="text-sm text-gray-600 mt-1">
                 Shows a red badge on the app icon when you have unread messages.
               </p>
             </div>
@@ -88,13 +83,13 @@ const NotificationSettings: React.FC = () => {
               onCheckedChange={(checked: boolean) =>
                 updateSetting("unreadNotificationBadge", checked)
               }
-              className={cn("shrink-0 data-[state=checked]:bg-[#465FFF]")}
+              className="shrink-0 data-[state=checked]:bg-[#4F46E5]"
             />
           </div>
 
           {/* Push Notification Time-Out */}
-          <div className={cn("space-y-2")}>
-            <Label className={cn("text-md font-semibold text-black")}>
+          <div className="space-y-2">
+            <Label className="text-base font-semibold text-gray-900">
               Push Notification Time-Out
             </Label>
             <select
@@ -102,9 +97,7 @@ const NotificationSettings: React.FC = () => {
               onChange={(e) =>
                 updateSetting("pushNotificationTimeout", e.target.value)
               }
-              className={cn(
-                "h-12 w-full border border-gray-200 rounded px-3 text-sm text-gray-700 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-              )}
+              className="h-12 w-full border border-gray-300 rounded-lg px-3 text-sm text-gray-700 focus:outline-none focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5]"
             >
               <option value="select">Select the Option</option>
               <option value="15">15 Minutes</option>
@@ -118,27 +111,23 @@ const NotificationSettings: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Email Notifications Sec tion */}
-      <Card className={cn("border shadow-[-4px_4px_10px_rgba(0,0,0,0.1)]")}>
-        <CardHeader className={cn(" pb-4 px-4")}>
-          <CardTitle
-            className={cn(
-              "text-xl font-semibold text-black flex items-center gap-2"
-            )}
-          >
-            Email Notifications
+      {/* Email Notifications Section */}
+      <Card className="border border-gray-200 shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-3">
             <Settingmessage />
+            Email Notifications
           </CardTitle>
         </CardHeader>
-        <CardContent className={cn("px-0 ")}>
+        <CardContent className="space-y-6">
           {/* Communication Emails */}
-          <div className={cn("flex items-start justify-between gap-4 px-4")}>
-            <div className={cn("flex-1")}>
-              <Label className={cn("text-md font-semibold text-black")}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <Label className="text-base font-semibold text-gray-900">
                 Communication Emails
               </Label>
-              <p className={cn("text-sm text-[#7E7E7E] mt-[6px]")}>
-                Receive email for messages, contract, documents.
+              <p className="text-sm text-gray-600 mt-1">
+                Receive email for messages, contracts, and documents.
               </p>
             </div>
             <Switch
@@ -146,21 +135,17 @@ const NotificationSettings: React.FC = () => {
               onCheckedChange={(checked: boolean) =>
                 updateSetting("communicationEmails", checked)
               }
-              className={cn("shrink-0 data-[state=checked]:bg-[#465FFF]")}
+              className="shrink-0 data-[state=checked]:bg-[#4F46E5]"
             />
           </div>
 
           {/* Announcements & Updates */}
-          <div
-            className={cn(
-              "flex items-start justify-between gap-4 pt-[12px] px-4"
-            )}
-          >
-            <div className={cn("flex-1")}>
-              <Label className={cn("text-md font-semibold text-black")}>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <Label className="text-base font-semibold text-gray-900">
                 Announcements & Updates
               </Label>
-              <p className={cn("text-sm text-[#7E7E7E] mt-[6px]")}>
+              <p className="text-sm text-gray-600 mt-1">
                 Receive email for updates, improvements, news, etc.
               </p>
             </div>
@@ -169,32 +154,28 @@ const NotificationSettings: React.FC = () => {
               onCheckedChange={(checked: boolean) =>
                 updateSetting("announcementsUpdates", checked)
               }
-              className={cn("shrink-0 data-[state=checked]:bg-[#465FFF]")}
+              className="shrink-0 data-[state=checked]:bg-[#4F46E5]"
             />
           </div>
         </CardContent>
       </Card>
 
       {/* Sounds Section */}
-      <Card className={cn("border shadow-[-4px_4px_10px_rgba(0,0,0,0.1)]")}>
-        <CardHeader className={cn("px-0")}>
-          <CardTitle
-            className={cn(
-              "text-xl font-semibold text-black flex items-center gap-2 pl-4"
-            )}
-          >
-            Sounds
+      <Card className="border border-gray-200 shadow-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-3">
             <Settingsound />
+            Sounds
           </CardTitle>
         </CardHeader>
-        <CardContent className={cn("px-0 pt-2")}>
-          <div className={cn("flex items-start justify-between gap-4 px-4")}>
-            <div className={cn("flex-1")}>
-              <Label className={cn("text-md font-semibold text-black")}>
+        <CardContent>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <Label className="text-base font-semibold text-gray-900">
                 Disable All Notification Sounds
               </Label>
-              <p className={cn("text-sm text-[#7E7E7E] mt-[6px]")}>
-                Mute all Notification of the messages, contracts, documents.
+              <p className="text-sm text-gray-600 mt-1">
+                Mute all notifications for messages, contracts, and documents.
               </p>
             </div>
             <Switch
@@ -202,7 +183,7 @@ const NotificationSettings: React.FC = () => {
               onCheckedChange={(checked: boolean) =>
                 updateSetting("allNotificationSounds", checked)
               }
-              className={cn("shrink-0 data-[state=checked]:bg-[#465FFF] ")}
+              className="shrink-0 data-[state=checked]:bg-[#4F46E5]"
             />
           </div>
         </CardContent>

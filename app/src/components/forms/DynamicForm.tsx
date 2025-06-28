@@ -1,49 +1,69 @@
 "use client";
 
-import { useForm } from "react-hook-form";
-import { z, ZodObject, ZodRawShape } from "zod";
-import { Form } from "@/components/ui/form";
-import { Button } from "@/components/ui/button";
-import { zodResolver } from "@hookform/resolvers/zod";
-import FormFieldRenderer from "./FormFieldRenderer";
+import { z, ZodSchema } from "zod";
+import { UnifiedForm, FieldConfig } from "@/components/core";
+import { FieldValues, DefaultValues } from "react-hook-form";
 
-// Example: dynamic field config
-type FieldConfig = {
-  name: string;
-  label: string;
-  type: string;
-  placeholder?: string;
-};
+// Convert legacy field config to new field config
+const convertLegacyField = (legacyField: any): FieldConfig => ({
+  name: legacyField.name,
+  label: legacyField.label,
+  type: legacyField.type as any,
+  placeholder: legacyField.placeholder,
+  required: true, // Default to required, can be overridden
+});
 
-interface DynamicFormProps<T extends ZodRawShape> {
-  schema: ZodObject<T>;
-  fields: FieldConfig[];
-  onSubmit: (data: z.infer<ZodObject<T>>) => void;
-  defaultValues?: Partial<z.infer<ZodObject<T>>>;
+interface DynamicFormProps<T extends FieldValues> {
+  schema: ZodSchema<T>;
+  fields: Array<{
+    name: string;
+    label: string;
+    type: string;
+    placeholder?: string;
+  }>;
+  onSubmit: (data: T) => void;
+  defaultValues?: DefaultValues<T>;
   className?: string;
+  loading?: boolean;
 }
 
-function DynamicForm<T extends ZodRawShape>({
+function DynamicForm<T extends FieldValues>({
   schema,
   fields,
   onSubmit,
-  defaultValues = {},
-  className = "space-y-4",
+  defaultValues,
+  className,
+  loading = false,
 }: DynamicFormProps<T>) {
-  const form = useForm<z.infer<ZodObject<T>>>({
-    resolver: zodResolver(schema),
-    defaultValues: defaultValues as any,
-  });
+  const convertedFields = fields.map(convertLegacyField);
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit as any)} className={className}>
-        {fields.map((field) => (
-          <FormFieldRenderer key={field.name} field={field} />
-        ))}
-        <Button type="submit">Submit</Button>
-      </form>
-    </Form>
+    <UnifiedForm
+      schema={schema}
+      fields={convertedFields}
+      layout={{
+        type: 'vertical',
+        spacing: 'md',
+      }}
+      styling={{
+        variant: 'default',
+        size: 'md',
+      }}
+      actions={{
+        submit: {
+          text: 'Submit',
+          loading,
+        },
+        reset: {
+          text: 'Reset',
+          show: true,
+        },
+      }}
+      defaultValues={defaultValues}
+      onSubmit={onSubmit}
+      className={className}
+      loading={loading}
+    />
   );
 }
 

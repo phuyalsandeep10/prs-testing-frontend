@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Eye, EyeOff, KeyRound, X, Check } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 // Zod schema for password validation
 const passwordSchema = z
@@ -66,7 +66,6 @@ const PasswordUpdateForm = () => {
 
   const onSubmit = async (data: PasswordFormData) => {
     try {
-      // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000));
       console.log("Password updated successfully:", data);
       alert("Password updated successfully!");
@@ -79,7 +78,6 @@ const PasswordUpdateForm = () => {
     extends React.InputHTMLAttributes<HTMLInputElement> {
     label: string;
     type?: string;
-    labelClassName?: string;
     showPassword: boolean;
     togglePassword: () => void;
     error?: { message?: string };
@@ -91,22 +89,17 @@ const PasswordUpdateForm = () => {
     showPassword,
     togglePassword,
     error,
-    labelClassName = "",
     ...props
   }: InputFieldProps) => (
-    <div className="space-y-2 pt-3">
-      <label
-        className={cn(
-          `text-sm font-semibold text-black pb-2 pt-11 ${labelClassName}`
-        )}
-      >
+    <div className="space-y-2">
+      <label className="text-sm font-medium text-[#4F46E5]">
         {label}
-        <span className="text-red-500 ml-1 text-[13px]">*</span>
+        <span className="text-red-500 ml-1">*</span>
       </label>
-      <div className="relative mt-2">
+      <div className="relative">
         <input
           type={showPassword ? "text" : type}
-          className={`w-full h-[48px] px-3 pr-10 border rounded-lg leading-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors pb-2 ${
+          className={`w-full h-[48px] px-3 pr-10 border rounded-lg focus:ring-2 focus:ring-[#4F46E5] focus:border-[#4F46E5] outline-none transition-colors ${
             error ? "border-red-300" : "border-gray-300"
           }`}
           placeholder="••••••••••••"
@@ -122,102 +115,95 @@ const PasswordUpdateForm = () => {
           </button>
         )}
       </div>
-      {error && <p className="text-sm text-red-600">{error.message}</p>}
+      {error && <p className="text-sm text-red-600 mt-1">{error.message}</p>}
     </div>
   );
 
   return (
-    <div className=" bg-gray-50 flex items-center justify-center scrollbar-hide p-2 font-outfit">
-      <div className="w-full max-w-3xl">
-        <div className="bg-white rounded-lg  ">
-          {/* Header */}
-          <div className="text-center">
-            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto ">
-              <KeyRound className="w-6 h-6 text-blue-600" />
-            </div>
-            <h1 className="text-xl font-semibold text-gray-900">
-              Update Password
-            </h1>
-            <p className="text-sm text-gray-600 mt-1 mb-4">
-              Please fill the form below to update password
-            </p>
+    <div className="space-y-6 font-outfit">
+      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+        {/* Header */}
+        <div className="text-center mb-6">
+          <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+            <KeyRound className="w-6 h-6 text-[#4F46E5]" />
           </div>
-
-          {/* Form */}
-          <div
-            className="space-y-4 border border-gray-200 pl-7 pr-4 pt-4 pb-7 h-full   border-t-0 border-r-0"
-            style={{ boxShadow: "-4px 4px 8px rgba(0, 0, 0, 0.1)" }}
-          >
-            <InputField
-              label="Current Password"
-              type="password"
-              showPassword={showCurrentPassword}
-              togglePassword={() =>
-                setShowCurrentPassword(!showCurrentPassword)
-              }
-              labelClassName="pt-6"
-              error={errors.currentPassword}
-              {...register("currentPassword")}
-            />
-
-            <InputField
-              label="New Password"
-              type="password"
-              showPassword={showNewPassword}
-              togglePassword={() => setShowNewPassword(!showNewPassword)}
-              error={errors.newPassword}
-              {...register("newPassword")}
-            />
-
-            {/* Password Requirements */}
-            <div className="space-y-6">
-              <p className="text-md font-semibold text-black">
-                Your password must contains:
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                {validations.map((validation, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center space-x-2 mb-[12px]"
-                  >
-                    {validation.isValid ? (
-                      <Check className="w-4 h-4 text-green-500" />
-                    ) : (
-                      <X className="w-4 h-4 text-gray-400" />
-                    )}
-                    <span
-                      className={`text-sm ${
-                        validation.isValid ? "text-green-600" : "text-gray-600"
-                      }`}
-                    >
-                      {validation.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <InputField
-              label="Confirm Password"
-              type="password"
-              showPassword={showConfirmPassword}
-              togglePassword={() =>
-                setShowConfirmPassword(!showConfirmPassword)
-              }
-              error={errors.confirmPassword}
-              {...register("confirmPassword")}
-            />
-
-            <button
-              type="button"
-              onClick={handleSubmit(onSubmit)}
-              disabled={isSubmitting}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium py-2.5 px-4 rounded-lg transition-colors focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 outline-none"
-            >
-              {isSubmitting ? "Updating Password..." : "Update Password"}
-            </button>
-          </div>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Update Password
+          </h2>
+          <p className="text-sm text-gray-600 mt-1">
+            Please fill the form below to update your password
+          </p>
         </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          <InputField
+            label="Current Password"
+            type="password"
+            showPassword={showCurrentPassword}
+            togglePassword={() =>
+              setShowCurrentPassword(!showCurrentPassword)
+            }
+            error={errors.currentPassword}
+            {...register("currentPassword")}
+          />
+
+          <InputField
+            label="New Password"
+            type="password"
+            showPassword={showNewPassword}
+            togglePassword={() => setShowNewPassword(!showNewPassword)}
+            error={errors.newPassword}
+            {...register("newPassword")}
+          />
+
+          {/* Password Requirements */}
+          <div className="space-y-4">
+            <p className="text-base font-semibold text-gray-900">
+              Your password must contain:
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {validations.map((validation, index) => (
+                <div
+                  key={index}
+                  className="flex items-center space-x-2"
+                >
+                  {validation.isValid ? (
+                    <Check className="w-4 h-4 text-green-500" />
+                  ) : (
+                    <X className="w-4 h-4 text-gray-400" />
+                  )}
+                  <span
+                    className={`text-sm ${
+                      validation.isValid ? "text-green-600" : "text-gray-600"
+                    }`}
+                  >
+                    {validation.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <InputField
+            label="Confirm New Password"
+            type="password"
+            showPassword={showConfirmPassword}
+            togglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
+            error={errors.confirmPassword}
+            {...register("confirmPassword")}
+          />
+
+          <div className="flex justify-end pt-4">
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-[#4F46E5] hover:bg-[#4F46E5]/90 text-white px-8 py-2"
+            >
+              {isSubmitting ? "Updating..." : "Update Password"}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   );
