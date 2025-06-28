@@ -1,14 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { ColumnDef } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -23,7 +16,8 @@ import { toast, Toaster } from "sonner";
 import Papa from "papaparse";
 import jsPDF from "jspdf";
 import autoTable from 'jspdf-autotable';
-
+import { UnifiedTable } from "@/components/core/UnifiedTable";
+import { CommissionFilter } from "./CommissionFilter";
 
 interface CommissionData {
   id: number;
@@ -41,7 +35,15 @@ interface CommissionData {
   totalReceivable: number;
 }
 
-
+interface CommissionFilterData {
+  salesPerson: string;
+  totalSalesMin: string;
+  totalSalesMax: string;
+  bonus: string;
+  penalty: string;
+  team: string;
+  currency: string;
+}
 
 const initialCommissionData: Omit<CommissionData, 'convertedAmt' | 'total' | 'totalReceivable'>[] = [
     { id: 1, fullName: "Yubesh Parsad Koirala", totalSales: 200000, currency: "NEP", rate: 1, percentage: 5, bonus: 20000, penalty: 0, checked: false },
@@ -69,7 +71,11 @@ const CurrencyIcon = ({ currency }: { currency: string }) => {
 
 export const CommissionClient = () => {
   const [commissionData, setCommissionData] = useState<CommissionData[]>([]);
+  const [filteredData, setFilteredData] = useState<CommissionData[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [activeFilters, setActiveFilters] = useState<CommissionFilterData | null>(null);
 
   const calculateRow = useCallback((row: Omit<CommissionData, 'convertedAmt' | 'total' | 'totalReceivable'>): CommissionData => {
     const convertedAmt = row.totalSales * (row.percentage / 100);
@@ -86,19 +92,76 @@ export const CommissionClient = () => {
   }, []);
 
   useEffect(() => {
-    setCommissionData(initialCommissionData.map(calculateRow));
+    const calculatedData = initialCommissionData.map(calculateRow);
+    setCommissionData(calculatedData);
+    setFilteredData(calculatedData);
   }, [calculateRow]);
+
+  // Global search function that searches across ALL columns
+  const searchAllColumns = (row: CommissionData, query: string): boolean => {
+    const searchableFields = [
+      row.fullName,
+      row.totalSales.toString(),
+      row.currency,
+      row.rate.toString(),
+      row.percentage.toString(),
+      row.bonus.toString(),
+      row.penalty.toString(),
+      formatNumber(row.convertedAmt),
+      formatNumber(row.total),
+      formatNumber(row.totalReceivable)
+    ];
+
+    return searchableFields.some(field => 
+      field.toLowerCase().includes(query.toLowerCase())
+    );
+  };
+
+  // Filter and search logic
+  useEffect(() => {
+    let filtered = [...commissionData];
+
+    // Apply global search across ALL columns
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(row => 
+        searchAllColumns(row, searchQuery)
+      );
+    }
+
+    // Apply commission filters
+    if (activeFilters) {
+      filtered = filtered.filter(row => {
+        if (activeFilters.salesPerson && !row.fullName.toLowerCase().includes(activeFilters.salesPerson.toLowerCase())) {
+          return false;
+        }
+        if (activeFilters.totalSalesMin && row.totalSales < parseFloat(activeFilters.totalSalesMin)) {
+          return false;
+        }
+        if (activeFilters.totalSalesMax && row.totalSales > parseFloat(activeFilters.totalSalesMax)) {
+          return false;
+        }
+        if (activeFilters.bonus && row.bonus !== parseFloat(activeFilters.bonus)) {
+          return false;
+        }
+        if (activeFilters.penalty && row.penalty !== parseFloat(activeFilters.penalty)) {
+          return false;
+        }
+        if (activeFilters.currency && row.currency !== activeFilters.currency) {
+          return false;
+        }
+        return true;
+      });
+    }
+
+    setFilteredData(filtered);
+  }, [commissionData, searchQuery, activeFilters]);
 
   const handleSaveData = async () => {
     setIsSaving(true);
     toast.info("Saving commission data...");
 
-    // Simulate API call
     try {
         await new Promise(resolve => setTimeout(resolve, 2000));
-        // To simulate an error, you could throw an error here randomly
-        // if (Math.random() > 0.5) throw new Error("API Error");
-
         setIsSaving(false);
         toast.success("Data saved successfully!");
     } catch (error) {
@@ -110,7 +173,7 @@ export const CommissionClient = () => {
 
   const handleExportCSV = () => {
     toast.info("Generating CSV file...");
-    const dataToExport = commissionData.map(row => ({
+    const dataToExport = filteredData.map(row => ({
       id: row.id,
       fullName: row.fullName,
       totalSales: formatNumber(row.totalSales),
@@ -141,7 +204,7 @@ export const CommissionClient = () => {
     const doc = new jsPDF();
     autoTable(doc, {
         head: [['Full Name', 'Total Sales', 'Comm %', 'Converted Amt', 'Currency', 'Rate', 'Bonus', 'Total', 'Penalty', 'Total Receivable']],
-        body: commissionData.map(row => [
+        body: filteredData.map(row => [
             row.fullName,
             formatNumber(row.totalSales),
             `${row.percentage}`,
@@ -186,28 +249,226 @@ export const CommissionClient = () => {
     setCommissionData(newData);
   };
 
+  const handleApplyFilter = (filters: CommissionFilterData) => {
+    setActiveFilters(filters);
+    toast.success("Filters applied successfully!");
+  };
+
+  const handleClearFilters = () => {
+    setActiveFilters(null);
+    setSearchQuery("");
+    toast.success("Filters cleared!");
+  };
+
   const areAllSelected = commissionData.length > 0 && commissionData.every(row => row.checked);
 
+  const columns: ColumnDef<CommissionData>[] = [
+    {
+      id: "checkbox",
+      header: () => (
+        <Checkbox
+          checked={areAllSelected}
+          onCheckedChange={(checked) => handleSelectAll(!!checked)}
+        />
+      ),
+      cell: ({ row }) => {
+        const index = filteredData.findIndex(item => item.id === row.original.id);
+        return (
+          <Checkbox
+            checked={row.original.checked}
+            onCheckedChange={(checked) => handleCheckboxChange(index, !!checked)}
+          />
+        );
+      },
+      enableSorting: false,
+    },
+    {
+      accessorKey: "fullName",
+      header: "Full name",
+      cell: ({ getValue }) => (
+        <span className="font-medium text-[14px]">{getValue() as string}</span>
+      ),
+    },
+    {
+      accessorKey: "totalSales",
+      header: "Total sales",
+      cell: ({ getValue }) => (
+        <span className="text-[14px]">{formatNumber(getValue() as number)}</span>
+      ),
+    },
+    {
+      accessorKey: "percentage",
+      header: "Commission %",
+      cell: ({ row }) => {
+        const index = filteredData.findIndex(item => item.id === row.original.id);
+        return (
+          <div className="relative w-20">
+            <Input
+              type="text"
+              value={row.original.percentage}
+              onChange={(e) => handleInputChange(index, 'percentage', e.target.value)}
+              className="w-full pr-6 text-center h-8 text-[14px]"
+            />
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">%</span>
+          </div>
+        );
+      },
+      enableSorting: false,
+    },
+    {
+      accessorKey: "convertedAmt",
+      header: "Converted amount",
+      cell: ({ getValue }) => (
+        <span className="text-[14px]">{formatNumber(getValue() as number)}</span>
+      ),
+    },
+    {
+      accessorKey: "currency",
+      header: "Currency",
+      cell: ({ row }) => {
+        const index = filteredData.findIndex(item => item.id === row.original.id);
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="w-full justify-start px-2 h-8">
+                <CurrencyIcon currency={row.original.currency} /> {row.original.currency} <ChevronDown className="ml-auto h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onSelect={() => handleInputChange(index, 'currency', 'NEP')}><CurrencyIcon currency="NEP" /> NEP</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => handleInputChange(index, 'currency', 'AUD')}><CurrencyIcon currency="AUD" /> AUD</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => handleInputChange(index, 'currency', 'USD')}><CurrencyIcon currency="USD" /> USD</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        );
+      },
+      enableSorting: false,
+    },
+    {
+      accessorKey: "rate",
+      header: "Rate",
+      cell: ({ row }) => {
+        const index = filteredData.findIndex(item => item.id === row.original.id);
+        return (
+          <Input
+            type="text"
+            value={row.original.rate}
+            onChange={(e) => handleInputChange(index, 'rate', e.target.value)}
+            className="w-24 h-8 text-[14px]"
+          />
+        );
+      },
+      enableSorting: false,
+    },
+    {
+      accessorKey: "bonus",
+      header: "Bonus amount",
+      cell: ({ row }) => {
+        const index = filteredData.findIndex(item => item.id === row.original.id);
+        return (
+          <Input
+            type="text"
+            value={row.original.bonus}
+            onChange={(e) => handleInputChange(index, 'bonus', e.target.value)}
+            className="w-24 h-8 text-[14px]"
+          />
+        );
+      },
+      enableSorting: false,
+    },
+    {
+      accessorKey: "total",
+      header: "Total",
+      cell: ({ getValue }) => (
+        <span className="text-[14px]">{formatNumber(getValue() as number)}</span>
+      ),
+    },
+    {
+      accessorKey: "penalty",
+      header: "Penalty",
+      cell: ({ row }) => {
+        const index = filteredData.findIndex(item => item.id === row.original.id);
+        return (
+          <div className="relative w-20">
+            <Input
+              type="text"
+              value={row.original.penalty}
+              onChange={(e) => handleInputChange(index, 'penalty', e.target.value)}
+              className="w-full pr-6 text-center h-8 text-[14px]"
+            />
+          </div>
+        );
+      },
+      enableSorting: false,
+    },
+    {
+      accessorKey: "totalReceivable",
+      header: "Total Receivable",
+      cell: ({ getValue }) => (
+        <span className="text-[14px]">{formatNumber(getValue() as number)}</span>
+      ),
+    },
+  ];
+
+  // Calculate totals for footer
+  const totals = {
+    totalSales: filteredData.reduce((acc, row) => acc + row.totalSales, 0),
+    convertedAmt: filteredData.reduce((acc, row) => acc + row.convertedAmt, 0),
+    bonus: filteredData.reduce((acc, row) => acc + row.bonus, 0),
+    total: filteredData.reduce((acc, row) => acc + row.total, 0),
+    totalReceivable: filteredData.reduce((acc, row) => acc + row.totalReceivable, 0),
+  };
+
+  const customFooter = (
+    <tr className="bg-gray-100 font-bold">
+      <td className="px-4 py-3 text-[14px]" colSpan={2}>Totals</td>
+      <td className="px-4 py-3 text-[14px]">{formatNumber(totals.totalSales)}</td>
+      <td className="px-4 py-3 text-[14px]"></td>
+      <td className="px-4 py-3 text-[14px]">{formatNumber(totals.convertedAmt)}</td>
+      <td className="px-4 py-3 text-[14px]" colSpan={2}></td>
+      <td className="px-4 py-3 text-[14px]">{formatNumber(totals.bonus)}</td>
+      <td className="px-4 py-3 text-[14px]">{formatNumber(totals.total)}</td>
+      <td className="px-4 py-3 text-[14px]"></td>
+      <td className="px-4 py-3 text-[14px]">{formatNumber(totals.totalReceivable)}</td>
+    </tr>
+  );
+
   return (
-    <div className="p-6 bg-gray-50 rounded-lg">
+    <div className="p-8 bg-white">
       <Toaster position="top-right" richColors />
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Commission</h1>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" className="flex items-center gap-2" onClick={handleSaveData} disabled={isSaving}>
+      
+      {/* Header */}
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-[28px] font-semibold text-gray-900">Commission</h1>
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="outline" 
+            className="flex items-center gap-2 h-10 px-4 border-gray-300" 
+            onClick={handleSaveData} 
+            disabled={isSaving}
+          >
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {isSaving ? 'Saving...' : 'Save Data'}
           </Button>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-            <Input placeholder="Search..." className="pl-10 w-64" />
+            <Input 
+              placeholder="Search..." 
+              className="pl-10 w-80 h-10 border-gray-300" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
-          <Button variant="outline" className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            className="flex items-center gap-2 h-10 px-4 border-gray-300"
+            onClick={() => setIsFilterOpen(true)}
+          >
             <Filter className="h-4 w-4" /> Filter
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2">
+              <Button variant="outline" className="flex items-center gap-2 h-10 px-4 border-gray-300">
                 <HardDriveDownload className="h-4 w-4" /> Export <ChevronDown className="ml-2 h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -219,124 +480,37 @@ export const CommissionClient = () => {
         </div>
       </div>
 
-      <div className="overflow-x-auto bg-white rounded-lg shadow">
-        <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>
-                  <Checkbox
-                    checked={areAllSelected}
-                    onCheckedChange={(checked) => handleSelectAll(!!checked)}
-                  />
-                </TableHead>
-                <TableHead className="text-gray-600 font-bold">Full name</TableHead>
-                <TableHead className="text-gray-600 font-bold">Total sales</TableHead>
-                <TableHead className="text-gray-600 font-bold">Commission %</TableHead>
-                <TableHead className="text-gray-600 font-bold">Converted amount</TableHead>
-                <TableHead className="text-gray-600 font-bold">Currency</TableHead>
-                <TableHead className="text-gray-600 font-bold">Rate</TableHead>
-                <TableHead className="text-gray-600 font-bold">Bonus amount</TableHead>
-                <TableHead className="text-gray-600 font-bold">Total</TableHead>
-                <TableHead className="text-gray-600 font-bold">Penalty</TableHead>
-                <TableHead className="text-gray-600 font-bold">Total Receivable</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {commissionData.map((row, index) => (
-                <TableRow key={row.id} className={row.checked ? "bg-blue-50" : ""}>
-                  <TableCell>
-                    <Checkbox
-                      checked={row.checked}
-                      onCheckedChange={(checked) => handleCheckboxChange(index, !!checked)}
-                    />
-                  </TableCell>
-                  <TableCell className="font-semibold">{row.fullName}</TableCell>
-                  <TableCell>{formatNumber(row.totalSales)}</TableCell>
-                  <TableCell>
-                    <div className="relative w-20">
-                      <Input
-                        type="text"
-                        value={row.percentage}
-                        onChange={(e) => handleInputChange(index, 'percentage', e.target.value)}
-                        className="w-full pr-6 text-center"
-                      />
-                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">%</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>{formatNumber(row.convertedAmt)}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="w-full justify-start px-2">
-                          <CurrencyIcon currency={row.currency} /> {row.currency} <ChevronDown className="ml-auto h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent>
-                        <DropdownMenuItem onSelect={() => handleInputChange(index, 'currency', 'NEP')}><CurrencyIcon currency="NEP" /> NEP</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleInputChange(index, 'currency', 'AUD')}><CurrencyIcon currency="AUD" /> AUD</DropdownMenuItem>
-                        <DropdownMenuItem onSelect={() => handleInputChange(index, 'currency', 'USD')}><CurrencyIcon currency="USD" /> USD</DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                  <TableCell>
-                    <Input
-                      type="text"
-                      value={row.rate}
-                      onChange={(e) => handleInputChange(index, 'rate', e.target.value)}
-                      className="w-24"
-                    />
-                  </TableCell>
-                                    <TableCell>
-                    <Input
-                      type="text"
-                      value={row.bonus}
-                      onChange={(e) => handleInputChange(index, 'bonus', e.target.value)}
-                      className="w-24"
-                    />
-                  </TableCell>
-                  <TableCell>{formatNumber(row.total)}</TableCell>
-                                    <TableCell>
-                    <div className="relative w-20">
-                      <Input
-                        type="text"
-                        value={row.penalty}
-                        onChange={(e) => handleInputChange(index, 'penalty', e.target.value)}
-                        className="w-full pr-6 text-center"
-                      />
-                    </div>
-                  </TableCell>
-                  <TableCell>{formatNumber(row.totalReceivable)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-            <tfoot>
-              <TableRow className="bg-gray-100 font-bold">
-                <TableCell colSpan={2} className="text-right">Totals</TableCell>
-                <TableCell>{formatNumber(commissionData.reduce((acc, row) => acc + row.totalSales, 0))}</TableCell>
-                <TableCell>{/* % */}</TableCell>
-                <TableCell>{formatNumber(commissionData.reduce((acc, row) => acc + row.convertedAmt, 0))}</TableCell>
-                <TableCell colSpan={2}>{/* Currency, Rate */}</TableCell>
-                <TableCell>{formatNumber(commissionData.reduce((acc, row) => acc + row.bonus, 0))}</TableCell>
-                <TableCell>{formatNumber(commissionData.reduce((acc, row) => acc + row.total, 0))}</TableCell>
-                <TableCell>{/* Penalty */}</TableCell>
-                <TableCell>{formatNumber(commissionData.reduce((acc, row) => acc + row.totalReceivable, 0))}</TableCell>
-              </TableRow>
-            </tfoot>
-          </Table>
+      {/* Table */}
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <UnifiedTable
+          data={filteredData}
+          columns={columns}
+          config={{
+            styling: {
+              variant: "figma"
+            },
+            features: {
+              pagination: true,
+              sorting: true,
+              filtering: false,
+              selection: false,
+              expansion: false,
+              columnVisibility: false,
+              globalSearch: false,
+              export: false,
+              refresh: false,
+            }
+          }}
+        />
       </div>
 
-      <div className="flex justify-between items-center mt-6 text-sm">
-        <div className="text-gray-600">
-          Showing 1 to {commissionData.length} of {initialCommissionData.length} entries
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">Previous</Button>
-          <Button variant="outline" size="sm" className="bg-indigo-500 text-white">1</Button>
-          <Button variant="outline" size="sm">2</Button>
-          <Button variant="outline" size="sm">3</Button>
-          <Button variant="outline" size="sm">Next</Button>
-        </div>
-      </div>
+      {/* Commission Filter Modal */}
+      <CommissionFilter
+        isOpen={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+        onApplyFilter={handleApplyFilter}
+        onClearFilters={handleClearFilters}
+      />
     </div>
   );
 };
