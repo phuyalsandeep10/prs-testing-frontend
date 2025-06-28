@@ -4,27 +4,18 @@ import * as React from "react";
 import { Eye, Edit, Trash2, ChevronUp, ChevronDown, ArrowUpDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useState, useMemo } from "react";
-
-// User data type matching Figma design
-export interface User {
-  id: string;
-  fullName: string;
-  email: string;
-  phoneNumber: string;
-  assignedTeam: string;
-  status: 'Active' | 'Inactive';
-}
+import { UserTableData } from "./columns";
 
 interface UserTableProps {
-  data: User[];
-  onView?: (user: User) => void;
-  onEdit?: (user: User) => void;
-  onDelete?: (user: User) => void;
+  data: UserTableData[];
+  onView?: (user: UserTableData) => void;
+  onEdit?: (user: UserTableData) => void;
+  onDelete?: (user: UserTableData) => void;
 }
 
 export function UserTable({ data, onView, onEdit, onDelete }: UserTableProps) {
   const [sortConfig, setSortConfig] = useState<{
-    key: keyof User;
+    key: keyof UserTableData;
     direction: 'asc' | 'desc' | null;
   }>({ key: 'fullName', direction: null });
 
@@ -41,7 +32,7 @@ export function UserTable({ data, onView, onEdit, onDelete }: UserTableProps) {
     });
   }, [data, sortConfig]);
 
-  const handleSort = (key: keyof User) => {
+  const handleSort = (key: keyof UserTableData) => {
     setSortConfig(current => ({
       key,
       direction: current.key === key && current.direction === 'asc' 
@@ -52,7 +43,7 @@ export function UserTable({ data, onView, onEdit, onDelete }: UserTableProps) {
     }));
   };
 
-  const getSortIcon = (key: keyof User) => {
+  const getSortIcon = (key: keyof UserTableData) => {
     if (sortConfig.key !== key || sortConfig.direction === null) {
       return <ArrowUpDown className="h-4 w-4 text-gray-400" />;
     }
@@ -138,19 +129,21 @@ export function UserTable({ data, onView, onEdit, onDelete }: UserTableProps) {
                 </td>
                 <td className="px-6 py-4">
                   <div className="text-[14px] text-gray-700">
-                    {user.assignedTeam}
+                    {user.assignedTeam || "Not Assigned"}
                   </div>
                 </td>
                 <td className="px-6 py-4">
                   {/* Exact Figma Status Badge Design */}
                   <span
                     className={`inline-flex items-center px-3 py-1 rounded-full text-[12px] font-medium ${
-                      user.status === 'Active'
+                      user.status === 'active'
                         ? 'bg-[#E6F7FF] text-[#16A34A]'
+                        : user.status === 'invited'
+                        ? 'bg-[#FFF7ED] text-[#EA580C]'
                         : 'bg-[#FEF2F2] text-[#DC2626]'
                     }`}
                   >
-                    {user.status}
+                    {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
                   </span>
                 </td>
                 <td className="px-6 py-4">

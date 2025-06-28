@@ -4,20 +4,16 @@ import * as React from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { Eye, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { User } from '@/types'; // Import global User type
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
-// This type is updated to match the new design
-export type User = {
-  id: string;
-  name: string;
-  email: string;
-  phoneNumber: string;
-  assignedTeam: string;
-  status: 'Active' | 'Inactive' | 'Invited';
+// Local type for display purposes with fullName
+export type UserTableData = User & {
+  fullName: string;
 };
 
-const UserActions: React.FC<{ user: User }> = ({ user }) => {
+const UserActions: React.FC<{ user: UserTableData }> = ({ user }) => {
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
 
   return (
@@ -51,7 +47,7 @@ const UserActions: React.FC<{ user: User }> = ({ user }) => {
   );
 };
 
-export const columns: ColumnDef<User>[] = [
+export const columns: ColumnDef<UserTableData>[] = [
   {
     accessorKey: "name",
     header: "Full Name",
@@ -67,19 +63,22 @@ export const columns: ColumnDef<User>[] = [
   {
     accessorKey: "assignedTeam",
     header: "Assigned Team",
+    cell: ({ row }) => row.getValue("assignedTeam") || "Not Assigned",
   },
   {
     accessorKey: "status",
     header: 'Status',
     cell: ({ row }) => {
       const status = row.getValue("status") as string;
+      const displayStatus = status.charAt(0).toUpperCase() + status.slice(1);
       const statusClasses = {
         "Active": "bg-green-100 text-green-800",
         "Invited": "bg-yellow-100 text-yellow-800",
         "Inactive": "bg-red-100 text-red-800",
-      }[status] || "bg-gray-100 text-gray-800";
+        "Suspended": "bg-gray-100 text-gray-800",
+      }[displayStatus] || "bg-gray-100 text-gray-800";
 
-      return <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusClasses}`}>{status}</span>;
+      return <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusClasses}`}>{displayStatus}</span>;
     },
   },
   {

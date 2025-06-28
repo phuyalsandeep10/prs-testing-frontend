@@ -34,25 +34,42 @@ export const AddRoleDialog = ({ isOpen, onClose, onAddRole }: AddRoleDialogProps
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px] bg-white p-0">
-        <DialogHeader className="p-6 pb-4">
-          <DialogTitle className="text-2xl font-bold text-blue-600">ADD ROLES</DialogTitle>
+      <DialogContent className="sm:max-w-[425px] bg-white p-0 font-outfit">
+        <DialogHeader className="bg-[#22C55E] px-6 py-4">
+          <DialogTitle className="text-xl font-semibold text-white">
+            ADD ROLES
+          </DialogTitle>
         </DialogHeader>
-        <div className="px-6 py-4">
-          <label htmlFor="roleName" className="text-sm font-medium text-gray-700">Role Name*</label>
-          <Input
-            id="roleName"
-            value={roleName}
-            onChange={(e) => setRoleName(e.target.value)}
-            placeholder="QA Admin"
-            className="mt-2 border-purple-400 focus:border-purple-600 focus:ring-purple-600"
-          />
+        <div className="px-6 py-6 space-y-4">
+          <div>
+            <label htmlFor="roleName" className="text-sm font-medium text-[#4F46E5] block mb-2">
+              Role Name<span className="text-red-500 ml-1">*</span>
+            </label>
+            <Input
+              id="roleName"
+              value={roleName}
+              onChange={(e) => setRoleName(e.target.value)}
+              placeholder="QA Admin"
+              className="h-[48px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5]"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSave();
+              }}
+            />
+          </div>
         </div>
-        <DialogFooter className="bg-blue-100/50 px-6 py-4 flex justify-end gap-4">
-          <Button variant="outline" onClick={handleClear} className="bg-red-500 text-white hover:bg-red-600 border-none">
+        <DialogFooter className="bg-[#22C55E] px-6 py-4 flex justify-end gap-3">
+          <Button 
+            variant="outline" 
+            onClick={handleClear} 
+            className="bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+          >
             Clear
           </Button>
-          <Button onClick={handleSave} className="bg-green-500 hover:bg-green-600 text-white">
+          <Button 
+            onClick={handleSave} 
+            className="bg-white text-[#22C55E] hover:bg-gray-50 border border-white"
+            disabled={!roleName.trim()}
+          >
             Save
           </Button>
         </DialogFooter>

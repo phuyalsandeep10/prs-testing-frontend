@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { UserTable } from "@/components/dashboard/org-admin/manage-users/UserTable";
-import { columns as userColumns, User } from "@/components/dashboard/org-admin/manage-users/columns";
+import { UserTableData } from "@/components/dashboard/org-admin/manage-users/columns";
+import { User } from "@/types";
 import { TeamTable } from "@/components/dashboard/org-admin/manage-teams/TeamTable";
 import { columns as teamColumns, Team } from "@/components/dashboard/org-admin/manage-teams/columns";
 import { Button } from "@/components/ui/button";
@@ -123,7 +124,6 @@ export function ManageUsersClient({ users, teams }: ManageUsersClientProps) {
           <TabsContent value="users">
             <div className="bg-white border rounded-lg shadow-sm">
               <UserTable 
-                columns={userColumns} 
                 data={filteredUsers.map(user => ({
                   ...user,
                   fullName: user.name
