@@ -1,5 +1,5 @@
 import React, {useState} from "react";
-import DynamicForm from "./DynamicForm";
+import DynamicForm from "../forms/DynamicForm";
 import { FieldConfig } from "./types";
 import { z } from "zod";
 import closeicon from "@/assets/icons/close icon.svg";
