@@ -80,6 +80,47 @@
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
+
+  * {
+    /* Improve rendering performance */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    
+    /* Optimize animations and transitions */
+    backface-visibility: hidden;
+    -webkit-transform-style: preserve-3d;
+    transform-style: preserve-3d;
+  }
+
+  html {
+    /* Prevent layout shifts */
+    scroll-behavior: smooth;
+    /* Optimize rendering */
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    /* Prevent unwanted scrolling behaviors */
+    overscroll-behavior: none;
+    /* Optimize repaints */
+    will-change: auto;
+  }
+
+  /* Optimize table rendering */
+  table {
+    /* Prevent layout recalculations */
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  /* Optimize image rendering */
+  img {
+    /* Prevent layout shifts */
+    height: auto;
+    /* Optimize rendering */
+    image-rendering: -webkit-optimize-contrast;
+  }
 }
  
 @layer base {
@@ -228,5 +269,165 @@
   ring: 2px;
   ring-color: rgb(59 130 246);
   ring-offset: 2px;
+}
+
+@layer components {
+  /* Smooth transition base class */
+  .smooth-transition {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, opacity;
+  }
+
+  /* Optimized button transitions */
+  .btn-optimized {
+    @apply smooth-transition;
+    transform: translateZ(0); /* Force hardware acceleration */
+  }
+
+  .btn-optimized:hover {
+    transform: translateZ(0) scale(1.02);
+  }
+
+  .btn-optimized:active {
+    transform: translateZ(0) scale(0.98);
+  }
+
+  /* Optimized modal animations */
+  .modal-enter {
+    opacity: 0;
+    transform: translateZ(0) scale(0.95);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .modal-enter-active {
+    opacity: 1;
+    transform: translateZ(0) scale(1);
+  }
+
+  .modal-exit {
+    opacity: 1;
+    transform: translateZ(0) scale(1);
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.6, 1);
+  }
+
+  .modal-exit-active {
+    opacity: 0;
+    transform: translateZ(0) scale(0.95);
+  }
+
+  /* Optimized table row animations */
+  .table-row-optimized {
+    @apply smooth-transition;
+    transform: translateZ(0);
+  }
+
+  .table-row-optimized:hover {
+    background-color: rgba(249, 250, 251, 0.8);
+    transform: translateZ(0);
+  }
+
+  /* Prevent content shift during loading */
+  .loading-container {
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Optimized search input */
+  .search-input-optimized {
+    @apply smooth-transition;
+    will-change: border-color, box-shadow;
+  }
+
+  .search-input-optimized:focus {
+    outline: none;
+    border-color: #4F46E5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  }
+
+  /* Smooth dropdown animations */
+  .dropdown-optimized {
+    transform: translateZ(0);
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dropdown-enter {
+    opacity: 0;
+    transform: translateZ(0) translateY(-4px);
+  }
+
+  .dropdown-enter-active {
+    opacity: 1;
+    transform: translateZ(0) translateY(0);
+  }
+
+  /* Optimized tooltip animations */
+  .tooltip-optimized {
+    transform: translateZ(0);
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+  }
+
+  /* Prevent reflow during tab switches */
+  .tab-content-optimized {
+    min-height: 400px;
+    will-change: contents;
+  }
+
+  /* Smooth status badge transitions */
+  .status-badge-optimized {
+    @apply smooth-transition;
+    transform: translateZ(0);
+  }
+
+  /* Optimized sidebar transitions */
+  .sidebar-optimized {
+    transform: translateZ(0);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+  }
+
+  .sidebar-optimized.closed {
+    transform: translateZ(0) translateX(-100%);
+  }
+
+  .sidebar-optimized.open {
+    transform: translateZ(0) translateX(0);
+  }
+}
+
+@layer utilities {
+  /* Hardware acceleration utilities */
+  .gpu-accelerated {
+    transform: translateZ(0);
+    will-change: transform;
+  }
+
+  /* Prevent layout shift utilities */
+  .prevent-shift {
+    contain: layout style paint;
+  }
+
+  /* Smooth scroll utilities */
+  .smooth-scroll {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Optimized flex utilities */
+  .flex-optimized {
+    display: flex;
+    will-change: auto;
+  }
+
+  /* Prevent text selection flicker */
+  .no-select-flicker {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
 }
 

@@ -11,28 +11,28 @@ interface ClientDetailCardProps {
   onClose: () => void;
 }
 
-export function ClientDetailCard({ client, onClose }: ClientDetailCardProps) {
+export const ClientDetailCard = React.memo<ClientDetailCardProps>(({ client, onClose }) => {
   const [isVisible, setIsVisible] = React.useState(false);
 
   React.useEffect(() => {
-    // Trigger animation on mount
-    const timer = setTimeout(() => setIsVisible(true), 10);
+    // Trigger animation on mount with minimal delay for smooth transition
+    const timer = setTimeout(() => setIsVisible(true), 16); // One frame delay
     return () => clearTimeout(timer);
   }, []);
 
-  const handleClose = () => {
+  const handleClose = React.useCallback(() => {
     setIsVisible(false);
-    setTimeout(onClose, 200);
-  };
+    setTimeout(onClose, 150); // Match CSS transition duration
+  }, [onClose]);
 
-  // Handle backdrop click
-  const handleBackdropClick = (e: React.MouseEvent) => {
+  // Memoized backdrop click handler
+  const handleBackdropClick = React.useCallback((e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       handleClose();
     }
-  };
+  }, [handleClose]);
 
-  // Handle escape key
+  // Handle escape key with cleanup
   React.useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -42,16 +42,19 @@ export function ClientDetailCard({ client, onClose }: ClientDetailCardProps) {
 
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
-  }, []);
+  }, [handleClose]);
 
   return (
     <div 
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 smooth-transition"
       onClick={handleBackdropClick}
+      style={{
+        opacity: isVisible ? 1 : 0,
+      }}
     >
       <Card className={`
         w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white shadow-xl
-        transform transition-all duration-300 ease-out
+        transform transition-all duration-200 ease-out gpu-accelerated
         ${isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}
       `}>
         <CardHeader className="pb-4 border-b border-gray-100">
@@ -66,7 +69,7 @@ export function ClientDetailCard({ client, onClose }: ClientDetailCardProps) {
               variant="ghost"
               size="icon"
               onClick={handleClose}
-              className="text-gray-400 hover:text-gray-600 h-8 w-8"
+              className="text-gray-400 hover:text-gray-600 h-8 w-8 btn-optimized"
             >
               <X className="h-5 w-5" />
             </Button>
@@ -118,7 +121,7 @@ export function ClientDetailCard({ client, onClose }: ClientDetailCardProps) {
             <div className="space-y-4">
               {client.activities && client.activities.length > 0 ? (
                 client.activities.map((activity, index) => (
-                  <div key={index} className="flex">
+                  <div key={index} className="flex smooth-transition">
                     {/* Blue Left Border */}
                     <div className="w-1 bg-blue-500 rounded-full mr-4 flex-shrink-0"></div>
                     <div className="flex-1">
@@ -152,13 +155,18 @@ export function ClientDetailCard({ client, onClose }: ClientDetailCardProps) {
       </Card>
     </div>
   );
-}
+});
 
-function InfoItem({ label, value }: { label: string; value: string }) {
+ClientDetailCard.displayName = 'ClientDetailCard';
+
+// Memoized info item component
+const InfoItem = React.memo<{ label: string; value: string }>(({ label, value }) => {
   return (
     <div className="space-y-1">
       <p className="text-[14px] text-gray-500">{label}</p>
       <p className="text-[14px] font-medium text-gray-900">{value}</p>
     </div>
   );
-} 
+});
+
+InfoItem.displayName = 'InfoItem'; 

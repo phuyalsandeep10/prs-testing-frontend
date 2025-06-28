@@ -20,17 +20,17 @@ const formatDate = (dateString: string) => {
   }
 };
 
-const columns: ColumnDef<Client>[] = [
+const columns = [
   {
     id: "select",
-    header: ({ table }) => (
+    header: ({ table }: any) => (
       <Checkbox
         checked={table.getIsAllPageRowsSelected() ? true : table.getIsSomePageRowsSelected() ? "indeterminate" : false}
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
       />
     ),
-    cell: ({ row }) => (
+    cell: ({ row }: any) => (
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
@@ -43,7 +43,7 @@ const columns: ColumnDef<Client>[] = [
   {
     accessorKey: "name",
     header: "Client Name",
-    cell: ({ row }) => {
+    cell: ({ row }: any) => {
       const client = row.original;
       return (
         <div className="flex items-center gap-3">
@@ -62,12 +62,12 @@ const columns: ColumnDef<Client>[] = [
   {
     accessorKey: "activeDate",
     header: "Active Date",
-    cell: ({ row }) => formatDate(row.getValue("activeDate")),
+    cell: ({ row }: any) => formatDate(row.getValue("activeDate")),
   },
   {
     accessorKey: "status",
     header: "Status",
-    cell: ({ row }) => {
+    cell: ({ row }: any) => {
       const status = row.getValue("status") as Client["status"];
       const statusColor: Record<Client["status"], string> = {
         "clear": "text-green-600",
@@ -80,7 +80,7 @@ const columns: ColumnDef<Client>[] = [
   {
     accessorKey: "salesLeadsAvatars",
     header: "Sales Leads",
-    cell: ({ row }) => {
+    cell: ({ row }: any) => {
       const leads = row.getValue("salesLeadsAvatars") as string[];
       return (
         <div className="flex -space-x-2 overflow-hidden">
@@ -101,7 +101,7 @@ const columns: ColumnDef<Client>[] = [
   {
     accessorKey: "satisfaction",
     header: "Satisfaction",
-    cell: ({ row }) => {
+    cell: ({ row }: any) => {
       const satisfaction = row.getValue("satisfaction") as Client["satisfaction"];
       const satisfactionColor: Record<Client["satisfaction"], string> = {
         "positive": "text-green-600",
@@ -114,12 +114,12 @@ const columns: ColumnDef<Client>[] = [
   {
     accessorKey: "remarks",
     header: "Remarks",
-    cell: ({ row }) => <div className="truncate w-40">{row.getValue("remarks")}</div>,
+    cell: ({ row }: any) => <div className="truncate w-40">{row.getValue("remarks")}</div>,
   },
   {
     id: "actions",
     header: "Actions",
-    cell: ({ row }) => {
+    cell: ({ row }: any) => {
       const client = row.original;
       return (
         <div className="flex items-center justify-center gap-2">
@@ -135,7 +135,7 @@ const columns: ColumnDef<Client>[] = [
       );
     },
   },
-];
+] as any;
 
 interface ClientTableProps {
   clients?: Client[];

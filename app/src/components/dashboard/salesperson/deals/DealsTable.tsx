@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useCallback } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { Edit, Plus, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
@@ -13,14 +13,18 @@ interface PaymentTooltipProps {
   amount: string;
 }
 
-const PaymentTooltip: React.FC<PaymentTooltipProps> = ({ children, amount }) => {
+// Memoized Tooltip component for payment amounts
+const PaymentTooltip = React.memo<PaymentTooltipProps>(({ children, amount }) => {
   const [isVisible, setIsVisible] = useState(false);
+
+  const showTooltip = useCallback(() => setIsVisible(true), []);
+  const hideTooltip = useCallback(() => setIsVisible(false), []);
 
   return (
     <div className="relative inline-block">
       <div
-        onMouseEnter={() => setIsVisible(true)}
-        onMouseLeave={() => setIsVisible(false)}
+        onMouseEnter={showTooltip}
+        onMouseLeave={hideTooltip}
         className="cursor-pointer"
       >
         {children}
@@ -34,7 +38,9 @@ const PaymentTooltip: React.FC<PaymentTooltipProps> = ({ children, amount }) => 
       )}
     </div>
   );
-};
+});
+
+PaymentTooltip.displayName = 'PaymentTooltip';
 
 // Parent table data structure
 interface MainUsers {
@@ -262,11 +268,11 @@ const Mainusers: MainUsers[] = [
 ];
 
 // Nested table columns
-const NestedDealColumns: ColumnDef<NestedDealData>[] = [
+const NestedDealColumns = [
   {
     accessorKey: "Payment",
     header: "Payment",
-    cell: ({ row }) => (
+    cell: ({ row }: any) => (
       <div className="text-[12px] text-gray-800">
         {row.getValue("Payment")}
       </div>
@@ -275,7 +281,7 @@ const NestedDealColumns: ColumnDef<NestedDealData>[] = [
   {
     accessorKey: "Payment Date",
     header: "Payment Date",
-    cell: ({ row }) => (
+    cell: ({ row }: any) => (
       <div className="text-[12px] text-gray-800">
         {row.getValue("Payment Date")}
       </div>
@@ -284,7 +290,7 @@ const NestedDealColumns: ColumnDef<NestedDealData>[] = [
   {
     accessorKey: "Payment Created",
     header: "Payment Created",
-    cell: ({ row }) => (
+    cell: ({ row }: any) => (
       <div className="text-[12px] text-gray-800">
         {row.getValue("Payment Created")}
       </div>
@@ -293,7 +299,7 @@ const NestedDealColumns: ColumnDef<NestedDealData>[] = [
   {
     accessorKey: "Payment Value",
     header: "Payment Value",
-    cell: ({ row }) => (
+    cell: ({ row }: any) => (
       <div className="text-[12px] text-gray-800">
         {row.getValue("Payment Value")}
       </div>
@@ -302,7 +308,7 @@ const NestedDealColumns: ColumnDef<NestedDealData>[] = [
   {
     accessorKey: "Payment Status",
     header: "Payment Status",
-    cell: ({ row }) => {
+    cell: ({ row }: any) => {
       const status = row.getValue("Payment Status") as string;
       const getStatusColor = () => {
         switch (status.toLowerCase()) {
@@ -323,7 +329,7 @@ const NestedDealColumns: ColumnDef<NestedDealData>[] = [
       );
     },
   },
-];
+] as any;
 
 interface DealsTableProps {
   onEditDeal?: (dealId: string) => void;
@@ -354,12 +360,12 @@ const DealsTable: React.FC<DealsTableProps> = ({
   }, [searchTerm]);
 
   // Parent table column configuration
-  const columns: ColumnDef<MainUsers>[] = useMemo(
+  const columns = useMemo(
     () => [
       {
         accessorKey: "Deal Name",
         header: "Deal Name",
-        cell: ({ row }) => (
+        cell: ({ row }: any) => (
           <div className="text-[12px] font-medium text-gray-900">
             {row.getValue("Deal Name")}
           </div>
@@ -368,7 +374,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
       {
         accessorKey: "Client Name",
         header: "Client Name",
-        cell: ({ row }) => (
+        cell: ({ row }: any) => (
           <div className="text-[12px] text-gray-700">
             {row.getValue("Client Name")}
           </div>
@@ -377,7 +383,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
       {
         accessorKey: "Pay Status",
         header: "Pay Status",
-        cell: ({ row }) => {
+        cell: ({ row }: any) => {
           const status = row.getValue("Pay Status") as string;
           const getStatusColor = () => {
             switch (status.toLowerCase()) {
@@ -399,7 +405,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
       {
         accessorKey: "Remarks",
         header: "Remarks",
-        cell: ({ row }) => (
+        cell: ({ row }: any) => (
           <div className="text-[12px] text-gray-700 max-w-xs truncate">
             {row.getValue("Remarks")}
           </div>
@@ -408,7 +414,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
       {
         accessorKey: "Deal Value",
         header: "Deal Value",
-        cell: ({ row }) => (
+        cell: ({ row }: any) => (
           <div className="text-[12px] font-medium text-gray-900">
             {row.getValue("Deal Value")}
           </div>
@@ -417,7 +423,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
       {
         accessorKey: "Deal Date",
         header: "Deal Date",
-        cell: ({ row }) => (
+        cell: ({ row }: any) => (
           <div className="text-[12px] text-gray-700">
             {row.getValue("Deal Date")}
           </div>
@@ -426,7 +432,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
       {
         accessorKey: "Payment",
         header: "Payment",
-        cell: ({ row }) => {
+        cell: ({ row }: any) => {
           const payment = row.getValue("Payment") as string;
           const deal = row.original;
           if (!payment) return null;
@@ -446,7 +452,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
                   : "bg-red-100 text-red-800 border-red-200"; // Red for rejected
                 
                 // Get payment amount from nested data
-                const paymentData = deal.nestedData?.find(nested => nested.Payment === index + 1);
+                const paymentData = deal.nestedData?.find((nested: any) => nested.Payment === index + 1);
                 const paymentAmount = paymentData ? `$${(paymentData["Payment Value"] / 100).toLocaleString()}` : 'N/A';
                 
                 // Show tooltip for all payments (both verified and rejected)
@@ -467,7 +473,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
       {
         accessorKey: "Pay Method",
         header: "Pay Method",
-        cell: ({ row }) => (
+        cell: ({ row }: any) => (
           <div className="text-[12px] text-gray-700">
             {row.getValue("Pay Method")}
           </div>
@@ -476,7 +482,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
       {
         accessorKey: "Due Date",
         header: "Due Date",
-        cell: ({ row }) => (
+        cell: ({ row }: any) => (
           <div className="text-[12px] text-gray-700">
             {row.getValue("Due Date")}
           </div>
@@ -485,7 +491,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
       {
         accessorKey: "Version",
         header: "Version",
-        cell: ({ row }) => {
+        cell: ({ row }: any) => {
           const version = row.getValue("Version") as string;
           return (
             <span className={`px-2 py-1 text-[12px] font-medium rounded ${
@@ -501,7 +507,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
       {
         accessorKey: "Sales Person",
         header: "Sales Person",
-        cell: ({ row }) => (
+        cell: ({ row }: any) => (
           <div className="text-[12px] text-gray-700">
             {row.getValue("Sales Person")}
           </div>
@@ -510,7 +516,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
       {
         id: "actions",
         header: "Actions",
-        cell: ({ row }) => (
+        cell: ({ row }: any) => (
           <div className="flex items-center justify-center gap-1">
             <button
               onClick={() => onEditDeal?.(row.original.id)}
@@ -537,7 +543,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
           </div>
         ),
       },
-    ],
+    ] as any,
     [expandedRows, onEditDeal, onAddPayment]
   );
 
@@ -607,7 +613,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
         expandedContent={expandedContent}
         expandedRows={expandedRows}
         onExpandedRowsChange={setExpandedRows}
-        getRowProps={(row) => ({
+        getRowProps={(row: any) => ({
           className: row.original.isRejected 
             ? "bg-red-50 hover:bg-red-100 transition-colors" 
             : "",

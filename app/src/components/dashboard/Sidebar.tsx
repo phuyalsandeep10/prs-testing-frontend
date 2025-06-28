@@ -26,7 +26,6 @@ import {
 import { cn } from "@/lib/utils";
 import Logout from "../global-components/Logout";
 import { useState } from "react";
-import { useSidebar } from "@/app/(dashboard)/layout";
 
 const superAdminNav = [
   { name: "Dashboard", href: "/super-admin", icon: LayoutDashboard },
@@ -79,7 +78,8 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
-  const { isCollapsed, setIsCollapsed } = useSidebar();
+  // Use local state instead of context since it was removed from layout
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   // Determine current role and navigation based on pathname
   const getCurrentNavigation = () => {

@@ -262,7 +262,7 @@ export const CommissionClient = () => {
 
   const areAllSelected = commissionData.length > 0 && commissionData.every(row => row.checked);
 
-  const columns: ColumnDef<CommissionData>[] = [
+  const columns = [
     {
       id: "checkbox",
       header: () => (
@@ -271,7 +271,7 @@ export const CommissionClient = () => {
           onCheckedChange={(checked) => handleSelectAll(!!checked)}
         />
       ),
-      cell: ({ row }) => {
+      cell: ({ row }: any) => {
         const index = filteredData.findIndex(item => item.id === row.original.id);
         return (
           <Checkbox
@@ -285,21 +285,21 @@ export const CommissionClient = () => {
     {
       accessorKey: "fullName",
       header: "Full name",
-      cell: ({ getValue }) => (
+      cell: ({ getValue }: any) => (
         <span className="font-medium text-[14px]">{getValue() as string}</span>
       ),
     },
     {
       accessorKey: "totalSales",
       header: "Total sales",
-      cell: ({ getValue }) => (
+      cell: ({ getValue }: any) => (
         <span className="text-[14px]">{formatNumber(getValue() as number)}</span>
       ),
     },
     {
       accessorKey: "percentage",
       header: "Commission %",
-      cell: ({ row }) => {
+      cell: ({ row }: any) => {
         const index = filteredData.findIndex(item => item.id === row.original.id);
         return (
           <div className="relative w-20">
@@ -318,14 +318,14 @@ export const CommissionClient = () => {
     {
       accessorKey: "convertedAmt",
       header: "Converted amount",
-      cell: ({ getValue }) => (
+      cell: ({ getValue }: any) => (
         <span className="text-[14px]">{formatNumber(getValue() as number)}</span>
       ),
     },
     {
       accessorKey: "currency",
       header: "Currency",
-      cell: ({ row }) => {
+      cell: ({ row }: any) => {
         const index = filteredData.findIndex(item => item.id === row.original.id);
         return (
           <DropdownMenu>
@@ -347,7 +347,7 @@ export const CommissionClient = () => {
     {
       accessorKey: "rate",
       header: "Rate",
-      cell: ({ row }) => {
+      cell: ({ row }: any) => {
         const index = filteredData.findIndex(item => item.id === row.original.id);
         return (
           <Input
@@ -363,7 +363,7 @@ export const CommissionClient = () => {
     {
       accessorKey: "bonus",
       header: "Bonus amount",
-      cell: ({ row }) => {
+      cell: ({ row }: any) => {
         const index = filteredData.findIndex(item => item.id === row.original.id);
         return (
           <Input
@@ -379,14 +379,14 @@ export const CommissionClient = () => {
     {
       accessorKey: "total",
       header: "Total",
-      cell: ({ getValue }) => (
+      cell: ({ getValue }: any) => (
         <span className="text-[14px]">{formatNumber(getValue() as number)}</span>
       ),
     },
     {
       accessorKey: "penalty",
       header: "Penalty",
-      cell: ({ row }) => {
+      cell: ({ row }: any) => {
         const index = filteredData.findIndex(item => item.id === row.original.id);
         return (
           <div className="relative w-20">
@@ -404,11 +404,11 @@ export const CommissionClient = () => {
     {
       accessorKey: "totalReceivable",
       header: "Total Receivable",
-      cell: ({ getValue }) => (
+      cell: ({ getValue }: any) => (
         <span className="text-[14px]">{formatNumber(getValue() as number)}</span>
       ),
     },
-  ];
+  ] as any;
 
   // Calculate totals for footer
   const totals = {

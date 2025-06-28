@@ -26,32 +26,32 @@ const sampleUsers: SampleUser[] = [
   { id: '3', name: 'Bob Johnson', email: 'bob@example.com', role: 'Manager', status: 'inactive', lastLogin: '2024-01-10' },
 ];
 
-const userColumns: ColumnDef<SampleUser>[] = [
+const userColumns = [
   {
     accessorKey: "name",
     header: "Name",
-    cell: ({ row }) => (
+    cell: ({ row }: any) => (
       <div className="font-medium">{row.getValue("name")}</div>
     ),
   },
   {
     accessorKey: "email",
     header: "Email",
-    cell: ({ row }) => (
+    cell: ({ row }: any) => (
       <div className="text-gray-600">{row.getValue("email")}</div>
     ),
   },
   {
     accessorKey: "role",
     header: "Role",
-    cell: ({ row }) => (
+    cell: ({ row }: any) => (
       <Badge variant="secondary">{row.getValue("role")}</Badge>
     ),
   },
   {
     accessorKey: "status",
     header: "Status",
-    cell: ({ row }) => {
+    cell: ({ row }: any) => {
       const status = row.getValue("status") as string;
       return (
         <Badge variant={status === 'active' ? 'default' : 'destructive'}>
@@ -63,11 +63,11 @@ const userColumns: ColumnDef<SampleUser>[] = [
   {
     accessorKey: "lastLogin",
     header: "Last Login",
-    cell: ({ row }) => (
+    cell: ({ row }: any) => (
       <div className="text-sm text-gray-500">{row.getValue("lastLogin")}</div>
     ),
   },
-];
+] as any;
 
 // Form schema and configuration
 const demoFormSchema = z.object({

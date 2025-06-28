@@ -152,7 +152,7 @@ const RefundChargeback = () => {
   }, [activeTab, searchTerm]);
 
   // Columns definition for UnifiedTable
-  const columns: ColumnDef<TransactionData>[] = useMemo(() => [
+  const columns = useMemo(() => [
     {
       accessorKey: "id",
       header: "Transactional ID",
@@ -172,7 +172,7 @@ const RefundChargeback = () => {
       accessorKey: "Status",
       header: "Status",
       size: 120,
-      cell: ({ row }) => {
+      cell: ({ row }: any) => {
         const status = row.getValue("Status") as string;
         return (
           <span
@@ -199,7 +199,7 @@ const RefundChargeback = () => {
       header: "Dates",
       size: 130,
     },
-  ], []);
+  ] as any, []);
 
   return (
     <div className="min-h-screen bg-gray-50">

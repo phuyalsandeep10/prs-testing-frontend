@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Eye, Edit, Trash2, Plus, Search, Filter, LayoutGrid, List } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,19 +12,51 @@ import { ClientKanbanView } from './ClientKanbanView';
 import { ClientDetailCard } from './ClientDetailCard';
 import AddNewClientForm from './AddNewClientForm';
 import EditClientForm from './EditClientForm';
+import { useDebouncedSearch } from '@/hooks/useDebounce';
 
-const ClientsPage = () => {
+// Memoized status color function
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'clear': 
+      return 'bg-[#E6F7FF] text-[#16A34A] px-3 py-1 text-[12px] font-medium rounded-full';
+    case 'pending': 
+      return 'bg-[#FFF7ED] text-[#EA580C] px-3 py-1 text-[12px] font-medium rounded-full';
+    case 'bad-depth': 
+      return 'bg-[#FEF2F2] text-[#DC2626] px-3 py-1 text-[12px] font-medium rounded-full';
+    default: 
+      return 'bg-gray-100 text-gray-600 px-3 py-1 text-[12px] font-medium rounded-full';
+  }
+};
+
+// Memoized satisfaction color function
+const getSatisfactionColor = (satisfaction: string) => {
+  switch (satisfaction) {
+    case 'positive': 
+      return 'bg-[#E6F7FF] text-[#16A34A] px-3 py-1 text-[12px] font-medium rounded-full';
+    case 'neutral': 
+      return 'bg-[#FFF7ED] text-[#EA580C] px-3 py-1 text-[12px] font-medium rounded-full';
+    case 'negative': 
+      return 'bg-[#FEF2F2] text-[#DC2626] px-3 py-1 text-[12px] font-medium rounded-full';
+    default: 
+      return 'bg-gray-100 text-gray-600 px-3 py-1 text-[12px] font-medium rounded-full';
+  }
+};
+
+const ClientsPage = React.memo(() => {
   const [view, setView] = useState<"table" | "kanban">("table");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
 
+  // Use debounced search hook for better performance
+  const { searchValue, debouncedSearchValue, setSearchValue } = useDebouncedSearch('', 300);
+
+  // Memoize clients data
   const clients = useMemo(() => getClients(), []);
 
-  // Global search function that searches across ALL client data fields
-  const searchAllClientColumns = (client: Client, query: string): boolean => {
+  // Memoized search function
+  const searchAllClientColumns = useCallback((client: Client, query: string): boolean => {
     const searchableFields = [
       client.name,
       client.email,
@@ -48,63 +80,39 @@ const ClientsPage = () => {
     return searchableFields.some(field => 
       field.toLowerCase().includes(query.toLowerCase())
     );
-  };
+  }, []);
 
-  // Filter clients based on search query
+  // Memoized filtered clients
   const filteredClients = useMemo(() => {
-    if (searchTerm.trim()) {
+    if (debouncedSearchValue.trim()) {
       return clients.filter(client => 
-        searchAllClientColumns(client, searchTerm)
+        searchAllClientColumns(client, debouncedSearchValue)
       );
     }
     return clients;
-  }, [searchTerm, clients]);
+  }, [debouncedSearchValue, clients, searchAllClientColumns]);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'clear': 
-        return 'bg-[#E6F7FF] text-[#16A34A] px-3 py-1 text-[12px] font-medium rounded-full';
-      case 'pending': 
-        return 'bg-[#FFF7ED] text-[#EA580C] px-3 py-1 text-[12px] font-medium rounded-full';
-      case 'bad-depth': 
-        return 'bg-[#FEF2F2] text-[#DC2626] px-3 py-1 text-[12px] font-medium rounded-full';
-      default: 
-        return 'bg-gray-100 text-gray-600 px-3 py-1 text-[12px] font-medium rounded-full';
-    }
-  };
-
-  const getSatisfactionColor = (satisfaction: string) => {
-    switch (satisfaction) {
-      case 'positive': 
-        return 'bg-[#E6F7FF] text-[#16A34A] px-3 py-1 text-[12px] font-medium rounded-full';
-      case 'neutral': 
-        return 'bg-[#FFF7ED] text-[#EA580C] px-3 py-1 text-[12px] font-medium rounded-full';
-      case 'negative': 
-        return 'bg-[#FEF2F2] text-[#DC2626] px-3 py-1 text-[12px] font-medium rounded-full';
-      default: 
-        return 'bg-gray-100 text-gray-600 px-3 py-1 text-[12px] font-medium rounded-full';
-    }
-  };
-
-  const handleEdit = (client: Client) => {
+  // Memoized event handlers
+  const handleEdit = useCallback((client: Client) => {
     setSelectedClient(client);
     setShowEditModal(true);
-  };
+  }, []);
 
-  const handleDelete = (clientId: string) => {
+  const handleDelete = useCallback((clientId: string) => {
     console.log('Delete client:', clientId);
-  };
+  }, []);
 
-  const handleView = (client: Client) => {
+  const handleView = useCallback((client: Client) => {
     setSelectedClient(client);
     setShowViewModal(true);
-  };
+  }, []);
 
-  const columns: ColumnDef<Client>[] = [
+  // Memoized columns definition
+  const columns = useMemo(() => [
     {
       accessorKey: "name",
       header: "Client Name",
-      cell: ({ row }) => (
+      cell: ({ row }: any) => (
         <div className="text-[14px] font-medium text-gray-900">
           {row.getValue("name")}
         </div>
@@ -113,7 +121,7 @@ const ClientsPage = () => {
     {
       accessorKey: "activeDate",
       header: "Active Date",
-      cell: ({ row }) => (
+      cell: ({ row }: any) => (
         <div className="text-[14px] text-gray-700">
           {new Date(row.getValue("activeDate")).toLocaleDateString('en-US', {
             year: 'numeric',
@@ -126,7 +134,7 @@ const ClientsPage = () => {
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => {
+      cell: ({ row }: any) => {
         const status = row.getValue("status") as string;
         return (
           <span className={getStatusColor(status)}>
@@ -140,7 +148,7 @@ const ClientsPage = () => {
     {
       accessorKey: "satisfaction",
       header: "Satisfaction",
-      cell: ({ row }) => {
+      cell: ({ row }: any) => {
         const satisfaction = row.getValue("satisfaction") as string;
         return (
           <span className={getSatisfactionColor(satisfaction)}>
@@ -161,7 +169,7 @@ const ClientsPage = () => {
     {
       accessorKey: "remarks",
       header: "Remarks",
-      cell: ({ row }) => (
+      cell: ({ row }: any) => (
         <div className="text-[14px] text-gray-700 truncate max-w-[200px]">
           {row.getValue("remarks")}
         </div>
@@ -170,7 +178,7 @@ const ClientsPage = () => {
     {
       id: "actions",
       header: "Actions",
-      cell: ({ row }) => {
+      cell: ({ row }: any) => {
         const client = row.original;
         return (
           <div className="flex items-center justify-center gap-2">
@@ -199,7 +207,7 @@ const ClientsPage = () => {
         );
       },
     },
-  ];
+  ] as any, [handleView, handleEdit, handleDelete]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -221,8 +229,8 @@ const ClientsPage = () => {
               <Input
                 type="text"
                 placeholder="Search clients..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
                 className="pl-12 pr-4 py-3 w-[320px] h-[44px] text-[14px] bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
               />
             </div>
@@ -343,6 +351,6 @@ const ClientsPage = () => {
       )}
     </div>
   );
-};
+});
 
 export default ClientsPage;

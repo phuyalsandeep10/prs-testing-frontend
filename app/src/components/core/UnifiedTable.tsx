@@ -324,7 +324,7 @@ const TableToolbar = <TData,>({
 };
 
 // ==================== MAIN COMPONENT ====================
-export function UnifiedTable<TData>({
+export const UnifiedTable = React.memo(<TData,>({
   data,
   columns,
   config = {},
@@ -340,11 +340,11 @@ export function UnifiedTable<TData>({
   getRowProps,
   expandedRows,
   onExpandedRowsChange,
-}: UnifiedTableProps<TData>) {
-  // Merge configurations with defaults
-  const features = { ...defaultFeatures, ...config.features };
-  const styling = { ...defaultStyling, ...config.styling };
-  const messages = { ...defaultMessages, ...config.messages };
+}: UnifiedTableProps<TData>) => {
+  // Memoize configurations to prevent unnecessary re-calculations
+  const features = React.useMemo(() => ({ ...defaultFeatures, ...config.features }), [config.features]);
+  const styling = React.useMemo(() => ({ ...defaultStyling, ...config.styling }), [config.styling]);
+  const messages = React.useMemo(() => ({ ...defaultMessages, ...config.messages }), [config.messages]);
 
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -358,8 +358,8 @@ export function UnifiedTable<TData>({
   const currentExpandedRows = expandedRows || internalExpandedRows;
   const setCurrentExpandedRows = onExpandedRowsChange || setInternalExpandedRows;
 
-  // Table instance
-  const table = useReactTable({
+  // Memoize table configuration
+  const tableConfig = React.useMemo(() => ({
     data,
     columns,
     state: {
@@ -384,18 +384,42 @@ export function UnifiedTable<TData>({
         pageSize: config.pagination?.pageSize || 10,
       },
     },
-  });
+  }), [
+    data, 
+    columns, 
+    sorting, 
+    columnFilters, 
+    columnVisibility, 
+    rowSelection, 
+    globalFilter, 
+    features.selection, 
+    features.pagination, 
+    config.pagination?.pageSize
+  ]);
 
-  // Handle row selection
-  React.useEffect(() => {
+  // Table instance
+  const table = useReactTable(tableConfig);
+
+  // Memoized callback for row selection
+  const handleRowSelection = React.useCallback(() => {
     if (features.selection && onRowSelect) {
       const selectedRows = table.getFilteredSelectedRowModel().rows.map((row) => row.original);
       onRowSelect(selectedRows);
     }
-  }, [rowSelection, features.selection, onRowSelect, table]);
+  }, [features.selection, onRowSelect, table, rowSelection]);
 
-  // Get styling classes
-  const styles = getTableVariant(styling.variant!, styling.size!);
+  // Handle row selection
+  React.useEffect(() => {
+    handleRowSelection();
+  }, [handleRowSelection]);
+
+  // Memoize styling classes
+  const styles = React.useMemo(() => getTableVariant(styling.variant!, styling.size!), [styling.variant, styling.size]);
+
+  // Memoized row click handler
+  const handleRowClick = React.useCallback((row: any) => {
+    onRowClick?.(row);
+  }, [onRowClick]);
 
   // Render loading state
   if (loading) {
@@ -492,7 +516,7 @@ export function UnifiedTable<TData>({
                       onRowClick && "cursor-pointer",
                       row.getIsSelected() && "bg-blue-50"
                     )}
-                    onClick={() => onRowClick?.(row)}
+                    onClick={() => handleRowClick(row)}
                     {...(getRowProps ? getRowProps(row) : {} as React.HTMLAttributes<HTMLTableRowElement>)}
                   >
                     {row.getVisibleCells().map((cell) => (
@@ -529,4 +553,4 @@ export function UnifiedTable<TData>({
       )}
     </div>
   );
-} 
+}); 

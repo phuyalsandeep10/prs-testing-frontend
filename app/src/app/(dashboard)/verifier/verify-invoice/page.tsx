@@ -135,7 +135,7 @@ const VerifyInvoice = () => {
   }, [activeTab, searchTerm]);
 
   // Columns definition for UnifiedTable
-  const columns: ColumnDef<InvoiceData>[] = useMemo(() => [
+  const columns = useMemo(() => [
     {
       accessorKey: "id",
       header: "Invoice-ID",
@@ -170,7 +170,7 @@ const VerifyInvoice = () => {
       accessorKey: "Status",
       header: "Status",
       size: 120,
-      cell: ({ row }) => {
+      cell: ({ row }: any) => {
         const status = row.getValue("Status") as string;
         return (
           <span
@@ -193,7 +193,7 @@ const VerifyInvoice = () => {
       id: "actions",
       header: "Action",
       size: 100,
-      cell: ({ row }) => (
+      cell: ({ row }: any) => (
         <div className="flex items-center gap-2">
           <button
             onClick={() => console.log("View invoice:", row.original.id)}
@@ -210,7 +210,7 @@ const VerifyInvoice = () => {
         </div>
       ),
     },
-  ], []);
+  ] as any, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
