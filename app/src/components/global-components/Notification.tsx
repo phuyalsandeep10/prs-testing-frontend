@@ -3,12 +3,37 @@
 import React, { useState, useEffect } from "react";
 import {
   Dialog,
-  DialogContent,
+  DialogOverlay,
+  DialogPortal,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
-import { Check } from "lucide-react";
+import { Check, X } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+// Custom DialogContent without built-in close button for notifications
+const NotificationDialogContent = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <DialogPortal>
+    <DialogOverlay />
+    <DialogPrimitive.Content
+      ref={ref}
+      className={cn(
+        "fixed z-50 grid w-full gap-4 border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      {/* No built-in close button here */}
+    </DialogPrimitive.Content>
+  </DialogPortal>
+));
+NotificationDialogContent.displayName = "NotificationDialogContent";
 
 interface Notification {
   id: string;
@@ -116,7 +141,7 @@ const Notifications: React.FC<NotificationsProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent
+      <NotificationDialogContent
         className="p-0 bg-gradient-to-b from-purple-50 via-white to-blue-50 border-0 shadow-xl w-[376px] h-[434px] max-w-[376px] max-h-[434px] rounded-lg"
         style={{
           position: "fixed",
@@ -133,11 +158,11 @@ const Notifications: React.FC<NotificationsProps> = ({
           }
         }}
       >
-        {/* Header */}
-        <div className=" px-6 py-[11px] border-b border-purple-100">
+        {/* Header with single close button */}
+        <div className="px-6 py-[11px] border-b border-purple-100">
           <DialogHeader>
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-[16px] font-medium text-gray-800 my-5 ">
+              <DialogTitle className="text-[16px] font-medium text-gray-800 my-5">
                 Updates
               </DialogTitle>
               <Button
@@ -145,7 +170,9 @@ const Notifications: React.FC<NotificationsProps> = ({
                 size="sm"
                 onClick={() => onOpenChange(false)}
                 className="h-6 w-6 p-0 hover:bg-purple-200/50"
-              ></Button>
+              >
+                <X className="h-4 w-4 text-gray-500" />
+              </Button>
             </div>
           </DialogHeader>
         </div>
@@ -191,15 +218,15 @@ const Notifications: React.FC<NotificationsProps> = ({
         </div>
 
         {/* Footer */}
-        <div className=" pt-4 ">
+        <div className="pt-4">
           <Button
             onClick={markAllAsRead}
-            className="w-full text-white font-medium h-[49px] "
+            className="w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white font-medium h-[49px]"
           >
             Mark all Read
           </Button>
         </div>
-      </DialogContent>
+      </NotificationDialogContent>
     </Dialog>
   );
 };

@@ -6,7 +6,7 @@ import Edit from "@/assets/icons/edit.svg";
 import add from "@/assets/icons/add.svg";
 import Image from "next/image";
 import { format } from "date-fns";
-import { ReusableTable } from "@/components/dashboard/salesperson/deals/ReusableTable"; // adjust path
+import { UnifiedTable } from "@/components/core";
 import ExpandButton from "@/components/dashboard/salesperson/deals/ExpandButton"; // adjust path
 
 // type define for table head, row and header cell // Parent table data structure
@@ -267,193 +267,339 @@ const Mainusers: MainUsers[] = [
     ],
   },
 ];
-// deals table
-const DealsTable = () => {
-  // dropdown for each table row
-  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
-  // Main table columns
+// nested table column configuration
+const NestedDealColumns: ColumnDef<NestedDealData>[] = [
+  {
+    accessorKey: "Payment",
+    header: "Payment",
+    cell: ({ row }) => (
+      <div className="text-[14px] text-gray-800">{row.getValue("Payment")}</div>
+    ),
+  },
+  {
+    accessorKey: "Payment Date",
+    header: "Payment Date",
+    cell: ({ row }) => (
+      <div className="text-[14px] text-gray-800">
+        {row.getValue("Payment Date")}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "Payment Created",
+    header: "Payment Created",
+    cell: ({ row }) => (
+      <div className="text-[14px] text-gray-800">
+        {row.getValue("Payment Created")}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "Payment Value",
+    header: "Payment Value",
+    cell: ({ row }) => (
+      <div className="text-[14px] text-gray-800">
+        {row.getValue("Payment Value")}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "Payment Version",
+    header: "Payment Version",
+    cell: ({ row }) => (
+      <div className="text-[14px] text-gray-800">
+        {row.getValue("Payment Version")}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "Payment Status",
+    header: "Payment Status",
+    cell: ({ row }) => (
+      <div className="text-[14px] text-gray-800">
+        {row.getValue("Payment Status")}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "Receipt Link",
+    header: "Receipt Link",
+    cell: ({ row }) => (
+      <div className="text-[14px] text-blue-600 hover:text-blue-800 cursor-pointer">
+        {row.getValue("Receipt Link")}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "Verified By",
+    header: "Verified By",
+    cell: ({ row }) => (
+      <div className="text-[14px] text-gray-800">
+        {row.getValue("Verified By")}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "Remarks",
+    header: "Remarks",
+    cell: ({ row }) => (
+      <div className="text-[14px] text-gray-800 truncate max-w-[150px]">{row.getValue("Remarks")}</div>
+    ),
+  },
+  {
+    accessorKey: "Verification Remarks",
+    header: "Verification Remarks",
+    cell: ({ row }) => (
+      <div className="text-[14px] text-gray-800 truncate max-w-[150px]">
+        {row.getValue("Verification Remarks")}
+      </div>
+    ),
+  },
+];
+
+interface DealsTableProps {
+  onEditDeal?: (dealId: string) => void;
+  onAddPayment?: (dealId: string) => void;
+}
+
+const DealsTable: React.FC<DealsTableProps> = ({ onEditDeal, onAddPayment }) => {
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+
+  // parent table column configuration
   const columns: ColumnDef<MainUsers>[] = useMemo(
     () => [
       {
-        accessorKey: "Deal Name", // The key in your data object to access the value for this column
-        header: "Deal Name", // The column header label displayed in the table
-        cell: (info) => info.getValue(), // Function to render the cell content: here it returns the value of "Remarks" for the current row
+        id: "expand",
+        header: () => null,
+        cell: ({ row }) => (
+          <ExpandButton
+            isExpanded={expandedRows.has(row.original.id)}
+            onToggle={() => {
+              const newExpanded = new Set(expandedRows);
+              if (expandedRows.has(row.original.id)) {
+                newExpanded.delete(row.original.id);
+              } else {
+                newExpanded.add(row.original.id);
+              }
+              setExpandedRows(newExpanded);
+            }}
+          />
+        ),
+      },
+      {
+        accessorKey: "Deal Name",
+        header: "Deal Name",
+        cell: ({ row }) => (
+          <div className="text-[14px] font-medium text-gray-900">
+            {row.getValue("Deal Name")}
+          </div>
+        ),
       },
       {
         accessorKey: "Client Name",
         header: "Client Name",
-        cell: (info) => info.getValue(),
+        cell: ({ row }) => (
+          <div className="text-[14px] text-gray-700">
+            {row.getValue("Client Name")}
+          </div>
+        ),
       },
       {
         accessorKey: "Pay Status",
         header: "Pay Status",
-        cell: (info) => info.getValue(),
+        cell: ({ row }) => {
+          const status = row.getValue("Pay Status") as string;
+          const getStatusColor = () => {
+            switch (status.toLowerCase()) {
+              case 'full pay':
+                return 'bg-[#E6F7FF] text-[#16A34A] px-3 py-1 text-[12px] font-medium rounded-full';
+              case 'partial pay':
+                return 'bg-[#FFF7ED] text-[#EA580C] px-3 py-1 text-[12px] font-medium rounded-full';
+              default:
+                return 'bg-gray-100 text-gray-600 px-3 py-1 text-[12px] font-medium rounded-full';
+            }
+          };
+          return (
+            <span className={getStatusColor()}>
+              {status}
+            </span>
+          );
+        },
       },
       {
         accessorKey: "Remarks",
         header: "Remarks",
-        cell: (info) => {
-          const value = info.getValue() as string;
-          return (
-            <div className="flex flex-col">
-              <span className="text-[15px] leading-5 capitalize">
-                {`${value.slice(0, 10)}...`}
-              </span>
-            </div>
-          );
-        },
+        cell: ({ row }) => (
+          <div className="text-[14px] text-gray-700 max-w-xs truncate">
+            {row.getValue("Remarks")}
+          </div>
+        ),
       },
       {
         accessorKey: "Deal Value",
         header: "Deal Value",
-        cell: (info) => info.getValue(),
+        cell: ({ row }) => (
+          <div className="text-[14px] font-medium text-gray-900">
+            {row.getValue("Deal Value")}
+          </div>
+        ),
       },
       {
         accessorKey: "Deal Date",
         header: "Deal Date",
-        cell: (info) => format(info.getValue() as number, "MMM dd, yyyy"),
+        cell: ({ row }) => (
+          <div className="text-[14px] text-gray-700">
+            {row.getValue("Deal Date")}
+          </div>
+        ),
       },
       {
         accessorKey: "Payment",
         header: "Payment",
-        cell: (info) => {
-          const parts = (info.getValue() as string).split(" ");
-
-          return (
-            <div className="flex flex-col">
-              {parts.map((part: string, i: number) => {
-                // lowercase for case-insensitive check
-                const lower = part.toLowerCase();
-
-                // decide color
-                let colorClass = "";
-                if (lower.includes("first")) colorClass = "text-green-600";
-                if (lower.includes("second")) colorClass = "text-red-600";
-
-                return (
-                  <React.Fragment key={i}>
-                    <span className={` ${colorClass} `}>{part}</span>
-                  </React.Fragment>
-                );
-              })}
-            </div>
-          );
-        },
+        cell: ({ row }) => (
+          <div className="text-[14px] text-gray-700">
+            {row.getValue("Payment")}
+          </div>
+        ),
       },
       {
         accessorKey: "Pay Method",
         header: "Pay Method",
-        cell: (info) => info.getValue(),
+        cell: ({ row }) => (
+          <div className="text-[14px] text-gray-700">
+            {row.getValue("Pay Method")}
+          </div>
+        ),
       },
       {
         accessorKey: "Due Date",
         header: "Due Date",
-        cell: (info) => format(info.getValue() as number, "MMM dd, yyyy"),
+        cell: ({ row }) => (
+          <div className="text-[14px] text-gray-700">
+            {row.getValue("Due Date")}
+          </div>
+        ),
       },
       {
         accessorKey: "Version",
         header: "Version",
-        cell: (info) => info.getValue(),
+        cell: ({ row }) => {
+          const version = row.getValue("Version") as string;
+          return (
+            <span className={`px-2 py-1 text-[12px] font-medium rounded ${
+              version === 'edited' 
+                ? 'bg-blue-100 text-blue-700' 
+                : 'bg-gray-100 text-gray-600'
+            }`}>
+              {version}
+            </span>
+          );
+        },
       },
       {
         accessorKey: "Sales Person",
         header: "Sales Person",
-        cell: (info) => info.getValue(),
+        cell: ({ row }) => (
+          <div className="text-[14px] text-gray-700">
+            {row.getValue("Sales Person")}
+          </div>
+        ),
       },
       {
-        accessorKey: "Actions",
+        id: "actions",
         header: "Actions",
-        size: 120,
-        cell: ({ row }) => {
-          return (
-            <div className="flex gap-2">
-              <button>
-                <Image src={Edit} alt="Edit" />
-              </button>
-              <button>
-                <Image src={add} alt="Add" />
-              </button>
-              <ExpandButton
-                onToggle={() =>
-                  setExpandedRowId((prev) => (prev === row.id ? null : row.id))
-                }
-              />
-            </div>
-          );
-        },
+        cell: ({ row }) => (
+          <div className="flex items-center justify-center gap-2">
+            <button
+              onClick={() => onEditDeal?.(row.original.id)}
+              className="w-8 h-8 rounded-full bg-[#4F46E5] text-white flex items-center justify-center hover:bg-[#4338CA] transition-colors"
+              title="Edit Deal"
+            >
+              <Image src={Edit} alt="Edit" width={16} height={16} />
+            </button>
+            <button
+              onClick={() => onAddPayment?.(row.original.id)}
+              className="w-8 h-8 rounded-full bg-[#22C55E] text-white flex items-center justify-center hover:bg-[#16A34A] transition-colors"
+              title="Add Payment"
+            >
+              <Image src={add} alt="Add Payment" width={16} height={16} />
+            </button>
+          </div>
+        ),
       },
     ],
-    []
+    [expandedRows, onEditDeal, onAddPayment]
   );
 
-  // Nested table columns
-  const nestedColumns: ColumnDef<NestedDealData>[] = useMemo(
-    () => [
-      {
-        accessorKey: "Payment",
-        header: "Payment",
-      },
-      {
-        accessorKey: "Payment Date",
-        header: "Payment Date",
-      },
-      {
-        accessorKey: "Payment Created",
-        header: "Payment Created",
-      },
-      {
-        accessorKey: "Payment Value",
-        header: "Payment Value",
-      },
-      {
-        accessorKey: "Payment Version",
-        header: "Payment Version",
-      },
-      {
-        accessorKey: "Payment Status",
-        header: "Payment Status",
-      },
-      {
-        accessorKey: "Receipt Link",
-        header: "Receipt Link",
-      },
-      {
-        accessorKey: "Verified By",
-        header: () => <span className="text-[#009959]">Verified By</span>,
-      },
-      {
-        accessorKey: "Remarks",
-        header: "Remarks",
-      },
-      {
-        accessorKey: "Verification Remarks",
-        header: "Verification Remarks",
-      },
-    ],
-    []
-  );
+  const expandedContent = (row: any) => {
+    const nestedData = row.original.nestedData || [];
+    if (nestedData.length === 0) return null;
+
+    return (
+      <div className="mx-6 mb-4 bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+        <div className="px-4 py-3 bg-gray-100 border-b border-gray-200">
+          <h4 className="text-[14px] font-semibold text-gray-800 flex items-center gap-2">
+            <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+            Payment Details for {row.original["Deal Name"]}
+          </h4>
+        </div>
+        <div className="p-0">
+          <UnifiedTable
+            data={nestedData}
+            columns={NestedDealColumns}
+            config={{
+              features: {
+                pagination: false,
+                sorting: true,
+                globalSearch: false,
+                columnVisibility: false,
+              },
+              styling: {
+                variant: 'figma',
+                size: 'sm',
+              },
+            }}
+          />
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <ReusableTable
-      data={Mainusers} // The main dataset to render in the table
-      columns={columns} // Column definitions for the main table
-      nestedColumns={nestedColumns} // Column definitions to be used for rendering nested tables (expandable rows)
-      getNestedData={(info) => info.nestedData || []} // Function to extract nested data (e.g., sub-rows) from a given row
-      showNestedTable={(info) =>
-        Boolean(info.nestedData && info.nestedData.length > 0)
-      } // Determines whether a row should display a nested table
-      expandedRowId={expandedRowId} // The ID of the currently expanded row (used to control row expansion)
-      setExpandedRowId={setExpandedRowId} // Callback to update the expanded row ID when toggling expansion
-      rowClassName={(row) => {
-        const payment = row.original.Payment || "";
-        if (!payment.toLowerCase().includes("second")) {
-          return "bg-[#F5F5F5] h-[44px]";
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <UnifiedTable
+        data={Mainusers}
+        columns={columns}
+        config={{
+          features: {
+            pagination: true,
+            sorting: true,
+            filtering: true,
+            globalSearch: true,
+            columnVisibility: true,
+            expansion: true,
+          },
+          styling: {
+            variant: 'figma',
+            size: 'md',
+          },
+          pagination: {
+            pageSize: 10,
+            showSizeSelector: true,
+            showInfo: true,
+          },
+          messages: {
+            loading: 'Loading deals...',
+            empty: 'No deals found',
+            searchPlaceholder: 'Search deals...',
+          },
+        }}
+        expandedContent={(row) => 
+          expandedRows.has(row.original.id) ? expandedContent(row) : null
         }
-        return "bg-[#FFDBD9] border-b border-[#FFA1A1]";
-      }} // Function to apply dynamic styling to each row based on its data
-      isLoading={false} // Controls whether a loading state should be shown
-      error={null} // Displays error content if present
-    />
+      />
+    </div>
   );
 };
 
