@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: 220 20% 98%;
+    --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
  
     --card: 0 0% 100%;
@@ -13,19 +13,19 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
  
-    --primary: 221 83% 53%;
+    --primary: 222.2 47.4% 11.2%;
     --primary-foreground: 210 40% 98%;
  
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
  
-    --muted: 210 40% 96.1%;
+    --muted: 210 40% 96%;
     --muted-foreground: 215.4 16.3% 46.9%;
  
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
  
-    --destructive: 0 63% 31%;
+    --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --success: 142 76% 36%;
@@ -39,6 +39,11 @@
     --ring: 222.2 84% 4.9%;
  
     --radius: 0.5rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
   }
  
   .dark {
@@ -69,6 +74,11 @@
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 212.7 26.8% 83.9%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
   }
 }
  
@@ -79,5 +89,144 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Custom Animations for Notification-Style Modals */
+@keyframes slide-in-right {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-out-right {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes scale-in {
+  0% {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out forwards;
+}
+
+.animate-slide-out-right {
+  animation: slide-out-right 0.2s ease-in forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.2s ease-out forwards;
+}
+
+/* Custom Table Styling for Figma Pixel-Perfect Design */
+.figma-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.figma-table th {
+  background: #F1F0FF;
+  font-weight: 600;
+  font-size: 14px;
+  color: #1F2937;
+  padding: 16px 24px;
+  text-align: left;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.figma-table td {
+  padding: 20px 24px;
+  font-size: 16px;
+  border-bottom: 1px solid #F3F4F6;
+  vertical-align: middle;
+}
+
+.figma-table tbody tr:hover {
+  background-color: #F9FAFB;
+}
+
+/* Exact Column Widths from Figma */
+.user-table-col-name { width: 18%; }
+.user-table-col-email { width: 26%; }
+.user-table-col-phone { width: 18%; }
+.user-table-col-team { width: 16%; }
+.user-table-col-status { width: 12%; }
+.user-table-col-actions { width: 10%; }
+
+.team-table-col-name { width: 16%; }
+.team-table-col-lead { width: 18%; }
+.team-table-col-contact { width: 18%; }
+.team-table-col-members { width: 20%; }
+.team-table-col-projects { width: 18%; }
+.team-table-col-actions { width: 10%; }
+
+/* Smooth Sidebar Transitions - Prevent Blinking */
+.sidebar-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, width, opacity;
+}
+
+.content-transition {
+  transition: padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: padding-left;
+}
+
+/* Hardware Acceleration for Smooth Performance */
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Prevent Text Selection During Transitions */
+.no-select-during-transition {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Perfect Notification Positioning */
+.notification-modal {
+  position: fixed !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+/* Smooth Button Hover Effects */
+.smooth-button {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.smooth-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Improved Focus States */
+.focus-ring:focus {
+  outline: none;
+  ring: 2px;
+  ring-color: rgb(59 130 246);
+  ring-offset: 2px;
 }
 
