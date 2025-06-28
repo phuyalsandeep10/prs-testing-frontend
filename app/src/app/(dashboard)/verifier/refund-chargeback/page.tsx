@@ -1,115 +1,205 @@
 'use client';
-import React, { useState } from 'react';
-import { Search } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Search, Eye, Trash2 } from 'lucide-react';
+import { ColumnDef } from "@tanstack/react-table";
+import { UnifiedTable } from "@/components/core";
+
+interface TransactionData {
+  id: string;
+  "Client": string;
+  "Amount": string;
+  "Status": string;
+  "Reasons": string;
+  "Dates": string;
+}
 
 const RefundChargeback = () => {
   const [activeTab, setActiveTab] = useState('refunded');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const transactionData = [
+  const transactionData: TransactionData[] = [
     {
       id: 'TXN 001',
-      client: 'Joshna Khadka',
-      amount: '$2,000.00',
-      status: 'Refunded',
-      reasons: 'Customer Reports',
-      dates: 'Oct-26-2025'
+      "Client": 'Joshna Khadka',
+      "Amount": '$2,000.00',
+      "Status": 'Refunded',
+      "Reasons": 'Customer Reports',
+      "Dates": 'Oct-26-2025'
     },
     {
       id: 'TXN 002',
-      client: 'Bomb Padka',
-      amount: '$2,000.00',
-      status: 'Refunded',
-      reasons: 'Customer Reports',
-      dates: 'Oct-26-2025'
+      "Client": 'Bomb Padka',
+      "Amount": '$2,000.00',
+      "Status": 'Refunded',
+      "Reasons": 'Customer Reports',
+      "Dates": 'Oct-26-2025'
     },
     {
       id: 'TXN 003',
-      client: 'Abinash Babu Tiwari',
-      amount: '$2,000.00',
-      status: 'Refunded',
-      reasons: 'Customer Reports',
-      dates: 'Oct-26-2025'
+      "Client": 'Abinash Babu Tiwari',
+      "Amount": '$2,000.00',
+      "Status": 'Refunded',
+      "Reasons": 'Customer Reports',
+      "Dates": 'Oct-26-2025'
     },
     {
       id: 'TXN 004',
-      client: 'Prekxya Adhikari',
-      amount: '$2,000.00',
-      status: 'Refunded',
-      reasons: 'Customer Reports',
-      dates: 'Oct-26-2025'
+      "Client": 'Prekxya Adhikari',
+      "Amount": '$2,000.00',
+      "Status": 'Refunded',
+      "Reasons": 'Customer Reports',
+      "Dates": 'Oct-26-2025'
     },
     {
       id: 'TXN 005',
-      client: 'Yubina Koirala',
-      amount: '$2,000.00',
-      status: 'Refunded',
-      reasons: 'Customer Reports',
-      dates: 'Oct-26-2025'
+      "Client": 'Yubina Koirala',
+      "Amount": '$2,000.00',
+      "Status": 'Refunded',
+      "Reasons": 'Customer Reports',
+      "Dates": 'Oct-26-2025'
     },
     {
-      id: 'TXN 005',
-      client: 'Yubina Koirala',
-      amount: '$2,000.00',
-      status: 'Refunded',
-      reasons: 'Customer Reports',
-      dates: 'Oct-26-2025'
+      id: 'TXN 006',
+      "Client": 'Ramesh Sharma',
+      "Amount": '$3,500.00',
+      "Status": 'Refunded',
+      "Reasons": 'Service Issue',
+      "Dates": 'Oct-25-2025'
     },
     {
-      id: 'TXN 005',
-      client: 'Yubina Koirala',
-      amount: '$2,000.00',
-      status: 'Refunded',
-      reasons: 'Customer Reports',
-      dates: 'Oct-26-2025'
+      id: 'TXN 007',
+      "Client": 'Maya Devi',
+      "Amount": '$1,800.00',
+      "Status": 'Refunded',
+      "Reasons": 'Product Defect',
+      "Dates": 'Oct-24-2025'
     },
     {
-      id: 'TXN 005',
-      client: 'Yubina Koirala',
-      amount: '$2,000.00',
-      status: 'Refunded',
-      reasons: 'Customer Reports',
-      dates: 'Oct-26-2025'
+      id: 'TXN 008',
+      "Client": 'Suresh Thapa',
+      "Amount": '$4,200.00',
+      "Status": 'Refunded',
+      "Reasons": 'Customer Reports',
+      "Dates": 'Oct-23-2025'
     },
     {
-      id: 'TXN 005',
-      client: 'Yubina Koirala',
-      amount: '$2,000.00',
-      status: 'Refunded',
-      reasons: 'Customer Reports',
-      dates: 'Oct-26-2025'
+      id: 'TXN 009',
+      "Client": 'Anita Gurung',
+      "Amount": '$2,750.00',
+      "Status": 'Refunded',
+      "Reasons": 'Wrong Delivery',
+      "Dates": 'Oct-22-2025'
     },
     {
-      id: 'TXN 005',
-      client: 'Yubina Koirala',
-      amount: '$2,000.00',
-      status: 'Refunded',
-      reasons: 'Customer Reports',
-      dates: 'Oct-26-2025'
+      id: 'TXN 010',
+      "Client": 'Dipesh Rai',
+      "Amount": '$3,100.00',
+      "Status": 'Refunded',
+      "Reasons": 'Customer Reports',
+      "Dates": 'Oct-21-2025'
     }
   ];
 
-  const chargebackData = [
+  const chargebackData: TransactionData[] = [
     {
       id: 'CB 001',
-      client: 'Digital Labs Inc.',
-      amount: '$5,000.00',
-      status: 'Chargeback',
-      reasons: 'Unauthorized Transaction',
-      dates: 'Oct-25-2025'
+      "Client": 'Digital Labs Inc.',
+      "Amount": '$5,000.00',
+      "Status": 'Chargeback',
+      "Reasons": 'Unauthorized Transaction',
+      "Dates": 'Oct-25-2025'
     },
     {
       id: 'CB 002',
-      client: 'TechCorp Solutions',
-      amount: '$3,500.00',
-      status: 'Chargeback',
-      reasons: 'Service Dispute',
-      dates: 'Oct-24-2025'
+      "Client": 'TechCorp Solutions',
+      "Amount": '$3,500.00',
+      "Status": 'Chargeback',
+      "Reasons": 'Service Dispute',
+      "Dates": 'Oct-24-2025'
+    },
+    {
+      id: 'CB 003',
+      "Client": 'Innovation Hub Ltd',
+      "Amount": '$7,800.00',
+      "Status": 'Chargeback',
+      "Reasons": 'Fraud Claim',
+      "Dates": 'Oct-23-2025'
+    },
+    {
+      id: 'CB 004',
+      "Client": 'Global Tech Corp',
+      "Amount": '$4,200.00',
+      "Status": 'Chargeback',
+      "Reasons": 'Billing Error',
+      "Dates": 'Oct-22-2025'
     }
   ];
 
-  const getCurrentData = () => {
-    return activeTab === 'refunded' ? transactionData : chargebackData;
-  };
+  // Filter data based on active tab and search term
+  const filteredData = useMemo(() => {
+    let data = activeTab === 'refunded' ? transactionData : chargebackData;
+
+    if (searchTerm) {
+      data = data.filter(transaction =>
+        transaction.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transaction["Client"].toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transaction["Status"].toLowerCase().includes(searchTerm.toLowerCase()) ||
+        transaction["Reasons"].toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    return data;
+  }, [activeTab, searchTerm]);
+
+  // Columns definition for UnifiedTable
+  const columns: ColumnDef<TransactionData>[] = useMemo(() => [
+    {
+      accessorKey: "id",
+      header: "Transactional ID",
+      size: 150,
+    },
+    {
+      accessorKey: "Client",
+      header: "Client",
+      size: 200,
+    },
+    {
+      accessorKey: "Amount", 
+      header: "Amount",
+      size: 140,
+    },
+    {
+      accessorKey: "Status",
+      header: "Status",
+      size: 120,
+      cell: ({ row }) => {
+        const status = row.getValue("Status") as string;
+        return (
+          <span
+            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+              status === "Refunded"
+                ? "bg-pink-100 text-pink-800"
+                : status === "Chargeback"
+                ? "bg-red-100 text-red-800"
+                : "bg-gray-100 text-gray-800"
+            }`}
+          >
+            {status}
+          </span>
+        );
+      },
+    },
+    {
+      accessorKey: "Reasons",
+      header: "Reasons", 
+      size: 180,
+    },
+    {
+      accessorKey: "Dates",
+      header: "Dates",
+      size: 130,
+    },
+  ], []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -117,7 +207,12 @@ const RefundChargeback = () => {
       <div className="bg-white border-b border-gray-200 px-8 py-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-blue-600">Refunded / Chargebacks</h1>
+            <h1 className="text-[28px] font-semibold text-black font-outfit">
+              Refund & Chargeback
+            </h1>
+            <p className="text-sm text-gray-600 mt-1">
+              Monitor and manage refunded transactions and chargeback claims
+            </p>
           </div>
           
           <div className="flex items-center gap-4">
@@ -126,8 +221,10 @@ const RefundChargeback = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
-                placeholder="Search"
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64"
+                placeholder="Search transactions..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-[320px] pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent"
               />
             </div>
           </div>
@@ -163,78 +260,22 @@ const RefundChargeback = () => {
         </div>
 
         {/* Transaction Table */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">Transactional ID</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">Client</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">Amount</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">Status</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">Reasons</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">Dates</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {getCurrentData().map((transaction, index) => (
-                  <tr key={index} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 text-sm text-gray-900">{transaction.id}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{transaction.client}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{transaction.amount}</td>
-                    <td className="px-6 py-4">
-                      <span className={`text-sm font-medium ${
-                        transaction.status === 'Refunded' 
-                          ? 'text-pink-600' 
-                          : transaction.status === 'Chargeback'
-                          ? 'text-red-600'
-                          : 'text-gray-600'
-                      }`}>
-                        {transaction.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{transaction.reasons}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{transaction.dates}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Pagination */}
-        <div className="flex justify-between items-center mt-6">
-          <button className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-            ← Previous
-          </button>
-          
-          <div className="flex items-center gap-2">
-            {[1, 2, 3].map(num => (
-              <button
-                key={num}
-                className={`w-8 h-8 text-sm rounded ${
-                  num === 1
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                {num}
-              </button>
-            ))}
-            <span className="text-gray-400">...</span>
-            {[8, 9, 10].map(num => (
-              <button
-                key={num}
-                className="w-8 h-8 text-sm text-gray-600 hover:bg-gray-100 rounded"
-              >
-                {num}
-              </button>
-            ))}
-          </div>
-          
-          <button className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-            Next →
-          </button>
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <UnifiedTable
+            data={filteredData}
+            columns={columns}
+            config={{
+              styling: { variant: "figma" },
+              features: { 
+                pagination: true,
+                globalSearch: false,
+                filtering: false,
+                export: false,
+                refresh: false,
+                columnVisibility: false
+              }
+            }}
+          />
         </div>
       </div>
     </div>

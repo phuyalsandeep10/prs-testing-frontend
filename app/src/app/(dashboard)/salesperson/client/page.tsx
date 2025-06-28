@@ -1,24 +1,64 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { Eye, Edit, Trash2, Plus, Search } from 'lucide-react';
+import { Eye, Edit, Trash2, Plus, Search, Filter, LayoutGrid, List } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { UnifiedTable } from "@/components/core";
 import { getClients } from '@/data/clients';
 import type { Client } from '@/types';
-import Clientform from '@/components/salesperson/clients/Clientform';
-import EditClient from '@/components/salesperson/clients/editClient';
-import SlideModal from '@/components/ui/SlideModal';
+import { ClientKanbanView } from './ClientKanbanView';
+import { ClientDetailCard } from './ClientDetailCard';
+import AddNewClientForm from './AddNewClientForm';
+import EditClientForm from './EditClientForm';
 
 const ClientsPage = () => {
+  const [view, setView] = useState<"table" | "kanban">("table");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const clients = useMemo(() => getClients(), []);
+
+  // Global search function that searches across ALL client data fields
+  const searchAllClientColumns = (client: Client, query: string): boolean => {
+    const searchableFields = [
+      client.name,
+      client.email,
+      client.id,
+      client.category,
+      client.salesperson,
+      client.lastContact,
+      client.expectedClose,
+      client.value.toString(),
+      client.status,
+      client.satisfaction,
+      client.remarks,
+      client.primaryContactName,
+      client.primaryContactPhone,
+      client.address,
+      client.activeDate,
+      // Search in activities as well
+      ...(client.activities?.map(activity => activity.description) || [])
+    ];
+
+    return searchableFields.some(field => 
+      field.toLowerCase().includes(query.toLowerCase())
+    );
+  };
+
+  // Filter clients based on search query
+  const filteredClients = useMemo(() => {
+    if (searchTerm.trim()) {
+      return clients.filter(client => 
+        searchAllClientColumns(client, searchTerm)
+      );
+    }
+    return clients;
+  }, [searchTerm, clients]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -56,7 +96,8 @@ const ClientsPage = () => {
   };
 
   const handleView = (client: Client) => {
-    console.log('View client:', client);
+    setSelectedClient(client);
+    setShowViewModal(true);
   };
 
   const columns: ColumnDef<Client>[] = [
@@ -174,18 +215,56 @@ const ClientsPage = () => {
             </p>
           </div>
           <div className="flex items-center gap-4">
-            {/* Search Input - RIGHT SIDE as per Figma */}
+            {/* Search Input - LEFT of buttons */}
             <div className="relative">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
               <Input
                 type="text"
-                placeholder="Search"
+                placeholder="Search clients..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-12 pr-4 py-3 w-[320px] h-[44px] text-[14px] bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
               />
             </div>
-            {/* Create Button - RIGHT SIDE as per Figma */}
+            
+            {/* Filter Button */}
+            <Button 
+              variant="outline"
+              className="bg-white border-gray-200 text-gray-600 hover:bg-gray-50 px-4 py-3 h-[44px] rounded-lg font-medium text-[14px] flex items-center gap-2 transition-all"
+            >
+              <Filter className="h-4 w-4" />
+              Filter
+            </Button>
+
+            {/* View Toggle Buttons */}
+            <div className="flex items-center gap-2">
+              <Button 
+                variant={view === 'kanban' ? 'default' : 'outline'} 
+                size="icon" 
+                onClick={() => setView('kanban')}
+                className={`w-[44px] h-[44px] rounded-lg transition-all ${
+                  view === 'kanban' 
+                    ? 'bg-[#4F46E5] hover:bg-[#4338CA] text-white' 
+                    : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <LayoutGrid className="h-5 w-5" />
+              </Button>
+              <Button 
+                variant={view === 'table' ? 'default' : 'outline'} 
+                size="icon" 
+                onClick={() => setView('table')}
+                className={`w-[44px] h-[44px] rounded-lg transition-all ${
+                  view === 'table' 
+                    ? 'bg-[#4F46E5] hover:bg-[#4338CA] text-white' 
+                    : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <List className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {/* Add Client Button - RIGHT SIDE */}
             <Button 
               onClick={() => setShowAddModal(true)}
               className="bg-[#4F46E5] hover:bg-[#4338CA] text-white px-6 py-3 h-[44px] rounded-lg font-medium text-[14px] flex items-center gap-2 transition-all shadow-sm"
@@ -197,63 +276,70 @@ const ClientsPage = () => {
         </div>
       </div>
 
-      {/* Table Container */}
+      {/* Content Area */}
       <div className="px-8 py-6">
-        <UnifiedTable
-          data={clients}
-          columns={columns}
-          config={{
-            features: {
-              pagination: true,
-              sorting: true,
-              filtering: true,
-              globalSearch: true,
-              columnVisibility: true,
-            },
-            styling: {
-              variant: 'figma',
-              size: 'md',
-              striped: false,
-              bordered: true,
-              hover: true,
-            },
-            pagination: {
-              pageSize: 10,
-              showSizeSelector: true,
-              showInfo: true,
-            },
-            messages: {
-              loading: 'Loading clients...',
-              empty: 'No clients found',
-              error: 'Failed to load clients',
-              searchPlaceholder: 'Search clients...',
-            },
-          }}
-        />
+        {view === 'table' ? (
+          <UnifiedTable
+            data={filteredClients}
+            columns={columns}
+            config={{
+              features: {
+                pagination: true,
+                sorting: true,
+                filtering: false, // Disable built-in filtering
+                globalSearch: false, // Disable built-in search
+                columnVisibility: false, // Disable column visibility button
+              },
+              styling: {
+                variant: 'figma', // Use figma variant for consistent styling
+                size: 'md',
+                striped: false,
+                bordered: true,
+                hover: true,
+              },
+              pagination: {
+                pageSize: 10,
+                showSizeSelector: true,
+                showInfo: true,
+              },
+              messages: {
+                loading: 'Loading clients...',
+                empty: 'No clients found',
+                error: 'Failed to load clients',
+              },
+            }}
+          />
+        ) : (
+          <ClientKanbanView 
+            clients={filteredClients} 
+            onViewDetails={handleView}
+          />
+        )}
       </div>
 
       {/* Add Client Modal */}
       {showAddModal && (
-        <SlideModal
-          isOpen={showAddModal}
+        <AddNewClientForm
           onClose={() => setShowAddModal(false)}
-          title="Add New Client"
-          width="xl"
-        >
-          <Clientform />
-        </SlideModal>
+          onFormSubmit={() => setShowAddModal(false)}
+        />
       )}
 
       {/* Edit Client Modal */}
       {showEditModal && selectedClient && (
-        <SlideModal
-          isOpen={showEditModal}
+        <EditClientForm
+          client={selectedClient}
           onClose={() => setShowEditModal(false)}
-          title="Edit Client"
-          width="xl"
-        >
-          <EditClient inModal={true} onSuccess={() => setShowEditModal(false)} />
-        </SlideModal>
+          onFormSubmit={() => setShowEditModal(false)}
+        />
+      )}
+
+      {/* View Client Modal */}
+      {showViewModal && selectedClient && (
+        <ClientDetailCard
+          client={selectedClient}
+          onClose={() => setShowViewModal(false)}
+        />
       )}
     </div>
   );

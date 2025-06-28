@@ -1,122 +1,216 @@
 'use client';
-import React, { useState } from 'react';
-import { Search, FileText, Trash2 } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Search, FileText, Trash2, Eye } from 'lucide-react';
+import { ColumnDef } from "@tanstack/react-table";
+import { UnifiedTable } from "@/components/core";
+
+interface InvoiceData {
+  id: string;
+  "Client Name": string;
+  "Deal Name": string;
+  "Invoice Date": string;
+  "Due Date": string;
+  Amount: string;
+  Status: string;
+}
 
 const VerifyInvoice = () => {
   const [activeTab, setActiveTab] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const invoiceData = [
+  const invoiceData: InvoiceData[] = [
     {
       id: 'INV-001',
-      clientName: 'Acme Co-operation',
-      dealName: 'CRM Integration',
-      invoiceDate: 'Aug 04, 2025',
-      dueDate: 'Aug 05, 2026',
-      amount: '$150,000.00 USD',
-      status: 'Pending'
+      "Client Name": 'Acme Co-operation',
+      "Deal Name": 'CRM Integration',
+      "Invoice Date": 'Aug 04, 2025',
+      "Due Date": 'Aug 05, 2026',
+      Amount: '$150,000.00 USD',
+      Status: 'Pending'
     },
     {
       id: 'INV-002',
-      clientName: 'Salimar Cement Pvt.Ltd',
-      dealName: 'Consulting Contract',
-      invoiceDate: 'Aug 04, 2025',
-      dueDate: 'Aug 05, 2026',
-      amount: '$150,000.00 USD',
-      status: 'Verified'
+      "Client Name": 'Salimar Cement Pvt.Ltd',
+      "Deal Name": 'Consulting Contract',
+      "Invoice Date": 'Aug 04, 2025',
+      "Due Date": 'Aug 05, 2026',
+      Amount: '$150,000.00 USD',
+      Status: 'Verified'
     },
     {
       id: 'INV-003',
-      clientName: 'Global Solutions Pvt.Ltd',
-      dealName: 'American Solution.Ltd',
-      invoiceDate: 'Sep 06, 2025',
-      dueDate: 'Sep 23, 2026',
-      amount: '$150,000.00 USD',
-      status: 'Pending'
+      "Client Name": 'Global Solutions Pvt.Ltd',
+      "Deal Name": 'American Solution.Ltd',
+      "Invoice Date": 'Sep 06, 2025',
+      "Due Date": 'Sep 23, 2026',
+      Amount: '$150,000.00 USD',
+      Status: 'Pending'
     },
     {
       id: 'INV-004',
-      clientName: 'Chaudhary Group',
-      dealName: 'Consulting Contract',
-      invoiceDate: 'Oct 21, 2025',
-      dueDate: 'Oct12, 2026',
-      amount: '$150,000.00 USD',
-      status: 'Denied'
+      "Client Name": 'Chaudhary Group',
+      "Deal Name": 'Consulting Contract',
+      "Invoice Date": 'Oct 21, 2025',
+      "Due Date": 'Oct 12, 2026',
+      Amount: '$150,000.00 USD',
+      Status: 'Denied'
     },
     {
       id: 'INV-005',
-      clientName: 'Trishakti Cement Pvt.Ltd',
-      dealName: 'CRM Integration',
-      invoiceDate: 'Nov 31, 2025',
-      dueDate: 'Nov 19, 2026',
-      amount: '$150,000.00 USD',
-      status: 'Verified'
+      "Client Name": 'Trishakti Cement Pvt.Ltd',
+      "Deal Name": 'CRM Integration',
+      "Invoice Date": 'Nov 31, 2025',
+      "Due Date": 'Nov 19, 2026',
+      Amount: '$150,000.00 USD',
+      Status: 'Verified'
     },
     {
-      id: 'INV-005',
-      clientName: 'Trishakti Cement Pvt.Ltd',
-      dealName: 'CRM Integration',
-      invoiceDate: 'Nov 31, 2025',
-      dueDate: 'Nov 19, 2026',
-      amount: '$150,000.00 USD',
-      status: 'Denied'
+      id: 'INV-006',
+      "Client Name": 'Himalayan Bank Ltd',
+      "Deal Name": 'Banking Software',
+      "Invoice Date": 'Dec 15, 2025',
+      "Due Date": 'Dec 25, 2026',
+      Amount: '$250,000.00 USD',
+      Status: 'Denied'
     },
     {
-      id: 'INV-005',
-      clientName: 'Trishakti Cement Pvt.Ltd',
-      dealName: 'CRM Integration',
-      invoiceDate: 'Nov 31, 2025',
-      dueDate: 'Nov 19, 2026',
-      amount: '$150,000.00 USD',
-      status: 'Pending'
+      id: 'INV-007',
+      "Client Name": 'Nepal Telecom',
+      "Deal Name": 'Network Upgrade',
+      "Invoice Date": 'Jan 10, 2026',
+      "Due Date": 'Jan 20, 2026',
+      Amount: '$180,000.00 USD',
+      Status: 'Pending'
     },
     {
-      id: 'INV-005',
-      clientName: 'Trishakti Cement Pvt.Ltd',
-      dealName: 'CRM Integration',
-      invoiceDate: 'Nov 31, 2025',
-      dueDate: 'Nov 19, 2026',
-      amount: '$150,000.00 USD',
-      status: 'Verified'
+      id: 'INV-008',
+      "Client Name": 'Ncell Pvt Ltd',
+      "Deal Name": '5G Implementation',
+      "Invoice Date": 'Feb 05, 2026',
+      "Due Date": 'Feb 15, 2026',
+      Amount: '$320,000.00 USD',
+      Status: 'Verified'
     },
     {
-      id: 'INV-005',
-      clientName: 'Trishakti Cement Pvt.Ltd',
-      dealName: 'CRM Integration',
-      invoiceDate: 'Nov 31, 2025',
-      dueDate: 'Nov 19, 2026',
-      amount: '$150,000.00 USD',
-      status: 'Denied'
+      id: 'INV-009',
+      "Client Name": 'World Link Pvt Ltd',
+      "Deal Name": 'Fiber Expansion',
+      "Invoice Date": 'Mar 01, 2026',
+      "Due Date": 'Mar 11, 2026',
+      Amount: '$200,000.00 USD',
+      Status: 'Denied'
     }
   ];
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Pending':
-        return 'text-orange-600';
-      case 'Verified':
-        return 'text-green-600';
-      case 'Denied':
-        return 'text-red-600';
-      default:
-        return 'text-gray-600';
-    }
-  };
+
 
   const getTabCount = (status: string) => {
     if (status === 'all') return invoiceData.length;
     return invoiceData.filter(invoice => 
-      status === 'pending' ? invoice.status === 'Pending' :
-      status === 'completed' ? invoice.status === 'Verified' :
-      status === 'denied' ? invoice.status === 'Denied' : false
+      status === 'pending' ? invoice.Status === 'Pending' :
+      status === 'completed' ? invoice.Status === 'Verified' :
+      status === 'denied' ? invoice.Status === 'Denied' : false
     ).length;
   };
 
-  const filteredData = invoiceData.filter(invoice => 
-    activeTab === 'all' ? true :
-    activeTab === 'pending' ? invoice.status === 'Pending' :
-    activeTab === 'completed' ? invoice.status === 'Verified' :
-    activeTab === 'denied' ? invoice.status === 'Denied' : true
-  );
+  // Filter data based on active tab and search term
+  const filteredData = useMemo(() => {
+    let data = invoiceData.filter(invoice => 
+      activeTab === 'all' ? true :
+      activeTab === 'pending' ? invoice.Status === 'Pending' :
+      activeTab === 'completed' ? invoice.Status === 'Verified' :
+      activeTab === 'denied' ? invoice.Status === 'Denied' : true
+    );
+
+    if (searchTerm) {
+      data = data.filter(invoice =>
+        invoice.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        invoice["Client Name"].toLowerCase().includes(searchTerm.toLowerCase()) ||
+        invoice["Deal Name"].toLowerCase().includes(searchTerm.toLowerCase()) ||
+        invoice.Status.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    return data;
+  }, [activeTab, searchTerm]);
+
+  // Columns definition for UnifiedTable
+  const columns: ColumnDef<InvoiceData>[] = useMemo(() => [
+    {
+      accessorKey: "id",
+      header: "Invoice-ID",
+      size: 150,
+    },
+    {
+      accessorKey: "Client Name",
+      header: "Client Name",
+      size: 200,
+    },
+    {
+      accessorKey: "Deal Name", 
+      header: "Deal Name",
+      size: 180,
+    },
+    {
+      accessorKey: "Invoice Date",
+      header: "Invoice Date",
+      size: 130,
+    },
+    {
+      accessorKey: "Due Date",
+      header: "Due Date", 
+      size: 130,
+    },
+    {
+      accessorKey: "Amount",
+      header: "Amount",
+      size: 140,
+    },
+    {
+      accessorKey: "Status",
+      header: "Status",
+      size: 120,
+      cell: ({ row }) => {
+        const status = row.getValue("Status") as string;
+        return (
+          <span
+            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+              status === "Verified"
+                ? "bg-green-100 text-green-800"
+                : status === "Pending"
+                ? "bg-orange-100 text-orange-800"
+                : status === "Denied"
+                ? "bg-red-100 text-red-800"
+                : "bg-gray-100 text-gray-800"
+            }`}
+          >
+            {status}
+          </span>
+        );
+      },
+    },
+    {
+      id: "actions",
+      header: "Action",
+      size: 100,
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => console.log("View invoice:", row.original.id)}
+            className="w-8 h-8 rounded-full bg-[#4F46E5] text-white flex items-center justify-center hover:bg-[#4338CA] transition-colors"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => console.log("Delete invoice:", row.original.id)}
+            className="w-8 h-8 rounded-full bg-[#EF4444] text-white flex items-center justify-center hover:bg-[#DC2626] transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      ),
+    },
+  ], []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -124,7 +218,12 @@ const VerifyInvoice = () => {
       <div className="bg-white border-b border-gray-200 px-8 py-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-blue-600">Verify Invoice</h1>
+            <h1 className="text-[28px] font-semibold text-black font-outfit">
+              Verify Invoice
+            </h1>
+            <p className="text-sm text-gray-600 mt-1">
+              Review and verify invoice submissions for approval
+            </p>
           </div>
           
           <div className="flex items-center gap-4">
@@ -133,8 +232,10 @@ const VerifyInvoice = () => {
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
-                placeholder="Search"
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-64"
+                placeholder="Search invoices..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-[320px] pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent"
               />
             </div>
           </div>
@@ -210,85 +311,22 @@ const VerifyInvoice = () => {
         </div>
 
         {/* Invoice Table */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">Invoice-ID</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">Client Name</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">Deal Name</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">Invoice Date</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">Due Date</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">Amount</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">Status</th>
-                  <th className="px-6 py-4 text-left text-sm font-medium text-gray-700">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredData.map((invoice, index) => (
-                  <tr key={index} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 text-sm text-gray-900">{invoice.id}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{invoice.clientName}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{invoice.dealName}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{invoice.invoiceDate}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{invoice.dueDate}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{invoice.amount}</td>
-                    <td className="px-6 py-4">
-                      <span className={`text-sm font-medium ${getStatusColor(invoice.status)}`}>
-                        {invoice.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <button className="p-1 text-gray-600 hover:text-blue-600 transition-colors">
-                          <FileText className="w-4 h-4" />
-                        </button>
-                        <button className="p-1 text-gray-600 hover:text-red-600 transition-colors">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Pagination */}
-        <div className="flex justify-between items-center mt-6">
-          <button className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-            ← Previous
-          </button>
-          
-          <div className="flex items-center gap-2">
-            {[1, 2, 3].map(num => (
-              <button
-                key={num}
-                className={`w-8 h-8 text-sm rounded ${
-                  num === 1
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                {num}
-              </button>
-            ))}
-            <span className="text-gray-400">...</span>
-            {[8, 9, 10].map(num => (
-              <button
-                key={num}
-                className="w-8 h-8 text-sm text-gray-600 hover:bg-gray-100 rounded"
-              >
-                {num}
-              </button>
-            ))}
-          </div>
-          
-          <button className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-            Next →
-          </button>
+        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+          <UnifiedTable
+            data={filteredData}
+            columns={columns}
+            config={{
+              styling: { variant: "figma" },
+              features: { 
+                pagination: true,
+                globalSearch: false,
+                filtering: false,
+                export: false,
+                refresh: false,
+                columnVisibility: false
+              }
+            }}
+          />
         </div>
       </div>
     </div>
