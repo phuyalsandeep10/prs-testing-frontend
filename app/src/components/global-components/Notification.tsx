@@ -14,7 +14,7 @@ import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Custom DialogContent without built-in close button for notifications
-const NotificationDialogContent = React.forwardRef<
+const NotificationContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ className, children, ...props }, ref) => (
@@ -23,17 +23,17 @@ const NotificationDialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed z-50 grid w-full gap-4 border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
+        "fixed z-[10000] grid w-full gap-4 border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
         className
       )}
       {...props}
     >
       {children}
-      {/* No built-in close button here */}
+      {/* Removed built-in close button to prevent duplicates */}
     </DialogPrimitive.Content>
   </DialogPortal>
 ));
-NotificationDialogContent.displayName = "NotificationDialogContent";
+NotificationContent.displayName = "NotificationContent";
 
 interface Notification {
   id: string;
@@ -141,7 +141,7 @@ const Notifications: React.FC<NotificationsProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <NotificationDialogContent
+      <NotificationContent
         className="p-0 bg-gradient-to-b from-purple-50 via-white to-blue-50 border-0 shadow-xl w-[376px] h-[434px] max-w-[376px] max-h-[434px] rounded-lg"
         style={{
           position: "fixed",
@@ -226,7 +226,7 @@ const Notifications: React.FC<NotificationsProps> = ({
             Mark all Read
           </Button>
         </div>
-      </NotificationDialogContent>
+      </NotificationContent>
     </Dialog>
   );
 };

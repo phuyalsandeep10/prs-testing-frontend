@@ -18,7 +18,7 @@ export default function Header() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const bellRef = useRef<HTMLButtonElement>(null!);
   return (
-    <header className="sticky top-0 z-30 flex h-20 items-center justify-end gap-4 border-b bg-white px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-[45] flex h-20 items-center justify-end gap-4 border-b bg-white px-4 sm:px-6 lg:px-8">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" className="rounded-full">
           <Gift className="h-6 w-6" />

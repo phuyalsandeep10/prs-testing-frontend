@@ -13,6 +13,7 @@ import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import DealForm from "./DealForm";
 import AddPayment from "./AddPayment";
+import { createPortal } from "react-dom";
 
 // Custom DialogContent without built-in close button
 const DealModalContent = React.forwardRef<
@@ -24,9 +25,10 @@ const DealModalContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed z-50 grid w-full gap-4 border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
+        "fixed z-[100000] grid w-full gap-4 border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
         className
       )}
+      style={{ zIndex: 100000 }}
       {...props}
     >
       {children}
@@ -93,32 +95,26 @@ const DealModal: React.FC<DealModalProps> = ({
     return 'w-[90vw] h-[90vh] max-w-[1200px] max-h-[800px]';
   };
 
+  if (!isOpen || typeof window === 'undefined') return null;
+
   // Special rendering for payment modal
   if (mode === 'payment') {
-    return (
-      <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DealModalContent
-          className={`p-0 bg-white border shadow-xl ${getModalSize()} rounded-lg overflow-hidden flex flex-col`}
+    return createPortal(
+      <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }}>
+        <div
+          className={`p-0 bg-white border shadow-xl ${getModalSize()} rounded-lg overflow-hidden flex flex-col z-[100000]`}
           style={{
-            position: "fixed",
-            top: `${position.top}px`,
-            left: `${position.left}px`,
-            transform: "translate(-50%, -50%)",
+            position: "relative",
+            zIndex: 100000,
             margin: 0,
-          }}
-          onInteractOutside={(e) => {
-            // Prevent closing when clicking on the trigger button
-            if (anchorRef?.current?.contains(e.target as Node)) {
-              e.preventDefault();
-            }
           }}
         >
           {/* Header with blue title and close button */}
           <div className="px-6 py-4 bg-white border-b border-gray-100">
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-[24px] font-semibold text-[#4F46E5]">
+              <h1 className="text-[24px] font-semibold text-[#4F46E5]">
                 ADD PAYMENT
-              </DialogTitle>
+              </h1>
               <Button
                 variant="ghost"
                 size="sm"
@@ -138,36 +134,29 @@ const DealModal: React.FC<DealModalProps> = ({
               onCancel={handleCancel} 
             />
           </div>
-        </DealModalContent>
-      </Dialog>
+        </div>
+      </div>,
+      document.body
     );
   }
 
   // Original modal for add/edit deals
-  return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DealModalContent
-        className={`p-0 bg-white border shadow-xl ${getModalSize()} rounded-lg overflow-hidden flex flex-col`}
+  return createPortal(
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }}>
+      <div
+        className={`p-0 bg-white border shadow-xl ${getModalSize()} rounded-lg overflow-hidden flex flex-col z-[100000]`}
         style={{
-          position: "fixed",
-          top: `${position.top}px`,
-          left: `${position.left}px`,
-          transform: "translate(-50%, -50%)",
+          position: "relative",
+          zIndex: 100000,
           margin: 0,
-        }}
-        onInteractOutside={(e) => {
-          // Prevent closing when clicking on the trigger button
-          if (anchorRef?.current?.contains(e.target as Node)) {
-            e.preventDefault();
-          }
         }}
       >
         {/* Header with close button */}
         <div className="px-6 py-4 border-b border-gray-200 bg-white">
           <div className="flex items-center justify-between">
-            <DialogTitle className="text-[20px] font-semibold text-gray-900">
+            <h1 className="text-[20px] font-semibold text-gray-900">
               {getTitle()}
-            </DialogTitle>
+            </h1>
             <Button
               variant="ghost"
               size="sm"
@@ -188,8 +177,9 @@ const DealModal: React.FC<DealModalProps> = ({
             />
           </div>
         </div>
-      </DealModalContent>
-    </Dialog>
+      </div>
+    </div>,
+    document.body
   );
 };
 

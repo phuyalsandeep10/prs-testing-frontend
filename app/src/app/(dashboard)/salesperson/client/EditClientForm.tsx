@@ -105,21 +105,25 @@ export default function EditClientForm({ client, onClose, onFormSubmit }: EditCl
 
   return (
     <div 
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex"
       onClick={handleBackdropClick}
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex z-[99999]"
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 99999 }}
     >
-      {/* Slide-in Panel from Right */}
-      <div className="flex-1" onClick={handleBackdropClick} />
-      <div className={`
-        w-[500px] h-full bg-white shadow-2xl flex flex-col
-        transform transition-transform duration-300 ease-out
-        ${isVisible ? 'translate-x-0' : 'translate-x-full'}
-      `}>
+      <div 
+        className="ml-auto w-full max-w-md bg-white shadow-xl transform transition-transform duration-300 ease-in-out z-[100000] flex flex-col"
+        style={{ 
+          transform: isVisible ? 'translateX(0)' : 'translateX(100%)', 
+          zIndex: 100000,
+          height: '100vh',
+          minHeight: '100vh'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header with Blue Title */}
-        <div className="px-6 py-6 border-b border-gray-100">
+        <div className="px-6 py-6 border-b border-gray-100 flex-shrink-0">
           <div className="flex items-center justify-between">
             <h2 className="text-[20px] font-semibold text-[#4F46E5]">
-              Add New Client
+              Edit Client Details
             </h2>
             <button 
               onClick={handleClose} 
@@ -130,8 +134,8 @@ export default function EditClientForm({ client, onClose, onFormSubmit }: EditCl
           </div>
         </div>
 
-        {/* Form Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-6">
+        {/* Form Body - Scrollable */}
+        <div className="flex-1 overflow-y-auto px-6 py-6" style={{ maxHeight: 'calc(100vh - 200px)' }}>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* Contact Information Section */}
@@ -340,8 +344,8 @@ export default function EditClientForm({ client, onClose, onFormSubmit }: EditCl
           </Form>
         </div>
 
-        {/* Footer with Blue Gradient Background */}
-        <div className="px-6 py-6 border-t border-gray-100 bg-gradient-to-r from-[#4F46E5] via-[#7C8FE8] to-[#A8B5EB]">
+        {/* Footer with Blue Gradient Background - At Very Bottom */}
+        <div className="px-6 py-6 bg-gradient-to-r from-[#4F46E5] via-[#7C8FE8] to-[#A8B5EB] flex-shrink-0 mt-auto border-t-0">
           <div className="flex justify-end gap-3">
             <Button
               type="button"

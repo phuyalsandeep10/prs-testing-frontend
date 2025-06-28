@@ -14,7 +14,7 @@ const FullScreenModal = ({ open, onOpenChange, title, children }: FullScreenModa
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-white">
+    <div className="fixed inset-0 z-[10000] bg-white">
       {/* Header */}
       <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-white">
         <h2 className="text-[24px] font-semibold text-[#4F46E5]">

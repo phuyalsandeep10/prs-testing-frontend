@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 
 interface SlideModalProps {
   isOpen: boolean;
@@ -59,20 +60,21 @@ const SlideModal: React.FC<SlideModalProps> = ({
     }
   };
 
-  if (!isVisible) return null;
+  if (!isVisible || typeof window === 'undefined') return null;
 
-  return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
+  return createPortal(
+    <div className="fixed inset-0 z-[99999]" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }}>
       {/* Backdrop */}
       <div
         className={`fixed inset-0 bg-black transition-opacity duration-300 ease-in-out ${
           isAnimating ? 'bg-opacity-50' : 'bg-opacity-0'
         }`}
         onClick={handleBackdropClick}
+        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
       />
       
       {/* Modal Panel */}
-      <div className="fixed inset-y-0 right-0 flex max-w-full">
+      <div className="fixed inset-y-0 right-0 flex max-w-full z-[100000]" style={{ position: 'fixed', top: 0, bottom: 0, right: 0, zIndex: 100000 }}>
         <div
           className={`relative ${getWidthClass()} transform transition-transform duration-300 ease-in-out ${
             isAnimating ? 'translate-x-0' : 'translate-x-full'
@@ -106,7 +108,8 @@ const SlideModal: React.FC<SlideModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

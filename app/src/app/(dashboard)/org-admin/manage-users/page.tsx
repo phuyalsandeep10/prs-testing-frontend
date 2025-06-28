@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Plus, Eye, Edit, Trash2, X, ChevronUp, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { UserTable } from '@/components/dashboard/org-admin/manage-users/UserTab
 import { TeamsTable } from '@/components/dashboard/org-admin/manage-teams/TeamsTable';
 import { AddNewUserForm } from '@/components/dashboard/org-admin/manage-users/AddNewUserForm';
 import { AddNewTeamForm } from '@/components/dashboard/org-admin/manage-teams/AddNewTeamForm';
+import { createPortal } from 'react-dom';
 
 type TabType = 'users' | 'team';
 type ModalType = 'add-user' | 'add-team' | 'edit-team' | 'view-team' | 'edit-user' | 'view-user' | null;
@@ -264,19 +265,21 @@ export default function ManageUsersPage() {
         )}
       </div>
 
-      {/* Modal Overlay - Exact Figma Card-Style Implementation */}
-      {openModal && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
-          {/* Backdrop */}
+      {/* Modal Overlay - Rendered at document.body level using Portal */}
+      {openModal && typeof window !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }}>
+          {/* Full Screen Backdrop */}
           <div 
-            className="absolute inset-0 bg-black bg-opacity-50 transition-opacity" 
-            onClick={handleCloseModal} 
+            className="absolute inset-0 w-full h-full bg-black/50" 
+            onClick={handleCloseModal}
+            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
           />
           
-          {/* Modal Content - Centered Card Style for View/Detail Modals */}
+          {/* Modal Content */}
           {(openModal === 'view-team' || openModal === 'view-user') ? (
-            <div className="fixed inset-0 flex items-center justify-center p-4">
-              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all animate-scale-in">
+            /* Centered Card Modals */
+            <div className="relative z-[100000] flex items-center justify-center w-full h-full p-4 pointer-events-none">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all pointer-events-auto" style={{ zIndex: 100000 }}>
                 {openModal === 'view-team' && selectedTeam && (
                   <TeamDetailView team={selectedTeam} onClose={handleCloseModal} />
                 )}
@@ -286,8 +289,8 @@ export default function ManageUsersPage() {
               </div>
             </div>
           ) : (
-            /* Form Modals - Right Side Panel */
-            <div className="fixed right-0 top-0 h-full w-[384px] bg-white shadow-2xl transform transition-transform animate-slide-in-right">
+            /* Right Side Form Modals */
+            <div className="fixed top-0 right-0 h-full w-[384px] bg-white shadow-2xl z-[100000]" style={{ position: 'fixed', top: 0, right: 0, height: '100vh', zIndex: 100000 }}>
               {openModal === 'add-user' && (
                 <AddNewUserForm onClose={handleCloseModal} />
               )}
@@ -302,7 +305,8 @@ export default function ManageUsersPage() {
               )}
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

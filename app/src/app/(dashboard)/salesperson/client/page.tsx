@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, memo } from 'react';
 import { Eye, Edit, Trash2, Plus, Search, Filter, LayoutGrid, List } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { ClientDetailCard } from './ClientDetailCard';
 import AddNewClientForm from './AddNewClientForm';
 import EditClientForm from './EditClientForm';
 import { useDebouncedSearch } from '@/hooks/useDebounce';
+import { createPortal } from 'react-dom';
 
 // Memoized status color function
 const getStatusColor = (status: string) => {
@@ -325,29 +326,38 @@ const ClientsPage = React.memo(() => {
         )}
       </div>
 
-      {/* Add Client Modal */}
-      {showAddModal && (
-        <AddNewClientForm
-          onClose={() => setShowAddModal(false)}
-          onFormSubmit={() => setShowAddModal(false)}
-        />
+      {/* Add Client Modal - Portal Rendered */}
+      {showAddModal && typeof window !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[99999]" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }}>
+          <AddNewClientForm
+            onClose={() => setShowAddModal(false)}
+            onFormSubmit={() => setShowAddModal(false)}
+          />
+        </div>,
+        document.body
       )}
 
-      {/* Edit Client Modal */}
-      {showEditModal && selectedClient && (
-        <EditClientForm
-          client={selectedClient}
-          onClose={() => setShowEditModal(false)}
-          onFormSubmit={() => setShowEditModal(false)}
-        />
+      {/* Edit Client Modal - Portal Rendered */}
+      {showEditModal && selectedClient && typeof window !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[99999]" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }}>
+          <EditClientForm
+            client={selectedClient}
+            onClose={() => setShowEditModal(false)}
+            onFormSubmit={() => setShowEditModal(false)}
+          />
+        </div>,
+        document.body
       )}
 
-      {/* View Client Modal */}
-      {showViewModal && selectedClient && (
-        <ClientDetailCard
-          client={selectedClient}
-          onClose={() => setShowViewModal(false)}
-        />
+      {/* View Client Modal - Portal Rendered */}
+      {showViewModal && selectedClient && typeof window !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }}>
+          <ClientDetailCard
+            client={selectedClient}
+            onClose={() => setShowViewModal(false)}
+          />
+        </div>,
+        document.body
       )}
     </div>
   );
