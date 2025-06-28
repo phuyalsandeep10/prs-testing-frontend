@@ -97,6 +97,9 @@ export interface UnifiedTableProps<TData> {
   className?: string;
   expandedContent?: (row: Row<TData>) => React.ReactNode;
   toolbar?: React.ReactNode;
+  getRowProps?: (row: Row<TData>) => React.HTMLAttributes<HTMLTableRowElement>;
+  expandedRows?: Record<string, boolean>;
+  onExpandedRowsChange?: (expandedRows: Record<string, boolean>) => void;
 }
 
 // ==================== DEFAULT CONFIGURATIONS ====================
@@ -334,6 +337,9 @@ export function UnifiedTable<TData>({
   className,
   expandedContent,
   toolbar,
+  getRowProps,
+  expandedRows,
+  onExpandedRowsChange,
 }: UnifiedTableProps<TData>) {
   // Merge configurations with defaults
   const features = { ...defaultFeatures, ...config.features };
@@ -346,7 +352,11 @@ export function UnifiedTable<TData>({
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [globalFilter, setGlobalFilter] = React.useState("");
-  const [expandedRows, setExpandedRows] = React.useState<Record<string, boolean>>({});
+  const [internalExpandedRows, setInternalExpandedRows] = React.useState<Record<string, boolean>>({});
+
+  // Use controlled expansion state if provided, otherwise use internal state
+  const currentExpandedRows = expandedRows || internalExpandedRows;
+  const setCurrentExpandedRows = onExpandedRowsChange || setInternalExpandedRows;
 
   // Table instance
   const table = useReactTable({
@@ -483,6 +493,7 @@ export function UnifiedTable<TData>({
                       row.getIsSelected() && "bg-blue-50"
                     )}
                     onClick={() => onRowClick?.(row)}
+                    {...(getRowProps ? getRowProps(row) : {} as React.HTMLAttributes<HTMLTableRowElement>)}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id} className={styles.cell}>
@@ -490,7 +501,7 @@ export function UnifiedTable<TData>({
                       </TableCell>
                     ))}
                   </TableRow>
-                  {features.expansion && expandedContent && expandedRows[row.id] && (
+                  {features.expansion && expandedContent && currentExpandedRows[row.id] && (
                     <TableRow>
                       <TableCell colSpan={columns.length} className="p-0">
                         <div className="p-4 bg-gray-50 border-t">

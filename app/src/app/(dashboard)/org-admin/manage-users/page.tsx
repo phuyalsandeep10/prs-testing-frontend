@@ -46,31 +46,37 @@ const sampleTeams = [
   },
 ];
 
-// Sample user data matching your Figma design
+// Sample user data matching UserTableData type (User + fullName)
 const sampleUsers = [
   {
     id: '1',
+    name: 'Yubesh Parsad Koirala',
     fullName: 'Yubesh Parsad Koirala',
     email: 'yubeshkoirala@gmail.com',
     phoneNumber: '+977 - 9876543210',
+    role: 'team-member' as const,
     assignedTeam: 'Design Wizards',
-    status: 'Active' as const,
+    status: 'active' as const,
   },
   {
     id: '2',
+    name: 'Abinash Babu Tiwari',
     fullName: 'Abinash Babu Tiwari',
     email: 'tiwariabinash@gmail.com',
     phoneNumber: '+977 - 9876543210',
+    role: 'salesperson' as const,
     assignedTeam: 'Team SEO Warriors',
-    status: 'Active' as const,
+    status: 'active' as const,
   },
   {
     id: '3',
+    name: 'Lalit Rai',
     fullName: 'Lalit Rai',
     email: 'railalit@gmail.com',
     phoneNumber: '+977 - 9876543210',
+    role: 'org-admin' as const,
     assignedTeam: 'Sales Giants',
-    status: 'Inactive' as const,
+    status: 'inactive' as const,
   },
 ];
 
