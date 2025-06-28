@@ -6,7 +6,7 @@ import Edit from "@/assets/icons/edit.svg";
 import add from "@/assets/icons/add.svg";
 import Image from "next/image";
 import { format } from "date-fns";
-import { ReusableTable } from "@/components/dashboard/salesperson/deals/ReusableTable";
+import { UnifiedTable } from "@/components/core";
 import ExpandButton from "@/components/dashboard/salesperson/deals/ExpandButton";
 
 // type define for table head, row and header cell // Parent table data structure
@@ -433,27 +433,36 @@ const DealsTable = () => {
     ],
     []
   );
-  return (
-    <ReusableTable
-      data={Mainusers} // The main dataset to render in the table
-      columns={columns} // Column definitions for the main table
-      nestedColumns={nestedColumns} // Column definitions to be used for rendering nested tables (expandable rows)
-      getNestedData={(info) => info.nestedData || []} // Function to extract nested data (e.g., sub-rows) from a given row
-      showNestedTable={(info) =>
-        Boolean(info.nestedData && info.nestedData.length > 0)
-      } // Determines whether a row should display a nested table
-      expandedRowId={expandedRowId} // The ID of the currently expanded row (used to control row expansion)
-      setExpandedRowId={setExpandedRowId} // Callback to update the expanded row ID when toggling expansion
-      rowClassName={(row) => {
-        const payment = row.original.Payment || "";
-        if (!payment.toLowerCase().includes("second")) {
-          return "bg-[#F5F5F5] h-[44px]";
-        }
-        return "bg-[#FFDBD9] border-b border-[#FFA1A1]";
-      }} // Function to apply dynamic styling to each row based on its data
-      isLoading={false} // Controls whether a loading state should be shown
-      error={null} // Displays error content if present
-    />
+      return (
+      <UnifiedTable
+        data={Mainusers}
+        columns={columns}
+        config={{
+          features: {
+            pagination: true,
+            sorting: true,
+            filtering: true,
+            globalSearch: true,
+            columnVisibility: true,
+          },
+          styling: {
+            variant: 'professional',
+            size: 'md',
+          },
+          pagination: {
+            pageSize: 10,
+            showSizeSelector: true,
+            showInfo: true,
+          },
+          messages: {
+            loading: 'Loading deals...',
+            empty: 'No deals found',
+            searchPlaceholder: 'Search deals...',
+          },
+        }}
+        loading={false}
+        error={null}
+      />
   );
 };
 

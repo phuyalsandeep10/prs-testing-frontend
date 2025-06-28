@@ -9,12 +9,17 @@ import { DealSchema } from "./DealSchema";
 
 type DealFormData = z.infer<typeof DealSchema>;
 
+interface DealFormProps {
+  mode?: 'add' | 'edit';
+  dealId?: string | null;
+}
+
 const submitDealData = async (_data: DealFormData) => {
   await new Promise((resolve) => setTimeout(resolve, 1000));
   return { success: true, message: "Deal data submitted successfully" };
 };
 
-const DealForm = () => {
+const DealForm: React.FC<DealFormProps> = ({ mode = 'add', dealId }) => {
   const {
     register,
     handleSubmit,
@@ -46,7 +51,7 @@ const DealForm = () => {
   return (
     <div className="max-w-5xl mx-auto pt-6 bg-white rounded-lg shadow-md pl-4 sm:pl-6 md:pl-8 lg:pl-10 pr-4 sm:pr-6 md:pr-6 lg:pr-6">
       <h2 className="text-[20px] font-bold mb-6 text-[#465FFF] flex items-center justify-between pr-6 pb-3">
-        ADD DEAL
+        {mode === 'edit' ? 'EDIT DEAL' : 'ADD DEAL'}
         <svg
           className="mt-2 -mr-4"
           width="20"
@@ -472,7 +477,10 @@ const DealForm = () => {
             disabled={isSubmitting}
             className="bg-[#009959] text-white w-[119px] p-2 h-[40px] rounded-[6px] text-[14px] font-semibold"
           >
-            {isSubmitting ? "Submitting..." : "Save Client"}
+            {isSubmitting 
+              ? (mode === 'edit' ? "Updating..." : "Submitting...") 
+              : (mode === 'edit' ? "Edit Deal" : "Save Deal")
+            }
           </button>
         </div>
       </form>
