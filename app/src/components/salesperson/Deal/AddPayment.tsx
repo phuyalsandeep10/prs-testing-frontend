@@ -4,8 +4,7 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Upload, ChevronDown } from "lucide-react";
-import SlideModal from "@/components/ui/SlideModal";
+import { ChevronDown, Paperclip } from "lucide-react";
 
 const AddPaymentSchema = z.object({
   paymentDate: z.string().min(1, "Payment date is required"),
@@ -19,21 +18,30 @@ const AddPaymentSchema = z.object({
 type AddPaymentData = z.infer<typeof AddPaymentSchema>;
 
 interface AddPaymentProps {
-  onClose: () => void;
+  dealId?: string | null;
   onSave: (data: AddPaymentData) => void;
+  onCancel: () => void;
 }
 
-const AddPayment: React.FC<AddPaymentProps> = ({ onClose, onSave }) => {
-  const [showPaymentTypeDropdown, setShowPaymentTypeDropdown] = useState(false);
-  const [selectedPaymentType, setSelectedPaymentType] = useState("");
+const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => {
+  const [selectedPaymentType, setSelectedPaymentType] = useState("Advance");
+  const [showDropdown, setShowDropdown] = useState(false); // Only show when clicked
 
   const {
     register,
     handleSubmit,
     setValue,
+    reset,
     formState: { errors },
   } = useForm<AddPaymentData>({
     resolver: zodResolver(AddPaymentSchema),
+    defaultValues: {
+      paymentDate: "19 - 08 - 2002",
+      receivedAmount: "$150,000",
+      chequeNo: "12145235",
+      paymentType: "advance",
+      remarks: ""
+    }
   });
 
   const paymentTypes = [
@@ -44,170 +52,200 @@ const AddPayment: React.FC<AddPaymentProps> = ({ onClose, onSave }) => {
 
   const onSubmit = (data: AddPaymentData) => {
     onSave(data);
-    onClose();
+    onCancel();
   };
 
   const handlePaymentTypeSelect = (type: { value: string; label: string }) => {
     setSelectedPaymentType(type.label);
     setValue("paymentType", type.value);
-    setShowPaymentTypeDropdown(false);
+    setShowDropdown(false); // Close dropdown after selection
   };
 
+  const handleClear = () => {
+    reset();
+    setSelectedPaymentType("Advance");
+    setValue("paymentDate", "19 - 08 - 2002");
+    setValue("receivedAmount", "$150,000");
+    setValue("chequeNo", "12145235");
+    setShowDropdown(false); // Close dropdown when clearing
+  };
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.payment-type-dropdown')) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDropdown]);
+
   return (
-    <SlideModal
-      isOpen={true}
-      onClose={onClose}
-      title="ADD PAYMENT"
-      width="lg"
-    >
-      <form onSubmit={handleSubmit(onSubmit)} className="p-6">
-        
-        {/* First Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          
-          {/* Payment Date */}
-          <div>
-            <label htmlFor="paymentDate" className="block text-sm font-medium text-gray-900 mb-2">
-              Payment Date<span className="text-red-500">*</span>
-            </label>
-            <input
-              id="paymentDate"
-              type="text"
-              {...register("paymentDate")}
-              placeholder="19 - 08 - 2002"
-              className="w-full px-3 py-3 border-2 border-blue-500 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            />
-            {errors.paymentDate && (
-              <p className="mt-1 text-xs text-red-600">{errors.paymentDate.message}</p>
-            )}
-          </div>
-
-          {/* Received Amount */}
-          <div>
-            <label htmlFor="receivedAmount" className="block text-sm font-medium text-gray-900 mb-2">
-              Received Amount<span className="text-red-500">*</span>
-            </label>
-            <input
-              id="receivedAmount"
-              type="text"
-              {...register("receivedAmount")}
-              placeholder="$150,000"
-              className="w-full px-3 py-3 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            />
-            {errors.receivedAmount && (
-              <p className="mt-1 text-xs text-red-600">{errors.receivedAmount.message}</p>
-            )}
-          </div>
-
-          {/* Cheque No */}
-          <div>
-            <label htmlFor="chequeNo" className="block text-sm font-medium text-gray-900 mb-2">
-              Cheque No.<span className="text-red-500">*</span>
-            </label>
-            <input
-              id="chequeNo"
-              type="text"
-              {...register("chequeNo")}
-              placeholder="121345235"
-              className="w-full px-3 py-3 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            />
-            {errors.chequeNo && (
-              <p className="mt-1 text-xs text-red-600">{errors.chequeNo.message}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Second Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          
-          {/* Attach Receipt */}
-          <div>
-            <label htmlFor="attachReceipt" className="block text-sm font-medium text-gray-900 mb-2">
-              Attach Receipt<span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
+    <div className="w-full bg-white">
+      <form onSubmit={handleSubmit(onSubmit)} className="h-full flex flex-col">
+        {/* Main Form Content */}
+        <div className="px-8 py-6 flex-1">
+          {/* 3x2 Grid Layout exactly as shown in screenshot */}
+          <div className="grid grid-cols-3 gap-6">
+            {/* Row 1, Col 1: Payment Date - with blue border (active field) */}
+            <div>
+              <label className="block text-[14px] font-medium text-gray-900 mb-2">
+                Payment Date<span className="text-red-500">*</span>
+              </label>
               <input
-                id="attachReceipt"
-                type="file"
-                {...register("attachReceipt")}
-                className="hidden"
-                accept=".png,.jpg,.jpeg,.pdf"
+                {...register("paymentDate")}
+                type="text"
+                className="w-full h-[48px] px-4 border-2 border-[#4F46E5] rounded-lg text-[16px] focus:outline-none focus:border-[#4338CA] bg-white"
+                defaultValue="19 - 08 - 2002"
               />
-              <div className="w-full px-3 py-3 border border-gray-300 rounded-lg text-sm bg-white cursor-pointer flex items-center justify-between"
-                   onClick={() => document.getElementById('attachReceipt')?.click()}
+              {errors.paymentDate && (
+                <p className="text-red-500 text-sm mt-1">{String(errors.paymentDate.message)}</p>
+              )}
+            </div>
+
+            {/* Row 1, Col 2: Received Amount */}
+            <div>
+              <label className="block text-[14px] font-medium text-gray-900 mb-2">
+                Received Amount<span className="text-red-500">*</span>
+              </label>
+              <input
+                {...register("receivedAmount")}
+                type="text"
+                className="w-full h-[48px] px-4 border border-gray-300 rounded-lg text-[16px] focus:outline-none focus:border-gray-400 bg-white"
+                defaultValue="$150,000"
+              />
+              {errors.receivedAmount && (
+                <p className="text-red-500 text-sm mt-1">{String(errors.receivedAmount.message)}</p>
+              )}
+            </div>
+
+            {/* Row 1, Col 3: Cheque No */}
+            <div>
+              <label className="block text-[14px] font-medium text-gray-900 mb-2">
+                Cheque No.<span className="text-red-500">*</span>
+              </label>
+              <input
+                {...register("chequeNo")}
+                type="text"
+                className="w-full h-[48px] px-4 border border-gray-300 rounded-lg text-[16px] focus:outline-none focus:border-gray-400 bg-white"
+                defaultValue="12145235"
+              />
+              {errors.chequeNo && (
+                <p className="text-red-500 text-sm mt-1">{String(errors.chequeNo.message)}</p>
+              )}
+            </div>
+
+            {/* Row 2, Col 1: Attach Receipt */}
+            <div>
+              <label className="block text-[14px] font-medium text-gray-900 mb-2">
+                Attach Receipt<span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <input
+                  {...register("attachReceipt")}
+                  type="file"
+                  className="hidden"
+                  accept=".png,.jpg,.jpeg,.pdf"
+                  id="attachReceipt"
+                />
+                <div 
+                  className="w-full h-[48px] px-4 border border-gray-300 rounded-lg text-[16px] bg-white cursor-pointer flex items-center justify-between hover:border-gray-400 transition-colors"
+                  onClick={() => document.getElementById('attachReceipt')?.click()}
+                >
+                  <span className="text-gray-900">Receipt.png</span>
+                  <Paperclip className="h-4 w-4 text-gray-400" />
+                </div>
+              </div>
+              {errors.attachReceipt && (
+                <p className="text-red-500 text-sm mt-1">{String(errors.attachReceipt.message)}</p>
+              )}
+            </div>
+
+            {/* Row 2, Col 2: Payment Type with dropdown */}
+            <div className="relative payment-type-dropdown">
+              <label className="block text-[14px] font-medium text-gray-900 mb-2">
+                Payment Type<span className="text-red-500">*</span>
+              </label>
+              <div
+                className="w-full h-[48px] px-4 border border-gray-300 rounded-lg text-[16px] bg-white cursor-pointer flex items-center justify-between hover:border-gray-400 transition-colors"
+                onClick={() => setShowDropdown(!showDropdown)}
               >
-                <span className="text-gray-600">Receipt.png</span>
-                <Upload className="h-4 w-4 text-gray-400" />
+                <span className="text-gray-900">{selectedPaymentType}</span>
+                <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
               </div>
+              
+              {/* Dropdown - only show when state is true */}
+              {showDropdown && (
+                <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden">
+                  {paymentTypes.map((type, index) => (
+                    <div
+                      key={type.value}
+                      className={`px-4 py-3 cursor-pointer text-[16px] border-b border-gray-100 last:border-b-0 transition-colors ${
+                        type.label === selectedPaymentType 
+                          ? 'bg-gray-50 text-gray-900' 
+                          : type.label === "Partial Payment"
+                            ? 'text-[#4F46E5] hover:bg-blue-50' // Blue text for Partial Payment as in screenshot
+                            : 'text-gray-900 hover:bg-gray-50'
+                      }`}
+                      onClick={() => handlePaymentTypeSelect(type)}
+                    >
+                      {type.label}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {errors.paymentType && (
+                <p className="text-red-500 text-sm mt-1">{String(errors.paymentType.message)}</p>
+              )}
             </div>
-          </div>
 
-          {/* Payment Type */}
-          <div className="relative">
-            <label htmlFor="paymentType" className="block text-sm font-medium text-gray-900 mb-2">
-              Payment Type<span className="text-red-500">*</span>
-            </label>
-            <div
-              className="w-full px-3 py-3 border border-gray-300 rounded-lg text-sm bg-white cursor-pointer flex items-center justify-between"
-              onClick={() => setShowPaymentTypeDropdown(!showPaymentTypeDropdown)}
-            >
-              <span className={selectedPaymentType ? "text-gray-900" : "text-gray-500"}>
-                {selectedPaymentType || "Advance"}
-              </span>
-              <ChevronDown className="h-4 w-4 text-gray-400" />
+            {/* Row 2, Col 3: Remarks */}
+            <div>
+              <label className="block text-[14px] font-medium text-gray-900 mb-2">
+                Remarks<span className="text-red-500">*</span>
+              </label>
+              <textarea
+                {...register("remarks")}
+                className="w-full h-[48px] px-4 py-3 border border-gray-300 rounded-lg text-[16px] focus:outline-none focus:border-gray-400 resize-none bg-white"
+                placeholder=""
+              />
+              {errors.remarks && (
+                <p className="text-red-500 text-sm mt-1">{String(errors.remarks.message)}</p>
+              )}
             </div>
-            
-            {showPaymentTypeDropdown && (
-              <div className="absolute top-full left-0 right-0 z-10 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg">
-                {paymentTypes.map((type) => (
-                  <div
-                    key={type.value}
-                    className="px-3 py-2 hover:bg-gray-50 cursor-pointer text-sm"
-                    onClick={() => handlePaymentTypeSelect(type)}
-                  >
-                    {type.label}
-                  </div>
-                ))}
-              </div>
-            )}
-            {errors.paymentType && (
-              <p className="mt-1 text-xs text-red-600">{errors.paymentType.message}</p>
-            )}
-          </div>
-
-          {/* Remarks */}
-          <div>
-            <label htmlFor="remarks" className="block text-sm font-medium text-gray-900 mb-2">
-              Remarks<span className="text-red-500">*</span>
-            </label>
-            <textarea
-              id="remarks"
-              {...register("remarks")}
-              placeholder=""
-              rows={3}
-              className="w-full px-3 py-3 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
-            />
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex justify-end gap-3 pt-6">
-          <button
-            type="button"
-            onClick={onClose}
-            className="bg-red-500 hover:bg-red-600 text-white py-2 px-6 rounded-lg font-medium transition-colors"
-          >
-            Clear
-          </button>
-          <button
-            type="submit"
-            className="bg-green-600 hover:bg-green-700 text-white py-2 px-8 rounded-lg font-medium transition-colors"
-          >
-            Save Client
-          </button>
+        {/* Footer with blue gradient background exactly as in screenshot */}
+        <div className="px-0 py-0 bg-gradient-to-r from-[#4F46E5] via-[#7C8FE8] to-[#A8B5EB]">
+          <div className="px-8 py-6">
+            <div className="flex justify-end gap-4">
+              <button
+                type="button"
+                onClick={handleClear}
+                className="bg-[#EF4444] hover:bg-[#DC2626] text-white py-3 px-8 rounded-lg font-medium text-[16px] transition-colors min-w-[100px]"
+              >
+                Clear
+              </button>
+              <button
+                type="submit"
+                className="bg-[#22C55E] hover:bg-[#16A34A] text-white py-3 px-8 rounded-lg font-medium text-[16px] transition-colors min-w-[140px]"
+              >
+                Save Client
+              </button>
+            </div>
+          </div>
         </div>
       </form>
-    </SlideModal>
+    </div>
   );
 };
 
