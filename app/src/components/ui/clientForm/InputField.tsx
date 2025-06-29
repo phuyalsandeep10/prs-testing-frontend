@@ -41,7 +41,7 @@ const InputField: React.FC<InputFieldProps> = ({
       error={error}
       labelClassName={labelClassName}
       wrapperClassName={wrapperClassName}
-      errorClassName="mt-1 text-sm text-red-600"
+      errorClassName="mt-1 text-sm text-red-600 whitespace-nowrap"
     >
       <input
         id={id}

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import pillsButton from "@/assets/icons/pills-button.svg";
@@ -36,10 +36,9 @@ const DealsPage = () => {
     setModalState((prev) => ({ ...prev, isOpen: false }));
   };
 
-  // NOTE: handleEditDeal stays if you want modal in edit mode;
-  // but buttons removed from table so no way to trigger it from there currently.
   const handleEditDeal = (dealId: string) => {
-    const dealData = { id: dealId };
+    // In a real app, you would fetch the deal data here
+    const dealData = { id: dealId }; // Mock data
     openModal("edit", dealId, dealData);
   };
 

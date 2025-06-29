@@ -22,17 +22,21 @@ const submitDealData = async (data: DealFormData) => {
 interface DealFormProps {
   onSave?: (data: DealFormData) => void;
   onCancel?: () => void;
+  mode?: "add" | "edit"; 
 }
 
-const dealLabelClass = "block text-[13px] font-semibold text-black";
+
+const dealLabelClass =
+  "block text-[13px] font-semibold whitespace-nowrap text-black";
 const dealInputClass =
   "border border-[#C3C3CB] shadow-none focus:outline-none focus:border-[#C3C3CB] focus:ring-0";
 const dealWrapperClass = "mb-4";
 
-const DealForm = ({ onSave, onCancel }: DealFormProps = {}) => {
+const DealForm = ({ onSave, onCancel, mode }: DealFormProps = {}) => {
   const router = useRouter();
   const pathname = usePathname();
-  const isStandalonePage = pathname?.includes('/add') || pathname?.includes('/edit');
+  const isStandalonePage =
+    pathname?.includes("/add") || pathname?.includes("/edit");
 
   const {
     register,
@@ -51,7 +55,7 @@ const DealForm = ({ onSave, onCancel }: DealFormProps = {}) => {
       if (onSave) {
         onSave(mutation.variables as DealFormData);
       } else if (isStandalonePage) {
-        router.push('/salesperson/deal');
+        router.push("/salesperson/deal");
       }
     },
     onError: (error) => {
@@ -68,16 +72,19 @@ const DealForm = ({ onSave, onCancel }: DealFormProps = {}) => {
     if (onCancel) {
       onCancel();
     } else if (isStandalonePage) {
-      router.push('/salesperson/deal');
+      router.push("/salesperson/deal");
     }
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="h-full w-full flex flex-col overflow-hidden">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="h-full w-full flex flex-col overflow-hidden"
+    >
       <div className="flex-1 p-6 pb-4 overflow-auto">
-        <div className="flex flex-col gap-6 lg:flex-row">
-          <div className="div1 space-y-3">
-            {/* First row of inputs */}
+        <div className="flex flex-col gap-6 lg:gap-1 lg:flex-row">
+          {/* Left section */}
+          <div className="div1 space-y-3 w-full flex-1">
             <div className="flex flex-col sm:flex-row gap-4 lg:flex-row lg:gap-5 mb-2">
               <div className="w-full lg:w-[133px]">
                 <InputField
@@ -110,25 +117,8 @@ const DealForm = ({ onSave, onCancel }: DealFormProps = {}) => {
                   wrapperClassName={dealWrapperClass}
                 />
               </div>
-
-              <div className="w-full lg:w-[252px]">
-                <InputField
-                  id="dealName"
-                  label="Deal Name"
-                  required
-                  registration={register("dealName")}
-                  error={errors.dealName}
-                  placeholder="Chat BoQ Project"
-                  width="w-full"
-                  height="h-[48px]"
-                  labelClassName={dealLabelClass}
-                  inputClassName={dealInputClass}
-                  wrapperClassName={dealWrapperClass}
-                />
-              </div>
             </div>
 
-            {/* Second row */}
             <div className="flex flex-col sm:flex-row gap-4 lg:flex-row lg:gap-5 pb-1">
               <div className="w-full lg:w-[133px]">
                 <SelectField
@@ -165,26 +155,10 @@ const DealForm = ({ onSave, onCancel }: DealFormProps = {}) => {
                   wrapperClassName={dealWrapperClass}
                 />
               </div>
-
-              <div className="w-full lg:w-[252px]">
-                <InputField
-                  id="dealValue"
-                  label="Deal Value"
-                  required
-                  registration={register("dealValue")}
-                  error={errors.dealValue}
-                  placeholder="Nrs. 250,000"
-                  width="w-full"
-                  height="h-[48px]"
-                  labelClassName={dealLabelClass}
-                  inputClassName={dealInputClass}
-                  wrapperClassName={dealWrapperClass}
-                />
-              </div>
             </div>
 
             {/* Third row grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-x-52 lg:gap-0">
               <div>
                 <InputField
                   id="dealDate"
@@ -201,7 +175,7 @@ const DealForm = ({ onSave, onCancel }: DealFormProps = {}) => {
                 />
               </div>
 
-              <div className="lg:-ml-5">
+              <div>
                 <InputField
                   id="dueDate"
                   label="Due Date"
@@ -215,23 +189,6 @@ const DealForm = ({ onSave, onCancel }: DealFormProps = {}) => {
                   inputClassName={dealInputClass}
                   wrapperClassName={dealWrapperClass}
                 />
-              </div>
-
-              <div className="col-span-1 sm:col-span-2 lg:col-span-1 lg:row-span-3 w-full">
-                <label className="block text-[13px] font-semibold mb-2 lg:-ml-8">
-                  Recent Activities
-                </label>
-                <div className="relative p-2 pt-5 border w-full lg:w-[252px] h-[150px] sm:h-[150px] lg:h-[255px] rounded-[6px] border-[#C3C3CB] text-[12px] text-gray-600 overflow-auto lg:-ml-8">
-                  <div className="flex border border-[#EDEEEFEF]">
-                    <div className="w-1 bg-[#465FFF] mr-2"></div>
-                    <div>
-                      <p className="text-[12px] text-black">
-                        Changes done due date in DLID3421.
-                      </p>
-                      <p className="text-[12px] text-[#7E7E7E]">Jan 02, 2020</p>
-                    </div>
-                  </div>
-                </div>
               </div>
 
               <div className="col-span-1 sm:col-span-2 lg:col-span-2 row-span-1 pb-2 pt-2">
@@ -271,8 +228,58 @@ const DealForm = ({ onSave, onCancel }: DealFormProps = {}) => {
             </div>
           </div>
 
+          {/* Middle section*/}
+          <div className="div2 flex-1 flex-col gap-4 pb-1 pr-6 w-full">
+            <InputField
+              id="dealName"
+              label="Deal Name"
+              required
+              registration={register("dealName")}
+              error={errors.dealName}
+              placeholder="Chat BoQ Project"
+              width="w-full"
+              height="h-[48px]"
+              labelClassName={dealLabelClass}
+              inputClassName={dealInputClass}
+              wrapperClassName={dealWrapperClass}
+            />
+
+            <InputField
+              id="dealValue"
+              label="Deal Value"
+              required
+              registration={register("dealValue")}
+              error={errors.dealValue}
+              placeholder="Nrs. 250,000"
+              width="w-full"
+              height="h-[48px]"
+              labelClassName={dealLabelClass}
+              inputClassName={dealInputClass}
+              wrapperClassName={dealWrapperClass}
+            />
+
+            <div>
+              <label className="block text-[13px] font-semibold mb-2">
+                Recent Activities
+              </label>
+              <div className="relative p-2 pt-5 border w-full h-[150px] lg:h-[285px] rounded-[6px] border-[#C3C3CB] text-[12px] text-gray-600 overflow-auto">
+                {mode === "edit" && (
+                  <div className="flex border border-[#EDEEEFEF]">
+                    <div className="w-1 bg-[#465FFF] mr-2"></div>
+                    <div>
+                      <p className="text-[12px] text-black">
+                        Changes done due date in DLID3421.
+                      </p>
+                      <p className="text-[12px] text-[#7E7E7E]">Jan 02, 2020</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Right section */}
-          <div className="div2 w-full sm:w-full md:w-3/4 lg:w-64 h-auto min-h-[210px] lg:h-[264px] flex flex-col">
+          <div className="div3 w-full flex-1 md:w-3/4 lg:w-64 h-auto lg:h-[264px] flex flex-col">
             <div
               className="bg-[#DCFCE7] p-4 rounded-lg space-y-4 relative flex-grow"
               style={{
@@ -365,7 +372,9 @@ const DealForm = ({ onSave, onCancel }: DealFormProps = {}) => {
                   </label>
                   {errors.uploadReceipt && (
                     <p className="mt-1 text-sm text-red-600">
-                      {String(errors.uploadReceipt.message || errors.uploadReceipt)}
+                      {String(
+                        errors.uploadReceipt.message || errors.uploadReceipt
+                      )}
                     </p>
                   )}
                 </div>
@@ -389,7 +398,7 @@ const DealForm = ({ onSave, onCancel }: DealFormProps = {}) => {
         </div>
       </div>
 
-      <div className="mt-auto flex justify-end gap-4 bg-gradient-to-r from-[#0C29E3] via-[#929FF4] to-[#C6CDFA] p-4 -mx-6 -mb-6">
+      <div className="mt-auto flex justify-end gap-4 bg-gradient-to-r from-[#0C29E3] via-[#929FF4] to-[#C6CDFA] p-4">
         {mutation.isError && (
           <p className="text-red-600 text-sm mr-auto">
             Error submitting form. Please try again.

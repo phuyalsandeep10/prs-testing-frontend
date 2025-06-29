@@ -111,7 +111,7 @@ const PaymentDistribution: React.FC = () => {
       <p className="text-center text-sm text-red-500">Failed to load chart</p>
     );
 
-  const valueMap = Object.fromEntries(chartData.map((d: { label: string; value: number }) => [d.label, d.value]));
+  const valueMap = Object.fromEntries(chartData.map((d) => [d.label, d.value]));
   const values = constantSlices.map((slice) => valueMap[slice.label] || 0);
 
   const outerRadiusScale = d3
