@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useRef } from 'react';
-import { Plus, Search } from 'lucide-react';
+import React, { useState, useRef } from "react";
+import { Plus, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import DealsTable from "@/components/dashboard/salesperson/deals/DealsTable";
@@ -10,34 +10,38 @@ import DealModal from "@/components/salesperson/Deal/DealModal";
 const DealsPage = () => {
   const [modalState, setModalState] = useState({
     isOpen: false,
-    mode: 'add' as 'add' | 'edit' | 'payment',
+    mode: "add" as "add" | "edit" | "payment",
     dealId: null as string | null,
-    dealData: null as any
+    dealData: null as any,
   });
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const actionButtonRef = useRef<HTMLButtonElement>(null);
 
-  const openModal = (mode: 'add' | 'edit' | 'payment', dealId?: string, dealData?: any) => {
+  const openModal = (
+    mode: "add" | "edit" | "payment",
+    dealId?: string,
+    dealData?: any
+  ) => {
     setModalState({
       isOpen: true,
       mode,
       dealId: dealId || null,
-      dealData: dealData || null
+      dealData: dealData || null,
     });
   };
 
   const closeModal = () => {
-    setModalState(prev => ({ ...prev, isOpen: false }));
+    setModalState((prev) => ({ ...prev, isOpen: false }));
   };
 
   const handleEditDeal = (dealId: string) => {
     // In a real app, you would fetch the deal data here
     const dealData = { id: dealId }; // Mock data
-    openModal('edit', dealId, dealData);
+    openModal("edit", dealId, dealData);
   };
 
   const handleAddPayment = (dealId: string) => {
-    openModal('payment', dealId);
+    openModal("payment", dealId);
   };
 
   return (
@@ -50,22 +54,23 @@ const DealsPage = () => {
               Deal Management
             </h1>
             <p className="text-sm text-gray-600 mt-1">
-              Manage your user base, teams and access all the details of each user.
+              Manage your user base, teams and access all the details of each
+              user.
             </p>
           </div>
           <div className="flex items-center gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input 
-                placeholder="Search" 
+              <Input
+                placeholder="Search"
                 className="pl-10 w-[320px] h-[40px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5]"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button 
+            <Button
               ref={actionButtonRef}
-              onClick={() => openModal('add')} 
+              onClick={() => openModal("add")}
               className="bg-[#4F46E5] hover:bg-[#4F46E5]/90 text-white px-6 py-2 h-[40px] flex items-center gap-2"
             >
               Add New Deal
@@ -76,14 +81,12 @@ const DealsPage = () => {
 
       {/* Main Content */}
       <div className="px-8 py-6">
-        <DealsTable 
+        <DealsTable
           onEditDeal={handleEditDeal}
           onAddPayment={handleAddPayment}
           searchTerm={searchTerm}
         />
       </div>
-
-
 
       {/* Unified Deal Modal */}
       <DealModal
