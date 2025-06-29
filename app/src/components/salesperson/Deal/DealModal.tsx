@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogOverlay,
@@ -15,7 +15,6 @@ import DealForm from "./DealForm";
 import AddPayment from "./AddPayment";
 import { createPortal } from "react-dom";
 
-// Custom DialogContent without built-in close button
 const DealModalContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
@@ -55,8 +54,8 @@ const DealModal: React.FC<DealModalProps> = ({
   dealData,
 }) => {
   const [position, setPosition] = useState({ top: 0, left: 0 });
+  const dealFormRef = useRef<{ resetForm: () => void }>(null);
 
-  // Calculate position - centered on screen
   useEffect(() => {
     if (isOpen) {
       setPosition({
@@ -68,39 +67,51 @@ const DealModal: React.FC<DealModalProps> = ({
 
   const handleSave = (data: any) => {
     console.log(`${mode} saved:`, data);
-    onOpenChange(false);
+    onOpenChange(false); 
   };
 
   const handleCancel = () => {
-    onOpenChange(false);
+    if (dealFormRef.current) {
+      dealFormRef.current.resetForm();
+    }
   };
 
   const getTitle = () => {
     switch (mode) {
-      case 'add':
-        return 'Add New Deal';
-      case 'edit':
-        return 'Edit Deal';
-      case 'payment':
-        return 'ADD PAYMENT';
+      case "add":
+        return "ADD DEAL";
+      case "edit":
+        return "Edit Deal";
+      case "payment":
+        return "ADD PAYMENT";
       default:
-        return 'Deal';
+        return "Deal";
     }
   };
 
   const getModalSize = () => {
-    if (mode === 'payment') {
-      return 'w-[900px] h-auto max-w-[90vw] max-h-[90vh]';
+    if (mode === "payment") {
+      return "w-[900px] h-auto max-w-[90vw] max-h-[90vh]";
     }
-    return 'w-[90vw] h-[90vh] max-w-[1200px] max-h-[800px]';
+    return "w-[90vw] h-[90vh] max-w-[1200px] max-h-[800px]";
   };
 
-  if (!isOpen || typeof window === 'undefined') return null;
+  if (!isOpen || typeof window === "undefined") return null;
 
   // Special rendering for payment modal
-  if (mode === 'payment') {
+  if (mode === "payment") {
     return createPortal(
-      <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }}>
+      <div
+        className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 99999,
+        }}
+      >
         <div
           className={`p-0 bg-white border shadow-xl ${getModalSize()} rounded-lg overflow-hidden flex flex-col z-[100000]`}
           style={{
@@ -109,7 +120,7 @@ const DealModal: React.FC<DealModalProps> = ({
             margin: 0,
           }}
         >
-          {/* Header with blue title and close button */}
+ 
           <div className="px-6 py-4 bg-white border-b border-gray-100">
             <div className="flex items-center justify-between">
               <h1 className="text-[24px] font-semibold text-[#4F46E5]">
@@ -126,12 +137,11 @@ const DealModal: React.FC<DealModalProps> = ({
             </div>
           </div>
 
-          {/* Payment Form Content */}
           <div className="flex-1">
-            <AddPayment 
+            <AddPayment
               dealId={dealId}
-              onSave={handleSave} 
-              onCancel={handleCancel} 
+              onSave={handleSave}
+              onCancel={handleCancel}
             />
           </div>
         </div>
@@ -140,9 +150,18 @@ const DealModal: React.FC<DealModalProps> = ({
     );
   }
 
-  // Original modal for add/edit deals
   return createPortal(
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }}>
+    <div
+      className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50"
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 99999,
+      }}
+    >
       <div
         className={`p-0 bg-white border shadow-xl ${getModalSize()} rounded-lg overflow-hidden flex flex-col z-[100000]`}
         style={{
@@ -151,10 +170,9 @@ const DealModal: React.FC<DealModalProps> = ({
           margin: 0,
         }}
       >
-        {/* Header with close button */}
         <div className="px-6 py-4 border-b border-gray-200 bg-white">
           <div className="flex items-center justify-between">
-            <h1 className="text-[20px] font-semibold text-gray-900">
+            <h1 className="text-[20px] font-semibold text-[#465FFF]">
               {getTitle()}
             </h1>
             <Button
@@ -171,9 +189,11 @@ const DealModal: React.FC<DealModalProps> = ({
         {/* Modal Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 overflow-auto">
-            <DealForm 
-              onSave={handleSave} 
-              onCancel={handleCancel}
+            <DealForm
+              ref={dealFormRef}
+              mode={mode}
+              onSave={handleSave}
+              onCancel={handleCancel} 
             />
           </div>
         </div>
@@ -183,4 +203,4 @@ const DealModal: React.FC<DealModalProps> = ({
   );
 };
 
-export default DealModal; 
+export default DealModal;

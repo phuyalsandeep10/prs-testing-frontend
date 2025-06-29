@@ -19,7 +19,7 @@ const InputWrapper: React.FC<InputWrapperProps> = ({
   required,
   error,
   labelClassName,
-  errorClassName = "mt-1 text-sm text-red-600",
+  errorClassName = "mt-1 text-sm text-red-600 whitespace-nowrap",
   wrapperClassName,
   children,
 }) => {

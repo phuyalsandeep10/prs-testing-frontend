@@ -15,37 +15,37 @@ const fetchStats = async (): Promise<StatItem[]> => {
     {
       title: "Total Payments",
       number: "54,321",
-      className: "bg-[#010D58] lg:w-[278px] w-full",
+      className: "bg-[#010D58] lg:w-[290px] w-full",
     },
     {
       title: "Payment Success",
       number: "12,456",
-      className: "bg-[#027545] lg:w-[278px] w-full",
+      className: "bg-[#027545] lg:w-[280px] w-full",
     },
     {
       title: "Payment Unsuccessful",
       number: "54,321",
-      className: "bg-[#9D0E04] lg:w-[278px] w-full",
+      className: "bg-[#9D0E04] lg:w-[280px] w-full",
     },
     {
       title: "Verification Pending",
       number: "54,321",
-      className: "bg-[#BE6A04] lg:w-[276px] w-full",
+      className: "bg-[#BE6A04] lg:w-[280px] w-full",
     },
     {
       title: "Total Revenue",
       number: "54,321",
-      className: "bg-[#00008B] lg:w-[379px] w-full",
+      className: "bg-[#00008B] lg:w-[385px] w-full",
     },
     {
       title: "Avg. Transactional Value",
       number: "54,321",
-      className: "bg-[#65026C] lg:w-[379px] w-full",
+      className: "bg-[#65026C] lg:w-[385px] w-full",
     },
     {
       title: "Refunded Amount",
       number: "54,321",
-      className: "bg-[#8C4F05] lg:w-[378px] w-full",
+      className: "bg-[#8C4F05] lg:w-[385px] w-full",
     },
   ];
 };
