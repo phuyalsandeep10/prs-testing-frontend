@@ -1,5 +1,6 @@
 import React from "react";
 import { FieldError, UseFormRegisterReturn } from "react-hook-form";
+import InputWrapper from "./InputWrapper";
 
 interface SelectFieldProps {
   label: string;
@@ -10,7 +11,11 @@ interface SelectFieldProps {
   error?: FieldError;
   required?: boolean;
   width?: string;
-  bgColor?: string;
+  height?: string;
+  borderColor?: string;
+  labelClassName?: string;
+  selectClassName?: string;
+  wrapperClassName?: string;
 }
 
 const SelectField: React.FC<SelectFieldProps> = ({
@@ -22,33 +27,42 @@ const SelectField: React.FC<SelectFieldProps> = ({
   error,
   required,
   width = "w-[186px]",
+  height = "h-[48px]",
+  borderColor,
+  labelClassName,
+  selectClassName = "",
+  wrapperClassName,
 }) => {
+  const colorMap = {
+    status: {
+      Pending: "#E16806",
+      "Bad Depth": "#F61818",
+      Clear: "#009959",
+    },
+    satisfaction: {
+      Neutral: "#E16806",
+      Negative: "#F61818",
+      Positive: "#009959",
+    },
+  };
+
   return (
-    <div>
-      <label htmlFor={id} className="text-[#465FFF] text-[14px] font-normal">
-        {label}
-        {required && <span className="text-[#F61818]">*</span>}
-      </label>
+    <InputWrapper
+      id={id}
+      label={label}
+      required={required}
+      error={error}
+      labelClassName={labelClassName}
+      wrapperClassName={wrapperClassName}
+      errorClassName="mt-1 text-sm text-red-600"
+    >
       <select
         id={id}
         {...registration}
-        className={`mt-1 block border rounded-[6px] shadow-[0_0_4px_#8393FC] h-[48px] ${width} p-2 text-[12px] font-normal focus:ring-[#6B7FFF] focus:border-[#6B7FFF] outline-none`}
+        className={`mt-1 block rounded-[6px] shadow-[0_0_4px_#8393FC] p-2 text-[12px] font-normal outline-none focus:ring-[#6B7FFF] focus:border-[#6B7FFF] border ${borderColor} ${width} ${height} bg-white ${selectClassName}`}
       >
         <option value="">{placeholder}</option>
         {options.map((opt) => {
-          const colorMap = {
-            status: {
-              Pending: "#E16806",
-              "Bad Depth": "#F61818",
-              Clear: "#009959",
-            },
-            satisfaction: {
-              Neutral: "#E16806",
-              Negative: "#F61818",
-              Positive: "#009959",
-            },
-          };
-
           const optionColor =
             id === "status"
               ? colorMap.status[opt.value as keyof typeof colorMap.status]
@@ -69,8 +83,7 @@ const SelectField: React.FC<SelectFieldProps> = ({
           );
         })}
       </select>
-      {error && <p className="text-sm text-red-600 mt-1">{error.message}</p>}
-    </div>
+    </InputWrapper>
   );
 };
 

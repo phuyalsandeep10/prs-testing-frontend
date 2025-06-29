@@ -116,6 +116,8 @@ const EditClient: React.FC<EditClientProps> = ({ inModal = false, onSuccess }) =
             placeholder="Enter remarks"
             registration={register("remarks")}
             error={errors.remarks}
+            textareaClassName="shadow-[0_0_4px_#8393FC]"
+            height="h-[113px]"
           />
         </div>
         <div className="flex flex-between justify-between pr-7">

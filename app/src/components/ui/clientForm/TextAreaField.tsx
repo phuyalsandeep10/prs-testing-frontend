@@ -1,5 +1,6 @@
 import React from "react";
 import { FieldError, UseFormRegisterReturn } from "react-hook-form";
+import InputWrapper from "./InputWrapper";
 
 interface TextAreaFieldProps {
   label: string;
@@ -8,7 +9,12 @@ interface TextAreaFieldProps {
   registration: UseFormRegisterReturn;
   error?: FieldError;
   required?: boolean;
-  className?: string;
+  width?: string;
+  height?: string;
+  borderColor?: string;
+  labelClassName?: string;
+  textareaClassName?: string;
+  wrapperClassName?: string;
 }
 
 const TextAreaField: React.FC<TextAreaFieldProps> = ({
@@ -18,25 +24,30 @@ const TextAreaField: React.FC<TextAreaFieldProps> = ({
   registration,
   error,
   required,
-  className = "",
+  width = "w-[398px]",
+  height = "h-[113px]",
+  borderColor,
+  labelClassName,
+  textareaClassName = "",
+  wrapperClassName,
 }) => {
   return (
-    <div>
-      <label
-        htmlFor={id}
-        className="block text-[#465FFF] text-[14px] font-normal"
-      >
-        {label}
-        {required && <span className="text-[#F61818]">*</span>}
-      </label>
+    <InputWrapper
+      id={id}
+      label={label}
+      required={required}
+      error={error}
+      labelClassName={labelClassName}
+      wrapperClassName={wrapperClassName}
+      errorClassName="mt-1 text-sm text-red-600"
+    >
       <textarea
         id={id}
         placeholder={placeholder}
         {...registration}
-        className={`mt-1 p-2 mb-1 block border text-[12px] shadow-[0_0_4px_#8393FC] font-normal rounded-[6px] h-[113px] w-[398px] resize-none focus:ring-[#6B7FFF] focus:border-[#6B7FFF] outline-none ${className}`}
+        className={`mt-1 p-2 mb-1 block rounded-[6px] text-[12px] font-normal resize-none outline-none focus:ring-[#6B7FFF] focus:border-[#6B7FFF] border ${borderColor} ${width} ${height} ${textareaClassName}`}
       />
-      {error && <p className="mt-1 text-sm text-red-600">{error.message}</p>}
-    </div>
+    </InputWrapper>
   );
 };
 

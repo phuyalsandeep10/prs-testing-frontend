@@ -7,6 +7,9 @@ interface InputWrapperProps {
   label: string;
   required?: boolean;
   error?: FieldError;
+  labelClassName?: string;
+  errorClassName?: string;
+  wrapperClassName?: string;
   children: React.ReactNode;
 }
 
@@ -15,13 +18,21 @@ const InputWrapper: React.FC<InputWrapperProps> = ({
   label,
   required,
   error,
+  labelClassName,
+  errorClassName = "mt-1 text-sm text-red-600",
+  wrapperClassName,
   children,
 }) => {
   return (
-    <div>
-      <InputLabel id={id} label={label} required={required} />
+    <div className={wrapperClassName}>
+      <InputLabel
+        id={id}
+        label={label}
+        required={required}
+        className={labelClassName}
+      />
       {children}
-      {error && <p className="mt-1 text-sm text-red-600">{error.message}</p>}
+      {error && <p className={errorClassName}>{error.message}</p>}
     </div>
   );
 };
