@@ -20,6 +20,7 @@ const submitDealData = async (data: DealFormData) => {
 };
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 const dealLabelClass = "block text-[13px] font-semibold text-black";
 const dealInputClass =
   "border border-[#C3C3CB] shadow-none focus:outline-none focus:border-[#C3C3CB] focus:ring-0";
@@ -27,17 +28,27 @@ const dealWrapperClass = "mb-4";
 
 const DealForm = () => {
 =======
+=======
+>>>>>>> 853ebdd781d8d9e41647cfa4cda935173f172120
 interface DealFormProps {
   onSave?: (data: DealFormData) => void;
   onCancel?: () => void;
 }
+
+const dealLabelClass = "block text-[13px] font-semibold text-black";
+const dealInputClass =
+  "border border-[#C3C3CB] shadow-none focus:outline-none focus:border-[#C3C3CB] focus:ring-0";
+const dealWrapperClass = "mb-4";
 
 const DealForm = ({ onSave, onCancel }: DealFormProps = {}) => {
   const router = useRouter();
   const pathname = usePathname();
   const isStandalonePage = pathname?.includes('/add') || pathname?.includes('/edit');
 
+<<<<<<< HEAD
 >>>>>>> cca032ff897af6074246642e14e9159c0c95f0a0
+=======
+>>>>>>> 853ebdd781d8d9e41647cfa4cda935173f172120
   const {
     register,
     handleSubmit,
@@ -77,6 +88,7 @@ const DealForm = ({ onSave, onCancel }: DealFormProps = {}) => {
   };
 
   return (
+<<<<<<< HEAD
 <<<<<<< HEAD
     <div className="max-w-5xl mx-auto pt-6 bg-white rounded-lg shadow-md pl-4 sm:pl-6 md:pl-8 lg:pl-10 pr-4 sm:pr-6 md:pr-6 lg:pr-6">
       <h2 className="text-[20px] font-bold mb-6 text-[#465FFF] flex items-center justify-between pr-6 pb-3">
@@ -553,6 +565,210 @@ const DealForm = ({ onSave, onCancel }: DealFormProps = {}) => {
             <div
               className="bg-[#DCFCE7] p-4 rounded-lg space-y-4 relative flex-grow min-h-[500px]"
 >>>>>>> cca032ff897af6074246642e14e9159c0c95f0a0
+=======
+    <form onSubmit={handleSubmit(onSubmit)} className="h-full w-full flex flex-col overflow-hidden">
+      <div className="flex-1 p-6 pb-4 overflow-auto">
+        <div className="flex flex-col gap-6 lg:flex-row">
+          <div className="div1 space-y-3">
+            {/* First row of inputs */}
+            <div className="flex flex-col sm:flex-row gap-4 lg:flex-row lg:gap-5 mb-2">
+              <div className="w-full lg:w-[133px]">
+                <InputField
+                  id="dealId"
+                  label="Deal ID"
+                  required
+                  registration={register("dealId")}
+                  error={errors.dealId}
+                  placeholder="DLID3421"
+                  width="w-full"
+                  height="h-[48px]"
+                  labelClassName={dealLabelClass}
+                  inputClassName={dealInputClass}
+                  wrapperClassName={dealWrapperClass}
+                />
+              </div>
+
+              <div className="w-full lg:w-[240px]">
+                <InputField
+                  id="clientName"
+                  label="Client Name"
+                  required
+                  registration={register("clientName")}
+                  error={errors.clientName}
+                  placeholder="Enter Client Name"
+                  width="w-full"
+                  height="h-[48px]"
+                  labelClassName={dealLabelClass}
+                  inputClassName={dealInputClass}
+                  wrapperClassName={dealWrapperClass}
+                />
+              </div>
+
+              <div className="w-full lg:w-[252px]">
+                <InputField
+                  id="dealName"
+                  label="Deal Name"
+                  required
+                  registration={register("dealName")}
+                  error={errors.dealName}
+                  placeholder="Chat BoQ Project"
+                  width="w-full"
+                  height="h-[48px]"
+                  labelClassName={dealLabelClass}
+                  inputClassName={dealInputClass}
+                  wrapperClassName={dealWrapperClass}
+                />
+              </div>
+            </div>
+
+            {/* Second row */}
+            <div className="flex flex-col sm:flex-row gap-4 lg:flex-row lg:gap-5 pb-1">
+              <div className="w-full lg:w-[133px]">
+                <SelectField
+                  id="payStatus"
+                  label="Pay Status"
+                  required
+                  registration={register("payStatus")}
+                  error={errors.payStatus}
+                  placeholder="Select status"
+                  width="w-full"
+                  height="h-[48px]"
+                  labelClassName={dealLabelClass}
+                  selectClassName={dealInputClass}
+                  wrapperClassName={dealWrapperClass}
+                  options={[
+                    { value: "Full Pay", label: "Full Pay" },
+                    { value: "Partial Pay", label: "Partial Pay" },
+                  ]}
+                />
+              </div>
+
+              <div className="w-full lg:w-[240px]">
+                <InputField
+                  id="sourceType"
+                  label="Source Type"
+                  required
+                  registration={register("sourceType")}
+                  error={errors.sourceType}
+                  placeholder="Client Source"
+                  width="w-full"
+                  height="h-[48px]"
+                  labelClassName={dealLabelClass}
+                  inputClassName={dealInputClass}
+                  wrapperClassName={dealWrapperClass}
+                />
+              </div>
+
+              <div className="w-full lg:w-[252px]">
+                <InputField
+                  id="dealValue"
+                  label="Deal Value"
+                  required
+                  registration={register("dealValue")}
+                  error={errors.dealValue}
+                  placeholder="Nrs. 250,000"
+                  width="w-full"
+                  height="h-[48px]"
+                  labelClassName={dealLabelClass}
+                  inputClassName={dealInputClass}
+                  wrapperClassName={dealWrapperClass}
+                />
+              </div>
+            </div>
+
+            {/* Third row grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-0">
+              <div>
+                <InputField
+                  id="dealDate"
+                  label="Deal Date"
+                  required
+                  registration={register("dealDate")}
+                  error={errors.dealDate}
+                  type="date"
+                  width="w-full lg:w-[186px]"
+                  height="h-[48px]"
+                  labelClassName={dealLabelClass}
+                  inputClassName={dealInputClass}
+                  wrapperClassName={dealWrapperClass}
+                />
+              </div>
+
+              <div className="lg:-ml-5">
+                <InputField
+                  id="dueDate"
+                  label="Due Date"
+                  required
+                  registration={register("dueDate")}
+                  error={errors.dueDate}
+                  type="date"
+                  width="w-full lg:w-[186px]"
+                  height="h-[48px]"
+                  labelClassName={dealLabelClass}
+                  inputClassName={dealInputClass}
+                  wrapperClassName={dealWrapperClass}
+                />
+              </div>
+
+              <div className="col-span-1 sm:col-span-2 lg:col-span-1 lg:row-span-3 w-full">
+                <label className="block text-[13px] font-semibold mb-2 lg:-ml-8">
+                  Recent Activities
+                </label>
+                <div className="relative p-2 pt-5 border w-full lg:w-[252px] h-[150px] sm:h-[150px] lg:h-[255px] rounded-[6px] border-[#C3C3CB] text-[12px] text-gray-600 overflow-auto lg:-ml-8">
+                  <div className="flex border border-[#EDEEEFEF]">
+                    <div className="w-1 bg-[#465FFF] mr-2"></div>
+                    <div>
+                      <p className="text-[12px] text-black">
+                        Changes done due date in DLID3421.
+                      </p>
+                      <p className="text-[12px] text-[#7E7E7E]">Jan 02, 2020</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-span-1 sm:col-span-2 lg:col-span-2 row-span-1 pb-2 pt-2">
+                <SelectField
+                  id="payMethod"
+                  label="Payment Method"
+                  required
+                  registration={register("payMethod")}
+                  error={errors.payMethod}
+                  placeholder="Select payment method"
+                  width="w-full lg:w-[392px]"
+                  height="h-[48px]"
+                  labelClassName={dealLabelClass}
+                  selectClassName={dealInputClass}
+                  wrapperClassName={dealWrapperClass}
+                  options={[
+                    { value: "Mobile Wallet", label: "Mobile Wallet" },
+                    { value: "Cash", label: "Cash" },
+                    { value: "Credit Card", label: "Credit Card" },
+                  ]}
+                />
+              </div>
+
+              <div className="col-span-1 sm:col-span-2 lg:col-span-2 row-span-1">
+                <TextAreaField
+                  id="dealRemarks"
+                  label="Deal Remarks"
+                  registration={register("dealRemarks")}
+                  error={errors.dealRemarks}
+                  width="w-full lg:w-[392px]"
+                  height="h-[70px]"
+                  labelClassName={dealLabelClass}
+                  textareaClassName={dealInputClass}
+                  wrapperClassName={dealWrapperClass}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Right section */}
+          <div className="div2 w-full sm:w-full md:w-3/4 lg:w-64 h-auto min-h-[210px] lg:h-[264px] flex flex-col">
+            <div
+              className="bg-[#DCFCE7] p-4 rounded-lg space-y-4 relative flex-grow"
+>>>>>>> 853ebdd781d8d9e41647cfa4cda935173f172120
               style={{
                 clipPath:
                   "polygon(0 0, calc(100% - 3rem) 0, 100% 3rem, 100% 100%, 0 100%)",
@@ -663,17 +879,21 @@ const DealForm = ({ onSave, onCancel }: DealFormProps = {}) => {
                 />
               </div>
             </div>
-                      </div>
           </div>
-
         </div>
+      </div>
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+      <div className="mt-auto flex justify-end gap-4 bg-gradient-to-r from-[#0C29E3] via-[#929FF4] to-[#C6CDFA] p-4 -mx-6 -mb-6">
+>>>>>>> 853ebdd781d8d9e41647cfa4cda935173f172120
         {mutation.isError && (
-          <p className="text-red-600 text-sm">
+          <p className="text-red-600 text-sm mr-auto">
             Error submitting form. Please try again.
           </p>
         )}
+<<<<<<< HEAD
 
         <div className="flex justify-end gap-4 mt-3 bg-gradient-to-r from-[#0C29E3] via-[#929FF4] to-[#C6CDFA] p-4 -ml-4 sm:-ml-6 md:-ml-8 lg:-ml-10 -mr-4 sm:-mr-6 md:-mr-6 lg:-mr-6">
           <Button
@@ -701,6 +921,24 @@ const DealForm = ({ onSave, onCancel }: DealFormProps = {}) => {
           </Button>
         </div>
       </form>
+=======
+        <Button
+          type="button"
+          onClick={handleClear}
+          className="bg-[#F61818] text-white w-[83px] p-2 h-[40px] rounded-[6px] text-[14px] font-semibold"
+        >
+          Clear
+        </Button>
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="bg-[#009959] text-white w-[119px] p-2 h-[40px] rounded-[6px] text-[14px] font-semibold"
+        >
+          {isSubmitting ? "Submitting..." : "Save Client"}
+        </Button>
+      </div>
+    </form>
+>>>>>>> 853ebdd781d8d9e41647cfa4cda935173f172120
   );
 };
 
