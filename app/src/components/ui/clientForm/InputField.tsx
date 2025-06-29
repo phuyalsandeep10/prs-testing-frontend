@@ -7,11 +7,15 @@ interface InputFieldProps {
   id: string;
   type?: string;
   placeholder?: string;
-  className?: string;
   registration: UseFormRegisterReturn;
   error?: FieldError;
   required?: boolean;
   width?: string;
+  height?: string;
+  borderColor?: string;
+  labelClassName?: string;
+  inputClassName?: string;
+  wrapperClassName?: string;
 }
 
 const InputField: React.FC<InputFieldProps> = ({
@@ -22,17 +26,29 @@ const InputField: React.FC<InputFieldProps> = ({
   registration,
   error,
   required,
-  className = "",
   width = "w-[398px]",
+  height = "h-[48px]",
+  borderColor,
+  labelClassName,
+  inputClassName = "",
+  wrapperClassName,
 }) => {
   return (
-    <InputWrapper id={id} label={label} required={required} error={error}>
+    <InputWrapper
+      id={id}
+      label={label}
+      required={required}
+      error={error}
+      labelClassName={labelClassName}
+      wrapperClassName={wrapperClassName}
+      errorClassName="mt-1 text-sm text-red-600"
+    >
       <input
         id={id}
         type={type}
         placeholder={placeholder}
         {...registration}
-        className={`mt-1 block border text-[12px] shadow-[0_0_4px_#8393FC] rounded-[6px] h-[48px] ${width} p-2 font-normal focus:ring-[#6B7FFF] focus:border-[#6B7FFF] outline-none ${className}`}
+        className={`mt-1 block ${width} ${height} p-2 rounded-[6px] text-[12px] font-normal outline-none focus:ring-[#6B7FFF] focus:border-[#6B7FFF] border ${borderColor} shadow-[0_0_4px_#8393FC] ${inputClassName}`}
       />
     </InputWrapper>
   );
