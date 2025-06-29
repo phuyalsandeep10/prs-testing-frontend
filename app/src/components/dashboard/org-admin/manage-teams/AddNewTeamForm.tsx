@@ -5,68 +5,78 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { toast } from "sonner";
+import { Loader2, X } from "lucide-react";
 
-
-import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+// Sample data - should ideally come from props or API
+const teamLeads = [
+  { id: "1", name: "Sales Leader Name", role: "Sales Lead" },
+  { id: "2", name: "Design Leader Name", role: "Design Lead" },
+  { id: "3", name: "Dev Leader Name", role: "Dev Lead" },
+];
 
-// Mock data
-const allUsers = [
-  { value: "yubesh_koirala", label: "Yubesh Koirala" },
-  { value: "pooja_budhathoki", label: "Pooja Budhathoki" },
-  { value: "joshna_khadka", label: "Joshna Khadka" },
-  { value: "abinash_tiwari", label: "Abinash Tiwari" },
-  { value: "suresh_rai", label: "Suresh Rai" },
+const teamMembers = [
+  { id: "1", name: "Abinash Babu Tiwari", email: "abinash@example.com", avatar: "/avatars/abinash.jpg" },
+  { id: "2", name: "John Doe", email: "john@example.com", avatar: "/avatars/john.jpg" },
+  { id: "3", name: "Jane Smith", email: "jane@example.com", avatar: "/avatars/jane.jpg" },
+];
+
+const projects = [
+  "Cotillo, Leedheed CRM",
+  "E-commerce Platform",
+  "Mobile App Development", 
+  "Website Redesign",
+  "Payment System Integration",
 ];
 
 const formSchema = z.object({
   teamName: z.string().min(1, "Team name is required"),
   teamLead: z.string().min(1, "Team lead is required"),
-  teamMembers: z.string().min(1, "At least one team member must be selected"),
-  assignedProjects: z.string().min(1, "Assigned project is required"),
+  teamMember: z.string().min(1, "Team member is required"),
+  assignedProject: z.string().min(1, "Assigned project is required"),
   contactNumber: z.string().min(10, "Contact number must be at least 10 digits"),
 });
 
 interface AddNewTeamFormProps {
+  onClose: () => void;
   onFormSubmit?: () => void;
+  initialData?: any;
+  isEdit?: boolean;
 }
 
-export function AddNewTeamForm({ onFormSubmit }: AddNewTeamFormProps) {
+export function AddNewTeamForm({ onClose, onFormSubmit, initialData, isEdit = false }: AddNewTeamFormProps) {
   const [isLoading, setIsLoading] = React.useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      teamName: "",
-      teamLead: "",
-      teamMembers: "",
-      assignedProjects: "",
-      contactNumber: "",
+      teamName: initialData?.teamName || "",
+      teamLead: initialData?.teamLead || "",
+      teamMember: initialData?.teamMembers?.[0]?.name || "",
+      assignedProject: initialData?.assignedProjects || "",
+      contactNumber: initialData?.contactNumber || "",
     },
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     try {
-      // Simulate API call with a 1.5-second delay
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      // TODO: Replace with your actual API call
-      console.log("Form submitted successfully:", values);
-      toast.success("Team created successfully!");
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      console.log("Form values:", values);
+      toast.success(`Team ${isEdit ? 'updated' : 'created'} successfully!`);
       form.reset();
       if (onFormSubmit) {
         onFormSubmit();
       }
+      onClose();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred.";
-      toast.error(errorMessage);
-      console.error("Submission error:", error);
+      console.error(`Failed to ${isEdit ? 'update' : 'create'} team:`, error);
+      toast.error(`Failed to ${isEdit ? 'update' : 'create'} team. Please try again.`);
     } finally {
       setIsLoading(false);
     }
@@ -79,101 +89,181 @@ export function AddNewTeamForm({ onFormSubmit }: AddNewTeamFormProps) {
     }
   };
 
-  return (
-    <div className="flex h-full flex-col bg-white">
-      <SheetHeader className="px-6 py-4 text-left">
-        <SheetTitle className="text-xl font-semibold text-[#00544B]">Add New Team</SheetTitle>
-        <SheetDescription className="text-sm font-medium text-gray-500 pt-2 border-b pb-4">
-          Add Information
-        </SheetDescription>
-      </SheetHeader>
+  const selectedMember = teamMembers.find(member => member.name === form.watch("teamMember"));
 
-      {/* Form Body */}
-      <div className="flex-grow overflow-y-auto p-6">
+  return (
+    <div className="h-full flex flex-col bg-white">
+      {/* Exact Figma Header */}
+      <div className="px-6 py-6 border-b border-gray-100">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[20px] font-semibold text-[#22C55E]">
+            {isEdit ? "Edit Team" : "Add New Team"}
+          </h2>
+          <button 
+            onClick={onClose} 
+            className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <p className="text-[14px] text-gray-500 mt-2">
+          {isEdit ? "Edit Information" : "Add Information"}
+        </p>
+      </div>
+
+      {/* Form Body - Exact Figma Layout */}
+      <div className="flex-1 overflow-y-auto px-6 py-6">
         <Form {...form}>
-          <form id="add-team-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Team Name */}
             <FormField
               control={form.control}
               name="teamName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-semibold text-[#2D64E2]">Team Name <span className="text-red-500">*</span></FormLabel>
+                  <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
+                    Team Name<span className="text-red-500 ml-1">*</span>
+                  </FormLabel>
                   <FormControl>
-                    <Input className="border-indigo-300 focus:border-indigo-500 h-12" placeholder="Sales Person Name" {...field} disabled={isLoading} />
+                    <Input 
+                      className="h-[48px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg" 
+                      placeholder="Sales Person Name" 
+                      {...field} 
+                      disabled={isLoading} 
+                    />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-[12px] text-red-500 mt-1" />
                 </FormItem>
               )}
             />
+
+            {/* Team Lead */}
             <FormField
               control={form.control}
               name="teamLead"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-semibold text-[#2D64E2]">Team Lead <span className="text-red-500">*</span></FormLabel>
-                  <FormControl>
-                    <Input className="border-indigo-300 focus:border-indigo-500 h-12" placeholder="Sales Leader Name" {...field} disabled={isLoading} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="teamMembers"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm font-semibold text-[#2D64E2]">Team Members <span className="text-red-500">*</span></FormLabel>
+                  <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
+                    Team Lead<span className="text-red-500 ml-1">*</span>
+                  </FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
                     <FormControl>
-                      <SelectTrigger className="border-indigo-300 focus:border-indigo-500 h-12">
-                        <SelectValue placeholder="Abinash Babu Tiwari" />
+                      <SelectTrigger className="w-full h-[48px] border-gray-300 focus:border-[#4F46E5] text-[16px] rounded-lg">
+                        <SelectValue placeholder="Sales Leader Name" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {allUsers.map(user => <SelectItem key={user.value} value={user.value}>{user.label}</SelectItem>)}
+                      {teamLeads.map((lead) => (
+                        <SelectItem key={lead.id} value={lead.name}>
+                          {lead.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
-                  <FormMessage />
+                  <FormMessage className="text-[12px] text-red-500 mt-1" />
                 </FormItem>
               )}
             />
+
+            {/* Team Member - Exact Figma Avatar Design */}
             <FormField
               control={form.control}
-              name="assignedProjects"
+              name="teamMember"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-semibold text-[#2D64E2]">Assigned Projects <span className="text-red-500">*</span></FormLabel>
-                  <FormControl>
-                    <Input className="border-indigo-300 focus:border-indigo-500 h-12" placeholder="Caillio, Leedheed CRM..." {...field} disabled={isLoading} />
-                  </FormControl>
-                  <FormMessage />
+                  <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
+                    Team Member<span className="text-red-500 ml-1">*</span>
+                  </FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
+                    <FormControl>
+                      <SelectTrigger className="w-full h-[48px] border-gray-300 focus:border-[#4F46E5] text-[16px] rounded-lg">
+                        <SelectValue placeholder="Select team member">
+                          {selectedMember && (
+                            <div className="flex items-center gap-3">
+                              <div className="h-6 w-6 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-[12px] font-medium">
+                                {selectedMember.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                              </div>
+                              <span className="text-[16px]">{selectedMember.name}</span>
+                            </div>
+                          )}
+                        </SelectValue>
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {teamMembers.map((member) => (
+                        <SelectItem key={member.id} value={member.name}>
+                          <div className="flex items-center gap-3">
+                            <div className="h-6 w-6 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-[12px] font-medium">
+                              {member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                            </div>
+                            <span>{member.name}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage className="text-[12px] text-red-500 mt-1" />
                 </FormItem>
               )}
             />
+
+            {/* Assigned Project */}
+            <FormField
+              control={form.control}
+              name="assignedProject"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
+                    Assigned Project<span className="text-red-500 ml-1">*</span>
+                  </FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
+                    <FormControl>
+                      <SelectTrigger className="w-full h-[48px] border-gray-300 focus:border-[#4F46E5] text-[16px] rounded-lg">
+                        <SelectValue placeholder="Cotillo, Leedheed CRM, ..." />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {projects.map((project) => (
+                        <SelectItem key={project} value={project}>
+                          {project}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage className="text-[12px] text-red-500 mt-1" />
+                </FormItem>
+              )}
+            />
+
+            {/* Contact Number */}
             <FormField
               control={form.control}
               name="contactNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-semibold text-[#2D64E2]">Contact Number <span className="text-red-500">*</span></FormLabel>
-                  <div className="flex items-center">
+                  <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
+                    Contact Number<span className="text-red-500 ml-1">*</span>
+                  </FormLabel>
+                  <div className="flex items-center gap-0">
                     <Select defaultValue="+977" disabled={isLoading}>
-                      <FormControl>
-                        <SelectTrigger className="w-[100px] border-indigo-300 focus:border-indigo-500 rounded-r-none h-12">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
+                      <SelectTrigger className="w-[100px] h-[48px] border-gray-300 focus:border-[#4F46E5] rounded-r-none rounded-l-lg">
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="+977">+977</SelectItem>
                         <SelectItem value="+1">+1</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormControl>
-                      <Input placeholder="9807057526" {...field} className="border-indigo-300 focus:border-indigo-500 rounded-l-none h-12" disabled={isLoading} />
+                      <Input 
+                        placeholder="9807057526" 
+                        {...field} 
+                        className="h-[48px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-l-none rounded-r-lg border-l-0" 
+                        disabled={isLoading} 
+                      />
                     </FormControl>
                   </div>
-                  <FormMessage />
+                  <FormMessage className="text-[12px] text-red-500 mt-1" />
                 </FormItem>
               )}
             />
@@ -181,18 +271,31 @@ export function AddNewTeamForm({ onFormSubmit }: AddNewTeamFormProps) {
         </Form>
       </div>
 
-      {/* Footer */}
-      <div className="flex-shrink-0 px-6 py-4 bg-blue-600">
-        <div className="flex justify-end space-x-3">
-          <Button onClick={handleClear} variant="destructive" className="bg-red-500 hover:bg-red-600 text-white rounded-lg px-6 py-3" disabled={isLoading}>Clear</Button>
-          <Button type="submit" form="add-team-form" className="bg-green-500 hover:bg-green-600 text-white rounded-lg px-6 py-3" disabled={isLoading}>
+      {/* Exact Figma Footer Buttons */}
+      <div className="px-6 py-6 border-t border-gray-100 bg-[#4F46E5]">
+        <div className="flex gap-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleClear}
+            disabled={isLoading}
+            className="flex-1 h-[48px] bg-[#EF4444] hover:bg-[#DC2626] text-white border-0 text-[16px] font-medium rounded-lg"
+          >
+            Clear
+          </Button>
+          <Button
+            type="submit"
+            onClick={form.handleSubmit(onSubmit)}
+            disabled={isLoading}
+            className="flex-1 h-[48px] bg-[#22C55E] hover:bg-[#16A34A] text-white border-0 text-[16px] font-medium rounded-lg"
+          >
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
+                {isEdit ? "Updating..." : "Saving..."}
               </>
             ) : (
-              "Save Team"
+              isEdit ? "Update Team" : "Save Team"
             )}
           </Button>
         </div>

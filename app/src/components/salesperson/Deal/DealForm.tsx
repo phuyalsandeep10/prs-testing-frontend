@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
+import { useRouter, usePathname } from "next/navigation";
 import { DealSchema } from "./DealSchema";
 import InputField from "@/components/ui/clientForm/InputField";
 import SelectField from "@/components/ui/clientForm/SelectField";
@@ -18,12 +19,25 @@ const submitDealData = async (data: DealFormData) => {
   return { success: true, message: "Deal data submitted successfully" };
 };
 
+<<<<<<< HEAD
 const dealLabelClass = "block text-[13px] font-semibold text-black";
 const dealInputClass =
   "border border-[#C3C3CB] shadow-none focus:outline-none focus:border-[#C3C3CB] focus:ring-0";
 const dealWrapperClass = "mb-4";
 
 const DealForm = () => {
+=======
+interface DealFormProps {
+  onSave?: (data: DealFormData) => void;
+  onCancel?: () => void;
+}
+
+const DealForm = ({ onSave, onCancel }: DealFormProps = {}) => {
+  const router = useRouter();
+  const pathname = usePathname();
+  const isStandalonePage = pathname?.includes('/add') || pathname?.includes('/edit');
+
+>>>>>>> cca032ff897af6074246642e14e9159c0c95f0a0
   const {
     register,
     handleSubmit,
@@ -38,6 +52,11 @@ const DealForm = () => {
     onSuccess: (response) => {
       console.log(response.message);
       reset();
+      if (onSave) {
+        onSave(mutation.variables as DealFormData);
+      } else if (isStandalonePage) {
+        router.push('/salesperson/deal');
+      }
     },
     onError: (error) => {
       console.error("Submission failed:", error);
@@ -50,9 +69,15 @@ const DealForm = () => {
 
   const handleClear = () => {
     reset();
+    if (onCancel) {
+      onCancel();
+    } else if (isStandalonePage) {
+      router.push('/salesperson/deal');
+    }
   };
 
   return (
+<<<<<<< HEAD
     <div className="max-w-5xl mx-auto pt-6 bg-white rounded-lg shadow-md pl-4 sm:pl-6 md:pl-8 lg:pl-10 pr-4 sm:pr-6 md:pr-6 lg:pr-6">
       <h2 className="text-[20px] font-bold mb-6 text-[#465FFF] flex items-center justify-between pr-6 pb-3">
         ADD DEAL
@@ -272,6 +297,262 @@ const DealForm = () => {
           <div className="div2 w-full sm:w-full md:w-3/4 lg:w-64 h-[400px] min-h-[210px] lg:h-[264px] flex flex-col">
             <div
               className="bg-[#DCFCE7] p-4 rounded-lg space-y-4 relative flex-grow"
+=======
+    <form onSubmit={handleSubmit(onSubmit)} className="h-full w-full flex flex-col overflow-hidden">
+        <div className="flex-1 p-6 pb-4 overflow-auto">
+          <div className="w-full flex flex-col gap-6 lg:flex-row lg:space-x-6">
+            <div className="flex-1 min-w-0">
+              <div className="space-y-3">
+                              <div className="w-full grid grid-cols-1 md:grid-cols-[1fr_2fr_2fr] gap-4 mb-4">
+                  <div className="w-full">
+                    <label
+                      htmlFor="dealId"
+                      className="block text-[13px] font-semibold"
+                    >
+                      Deal ID<span className="text-[#F61818]">*</span>
+                    </label>
+                    <input
+                      id="dealId"
+                      type="text"
+                      {...register("dealId")}
+                      className="mt-1 block w-full p-2 border rounded-[6px] h-[48px] text-[12px] font-normal border-[#C3C3CB] outline-none"
+                      placeholder="DLID3421"
+                    />
+                    {errors.dealId && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.dealId.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="w-full">
+                    <label
+                      htmlFor="clientName"
+                      className="block text-[13px] font-semibold"
+                    >
+                      Client Name<span className="text-[#F61818]">*</span>
+                    </label>
+                    <input
+                      id="clientName"
+                      type="text"
+                      {...register("clientName")}
+                      className="mt-1 block w-full p-2 border rounded-[6px] h-[48px] text-[12px] font-normal border-[#C3C3CB] outline-none"
+                      placeholder="Enter Client Name"
+                    />
+                    {errors.clientName && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.clientName.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="w-full">
+                    <label
+                      htmlFor="dealName"
+                      className="block text-[13px] font-semibold"
+                    >
+                      Deal Name<span className="text-[#F61818]">*</span>
+                    </label>
+                    <input
+                      id="dealName"
+                      type="text"
+                      {...register("dealName")}
+                      className="mt-1 block w-full p-2 border rounded-[6px] h-[48px] text-[12px] font-normal border-[#C3C3CB] outline-none"
+                      placeholder="Chat BoQ Project"
+                    />
+                    {errors.dealName && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.dealName.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                              <div className="w-full grid grid-cols-1 md:grid-cols-[1fr_2fr_2fr] gap-4 pb-2">
+                  <div className="w-full">
+                    <label
+                      htmlFor="payStatus"
+                      className="block text-[13px] font-semibold"
+                    >
+                      Pay Status<span className="text-[#F61818]">*</span>
+                    </label>
+                    <select
+                      id="payStatus"
+                      {...register("payStatus")}
+                      className="mt-1 block w-full p-2 border rounded-[6px] h-[48px] text-[12px] font-normal border-[#C3C3CB] outline-none bg-white"
+                    >
+                      <option value="">Select status</option>
+                      <option value="Full Pay">Full Pay</option>
+                      <option value="Partial Pay">Partial Pay</option>
+                    </select>
+                    {errors.payStatus && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.payStatus.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="w-full">
+                    <label
+                      htmlFor="sourceType"
+                      className="block text-[13px] font-semibold"
+                    >
+                      Source Type<span className="text-[#F61818]">*</span>
+                    </label>
+                    <input
+                      id="sourceType"
+                      type="text"
+                      {...register("sourceType")}
+                      className="mt-1 block w-full p-2 border rounded-[6px] h-[48px] text-[12px] font-normal border-[#C3C3CB] outline-none"
+                      placeholder="Client Source"
+                    />
+                    {errors.sourceType && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.sourceType.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="w-full">
+                    <label
+                      htmlFor="dealValue"
+                      className="block text-[13px] font-semibold"
+                    >
+                      Deal Value<span className="text-[#F61818]">*</span>
+                    </label>
+                    <input
+                      id="dealValue"
+                      type="text"
+                      {...register("dealValue")}
+                      className="mt-1 block w-full p-2 border rounded-[6px] h-[48px] text-[12px] font-normal border-[#C3C3CB] outline-none"
+                      placeholder="Nrs. 250,000"
+                    />
+                    {errors.dealValue && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.dealValue.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                              <div className="w-full grid grid-cols-1 md:grid-cols-[3fr_2fr] gap-4">
+                  <div className="space-y-3">
+                    {/* Deal Date and Due Date Row */}
+                    <div className="w-full grid grid-cols-2 gap-4">
+                      <div className="w-full">
+                        <label
+                          htmlFor="dealDate"
+                          className="block text-[13px] font-semibold"
+                        >
+                          Deal Date<span className="text-[#F61818]">*</span>
+                        </label>
+                        <input
+                          id="dealDate"
+                          type="date"
+                          {...register("dealDate")}
+                          className="mt-1 block w-full p-2 border rounded-[6px] h-[48px] text-[12px] font-normal border-[#C3C3CB] outline-none"
+                        />
+                        {errors.dealDate && (
+                          <p className="mt-1 text-sm text-red-600">
+                            {errors.dealDate.message}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="w-full">
+                        <label
+                          htmlFor="dueDate"
+                          className="block text-[13px] font-semibold"
+                        >
+                          Due Date<span className="text-[#F61818]">*</span>
+                        </label>
+                        <input
+                          id="dueDate"
+                          type="date"
+                          {...register("dueDate")}
+                          className="mt-1 block w-full p-2 border rounded-[6px] h-[48px] text-[12px] font-normal border-[#C3C3CB] outline-none"
+                        />
+                        {errors.dueDate && (
+                          <p className="mt-1 text-sm text-red-600">
+                            {errors.dueDate.message}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Payment Method */}
+                    <div className="w-full">
+                      <label
+                        htmlFor="payMethod"
+                        className="block text-[13px] font-semibold"
+                      >
+                        Payment Method<span className="text-[#F61818]">*</span>
+                      </label>
+                      <select
+                        id="payMethod"
+                        {...register("payMethod")}
+                        className="mt-1 block w-full p-2 border rounded-[6px] h-[48px] text-[12px] font-normal border-[#C3C3CB] outline-none bg-white"
+                      >
+                        <option value="">Select payment method</option>
+                        <option value="Mobile Wallet">Mobile Wallet</option>
+                        <option value="Cash">Cash</option>
+                        <option value="Credit Card">Credit Card</option>
+                      </select>
+                      {errors.payMethod && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {errors.payMethod.message}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Deal Remarks */}
+                    <div className="w-full">
+                      <label
+                        htmlFor="dealRemarks"
+                        className="block text-[13px] font-semibold"
+                      >
+                        Deal Remarks
+                      </label>
+                      <textarea
+                        id="dealRemarks"
+                        {...register("dealRemarks")}
+                        className="mt-1 p-2 block w-full border rounded-[6px] h-[80px] text-[12px] font-normal border-[#C3C3CB] resize-none outline-none"
+                      />
+                      {errors.dealRemarks && (
+                        <p className="mt-1 text-sm text-red-600">
+                          {errors.dealRemarks.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Recent Activities */}
+                  <div className="w-full">
+                    <label className="block text-[13px] font-semibold mb-2">
+                      Recent Activities
+                    </label>
+                    <div className="relative p-2 pt-5 border w-full h-[280px] rounded-[6px] border-[#C3C3CB] text-[12px] text-gray-600 overflow-auto">
+                      <div className="flex border border-[#EDEEEFEF]">
+                        <div className="w-1 bg-[#465FFF] mr-2"></div>
+                        <div>
+                          <p className="text-[12px] text-black">
+                            Changes done due date in DLID3421.
+                          </p>
+                          <p className="text-[12px] text-[#7E7E7E]">
+                            Jan 02, 2020
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+            </div>
+          </div>
+
+          <div className="w-full lg:w-80 flex flex-col mb-4">
+            <div
+              className="bg-[#DCFCE7] p-4 rounded-lg space-y-4 relative flex-grow min-h-[500px]"
+>>>>>>> cca032ff897af6074246642e14e9159c0c95f0a0
               style={{
                 clipPath:
                   "polygon(0 0, calc(100% - 3rem) 0, 100% 3rem, 100% 100%, 0 100%)",
@@ -362,7 +643,7 @@ const DealForm = () => {
                   </label>
                   {errors.uploadReceipt && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.uploadReceipt.message}
+                      {String(errors.uploadReceipt.message || errors.uploadReceipt)}
                     </p>
                   )}
                 </div>
@@ -382,9 +663,12 @@ const DealForm = () => {
                 />
               </div>
             </div>
+                      </div>
           </div>
+
         </div>
 
+<<<<<<< HEAD
         {mutation.isError && (
           <p className="text-red-600 text-sm">
             Error submitting form. Please try again.
@@ -393,6 +677,15 @@ const DealForm = () => {
 
         <div className="flex justify-end gap-4 mt-3 bg-gradient-to-r from-[#0C29E3] via-[#929FF4] to-[#C6CDFA] p-4 -ml-4 sm:-ml-6 md:-ml-8 lg:-ml-10 -mr-4 sm:-mr-6 md:-mr-6 lg:-mr-6">
           <Button
+=======
+        <div className="mt-auto flex justify-end gap-4 bg-gradient-to-r from-[#0C29E3] via-[#929FF4] to-[#C6CDFA] p-4 -mx-6 -mb-6">
+          {mutation.isError && (
+            <p className="text-red-600 text-sm mr-auto">
+              Error submitting form. Please try again.
+            </p>
+          )}
+          <button
+>>>>>>> cca032ff897af6074246642e14e9159c0c95f0a0
             type="button"
             onClick={handleClear}
             className="bg-[#F61818] text-white w-[83px] p-2 h-[40px] rounded-[6px] text-[14px] font-semibold"
@@ -408,7 +701,6 @@ const DealForm = () => {
           </Button>
         </div>
       </form>
-    </div>
   );
 };
 

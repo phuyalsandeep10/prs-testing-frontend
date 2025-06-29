@@ -5,10 +5,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { toast } from "sonner";
-import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -31,10 +30,13 @@ const formSchema = z.object({
 });
 
 interface AddNewUserFormProps {
+  onClose: () => void;
   onFormSubmit?: () => void;
+  initialData?: any;
+  isEdit?: boolean;
 }
 
-export function AddNewUserForm({ onFormSubmit }: AddNewUserFormProps) {
+export function AddNewUserForm({ onClose, onFormSubmit, initialData, isEdit = false }: AddNewUserFormProps) {
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
@@ -42,13 +44,13 @@ export function AddNewUserForm({ onFormSubmit }: AddNewUserFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      fullName: "",
-      email: "",
-      contactNumber: "",
+      fullName: initialData?.fullName || "",
+      email: initialData?.email || "",
+      contactNumber: initialData?.phoneNumber?.replace('+977 - ', '') || "",
       password: "",
       confirmPassword: "",
-      role: "",
-      team: "",
+      role: initialData?.role || "",
+      team: initialData?.assignedTeam || "",
     },
   });
 
@@ -58,14 +60,15 @@ export function AddNewUserForm({ onFormSubmit }: AddNewUserFormProps) {
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 2000));
       console.log("Form values:", values);
-      toast.success("User created successfully!");
+      toast.success(`User ${isEdit ? 'updated' : 'created'} successfully!`);
       form.reset();
       if (onFormSubmit) {
         onFormSubmit();
       }
+      onClose();
     } catch (error) {
-      console.error("Failed to create user:", error);
-      toast.error("Failed to create user. Please try again.");
+      console.error(`Failed to ${isEdit ? 'update' : 'create'} user:`, error);
+      toast.error(`Failed to ${isEdit ? 'update' : 'create'} user. Please try again.`);
     } finally {
       setIsLoading(false);
     }
@@ -79,151 +82,226 @@ export function AddNewUserForm({ onFormSubmit }: AddNewUserFormProps) {
   };
 
   return (
-    <div className="flex h-full flex-col bg-white">
-      <SheetHeader className="px-6 py-4 text-left">
-        <SheetTitle className="text-xl font-semibold text-[#00544B]">Add New User</SheetTitle>
-        <SheetDescription className="text-sm font-medium text-gray-500 pt-2 border-b pb-4">
-          Add Information
-        </SheetDescription>
-      </SheetHeader>
+    <div className="h-full flex flex-col bg-white">
+      {/* Exact Figma Header */}
+      <div className="px-6 py-6 border-b border-gray-100">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[20px] font-semibold text-[#22C55E]">
+            {isEdit ? "Edit User" : "Add New User"}
+          </h2>
+          <button 
+            onClick={onClose} 
+            className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <p className="text-[14px] text-gray-500 mt-2">Add Information</p>
+      </div>
 
-      {/* Form Body */}
-      <div className="flex-grow overflow-y-auto p-6">
+      {/* Form Body - Exact Figma Layout */}
+      <div className="flex-1 overflow-y-auto px-6 py-6">
         <Form {...form}>
-          <form id="add-user-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Full Name */}
             <FormField
               control={form.control}
               name="fullName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-semibold text-[#2D64E2]">Full Name <span className="text-red-500">*</span></FormLabel>
+                  <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
+                    Full name<span className="text-red-500 ml-1">*</span>
+                  </FormLabel>
                   <FormControl>
-                    <Input className="border-indigo-300 focus:border-indigo-500 h-12" placeholder="Abinash Gokte Tiwari" {...field} disabled={isLoading} />
+                    <Input 
+                      className="h-[48px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg" 
+                      placeholder="Abinash Gokte Tiwari" 
+                      {...field} 
+                      disabled={isLoading} 
+                    />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-[12px] text-red-500 mt-1" />
                 </FormItem>
               )}
             />
+
             {/* Email */}
             <FormField
               control={form.control}
               name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-semibold text-[#2D64E2]">Email <span className="text-red-500">*</span></FormLabel>
+                  <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
+                    Email<span className="text-red-500 ml-1">*</span>
+                  </FormLabel>
                   <FormControl>
-                    <Input type="email" className="border-indigo-300 focus:border-indigo-500 h-12" placeholder="Abinashgoktebabutiwari666@gmail.com" {...field} disabled={isLoading} />
+                    <Input 
+                      type="email" 
+                      className="h-[48px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg" 
+                      placeholder="Abinashgoktebabutiwari666@gmail.com" 
+                      {...field} 
+                      disabled={isLoading} 
+                    />
                   </FormControl>
-                  <FormMessage />
+                  <FormMessage className="text-[12px] text-red-500 mt-1" />
                 </FormItem>
               )}
             />
+
             {/* Contact Number */}
             <FormField
               control={form.control}
               name="contactNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-semibold text-[#2D64E2]">Contact Number <span className="text-red-500">*</span></FormLabel>
-                  <div className="flex items-center">
+                  <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
+                    Contact Number<span className="text-red-500 ml-1">*</span>
+                  </FormLabel>
+                  <div className="flex items-center gap-0">
                     <Select defaultValue="+977" disabled={isLoading}>
-                      <FormControl>
-                        <SelectTrigger className="w-[100px] border-indigo-300 focus:border-indigo-500 rounded-r-none h-12">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
+                      <SelectTrigger className="w-[100px] h-[48px] border-gray-300 focus:border-[#4F46E5] rounded-r-none rounded-l-lg">
+                        <SelectValue />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="+977">+977</SelectItem>
                         <SelectItem value="+1">+1</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormControl>
-                      <Input placeholder="9807057526" {...field} className="border-indigo-300 focus:border-indigo-500 rounded-l-none h-12" disabled={isLoading} />
+                      <Input 
+                        placeholder="9807057526" 
+                        {...field} 
+                        className="h-[48px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-l-none rounded-r-lg border-l-0" 
+                        disabled={isLoading} 
+                      />
                     </FormControl>
                   </div>
-                  <FormMessage />
+                  <FormMessage className="text-[12px] text-red-500 mt-1" />
                 </FormItem>
               )}
             />
-            {/* Passwords */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            {/* Password Fields */}
+            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-semibold text-[#2D64E2]">Password <span className="text-red-500">*</span></FormLabel>
+                    <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
+                      Password<span className="text-red-500 ml-1">*</span>
+                    </FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Input type={showPassword ? "text" : "password"} className="border-indigo-300 focus:border-indigo-500 h-12" placeholder="**********" {...field} disabled={isLoading} />
-                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 flex items-center pr-3">
-                          {showPassword ? <EyeOff className="h-4 w-4 text-gray-500" /> : <Eye className="h-4 w-4 text-gray-500" />}
+                        <Input 
+                          type={showPassword ? "text" : "password"} 
+                          className="h-[48px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg pr-12" 
+                          placeholder="************" 
+                          {...field} 
+                          disabled={isLoading} 
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setShowPassword(!showPassword)} 
+                          className="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-500 hover:text-gray-700"
+                        >
+                          {showPassword ? 
+                            <EyeOff className="h-4 w-4" /> : 
+                            <Eye className="h-4 w-4" />
+                          }
                         </button>
                       </div>
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-[12px] text-red-500 mt-1" />
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-semibold text-[#2D64E2]">Confirm Password <span className="text-red-500">*</span></FormLabel>
+                    <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
+                      Confirm Password<span className="text-red-500 ml-1">*</span>
+                    </FormLabel>
                     <FormControl>
                       <div className="relative">
-                        <Input type={showConfirmPassword ? "text" : "password"} className="border-indigo-300 focus:border-indigo-500 h-12" placeholder="**********" {...field} disabled={isLoading} />
-                        <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute inset-y-0 right-0 flex items-center pr-3">
-                          {showConfirmPassword ? <EyeOff className="h-4 w-4 text-gray-500" /> : <Eye className="h-4 w-4 text-gray-500" />}
+                        <Input 
+                          type={showConfirmPassword ? "text" : "password"} 
+                          className="h-[48px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg pr-12" 
+                          placeholder="************" 
+                          {...field} 
+                          disabled={isLoading} 
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)} 
+                          className="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-500 hover:text-gray-700"
+                        >
+                          {showConfirmPassword ? 
+                            <EyeOff className="h-4 w-4" /> : 
+                            <Eye className="h-4 w-4" />
+                          }
                         </button>
                       </div>
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-[12px] text-red-500 mt-1" />
                   </FormItem>
                 )}
               />
             </div>
+
             {/* Role and Team */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="role"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-semibold text-[#2D64E2]">Role <span className="text-red-500">*</span></FormLabel>
+                    <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
+                      Roles<span className="text-red-500 ml-1">*</span>
+                    </FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
                       <FormControl>
-                        <SelectTrigger className="border-indigo-300 focus:border-indigo-500 h-12">
+                        <SelectTrigger className="w-full h-[48px] border-gray-300 focus:border-[#4F46E5] text-[16px] rounded-lg">
                           <SelectValue placeholder="Verifier" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {roles.map(role => <SelectItem key={role} value={role}>{role}</SelectItem>)}
+                        {roles.map((role) => (
+                          <SelectItem key={role} value={role}>
+                            {role}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
-                    <FormMessage />
+                    <FormMessage className="text-[12px] text-red-500 mt-1" />
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
                 name="team"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-semibold text-[#2D64E2]">Team <span className="text-red-500">*</span></FormLabel>
+                    <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">Team</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
                       <FormControl>
-                        <SelectTrigger className="border-indigo-300 focus:border-indigo-500 h-12">
+                        <SelectTrigger className="w-full h-[48px] border-gray-300 focus:border-[#4F46E5] text-[16px] rounded-lg">
                           <SelectValue placeholder="Design wizards" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {teams.map(team => <SelectItem key={team} value={team}>{team}</SelectItem>)}
+                        {teams.map((team) => (
+                          <SelectItem key={team} value={team}>
+                            {team}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
-                    <FormMessage />
+                    <FormMessage className="text-[12px] text-red-500 mt-1" />
                   </FormItem>
                 )}
               />
@@ -232,20 +310,33 @@ export function AddNewUserForm({ onFormSubmit }: AddNewUserFormProps) {
         </Form>
       </div>
 
-      {/* Footer */}
-      <div className="flex-shrink-0 px-6 py-4 bg-blue-600">
-        <div className="flex justify-end space-x-3">
-            <Button onClick={handleClear} variant="destructive" className="bg-red-500 hover:bg-red-600 text-white rounded-lg px-6 py-3" disabled={isLoading}>Clear</Button>
-            <Button type="submit" form="add-user-form" className="bg-green-500 hover:bg-green-600 text-white rounded-lg px-6 py-3" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save User"
-              )}
-            </Button>
+      {/* Exact Figma Footer Buttons */}
+      <div className="px-6 py-6 border-t border-gray-100 bg-[#4F46E5]">
+        <div className="flex gap-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleClear}
+            disabled={isLoading}
+            className="flex-1 h-[48px] bg-[#EF4444] hover:bg-[#DC2626] text-white border-0 text-[16px] font-medium rounded-lg"
+          >
+            Clear
+          </Button>
+          <Button
+            type="submit"
+            onClick={form.handleSubmit(onSubmit)}
+            disabled={isLoading}
+            className="flex-1 h-[48px] bg-[#22C55E] hover:bg-[#16A34A] text-white border-0 text-[16px] font-medium rounded-lg"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {isEdit ? "Updating..." : "Saving..."}
+              </>
+            ) : (
+              isEdit ? "Update User" : "Save User"
+            )}
+          </Button>
         </div>
       </div>
     </div>

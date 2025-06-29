@@ -1,28 +1,14 @@
 "use client";
 
 import * as React from "react";
-import {
-  ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  getPaginationRowModel,
-  useReactTable,
-  SortingState,
-  getSortedRowModel,
-  RowSelectionState,
-
-} from "@tanstack/react-table";
+import { ColumnDef, Row } from "@tanstack/react-table";
 import { Eye, Trash2 } from "lucide-react";
-
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Image from "next/image";
 import Link from "next/link";
-
+import { UnifiedTable } from "@/components/core";
 import { getClients, type Client } from "@/data/clients";
-
-const clientData = getClients();
 
 const formatDate = (dateString: string) => {
   try {
@@ -34,17 +20,17 @@ const formatDate = (dateString: string) => {
   }
 };
 
-const columns: ColumnDef<Client>[] = [
+const columns = [
   {
     id: "select",
-    header: ({ table }) => (
+    header: ({ table }: any) => (
       <Checkbox
-        checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
+        checked={table.getIsAllPageRowsSelected() ? true : table.getIsSomePageRowsSelected() ? "indeterminate" : false}
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
       />
     ),
-    cell: ({ row }) => (
+    cell: ({ row }: any) => (
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
@@ -57,12 +43,12 @@ const columns: ColumnDef<Client>[] = [
   {
     accessorKey: "name",
     header: "Client Name",
-    cell: ({ row }) => {
+    cell: ({ row }: any) => {
       const client = row.original;
       return (
         <div className="flex items-center gap-3">
           <Image
-            src={client.avatarUrl}
+            src={client.avatarUrl || '/avatars/default.png'}
             alt={client.name}
             width={28}
             height={28}
@@ -76,17 +62,17 @@ const columns: ColumnDef<Client>[] = [
   {
     accessorKey: "activeDate",
     header: "Active Date",
-    cell: ({ row }) => formatDate(row.getValue("activeDate")),
+    cell: ({ row }: any) => formatDate(row.getValue("activeDate")),
   },
   {
     accessorKey: "status",
     header: "Status",
-    cell: ({ row }) => {
+    cell: ({ row }: any) => {
       const status = row.getValue("status") as Client["status"];
-      const statusColor = {
-        Clear: "text-green-600",
-        Pending: "text-orange-500",
-        "Bad Depth": "text-red-600",
+      const statusColor: Record<Client["status"], string> = {
+        "clear": "text-green-600",
+        "pending": "text-orange-500",
+        "bad-depth": "text-red-600",
       };
       return <span className={statusColor[status]}>{status}</span>;
     },
@@ -94,12 +80,19 @@ const columns: ColumnDef<Client>[] = [
   {
     accessorKey: "salesLeadsAvatars",
     header: "Sales Leads",
-    cell: ({ row }) => {
+    cell: ({ row }: any) => {
       const leads = row.getValue("salesLeadsAvatars") as string[];
       return (
         <div className="flex -space-x-2 overflow-hidden">
           {leads.map((lead, index) => (
-            <Image key={index} className="inline-block h-7 w-7 rounded-full ring-2 ring-white" src={lead} alt={`lead ${index + 1}`} width={28} height={28} />
+            <Image 
+              key={index} 
+              className="inline-block h-7 w-7 rounded-full ring-2 ring-white" 
+              src={lead} 
+              alt={`lead ${index + 1}`} 
+              width={28} 
+              height={28} 
+            />
           ))}
         </div>
       );
@@ -108,12 +101,12 @@ const columns: ColumnDef<Client>[] = [
   {
     accessorKey: "satisfaction",
     header: "Satisfaction",
-    cell: ({ row }) => {
+    cell: ({ row }: any) => {
       const satisfaction = row.getValue("satisfaction") as Client["satisfaction"];
-      const satisfactionColor = {
-        Positive: "text-green-600",
-        Neutral: "text-orange-500",
-        Negative: "text-red-600",
+      const satisfactionColor: Record<Client["satisfaction"], string> = {
+        "positive": "text-green-600",
+        "neutral": "text-orange-500",
+        "negative": "text-red-600",
       };
       return <span className={satisfactionColor[satisfaction]}>{satisfaction}</span>;
     },
@@ -121,110 +114,89 @@ const columns: ColumnDef<Client>[] = [
   {
     accessorKey: "remarks",
     header: "Remarks",
-    cell: ({ row }) => <div className="truncate w-40">{row.getValue("remarks")}</div>,
+    cell: ({ row }: any) => <div className="truncate w-40">{row.getValue("remarks")}</div>,
   },
   {
     id: "actions",
     header: "Actions",
-    cell: ({ row }) => {
+    cell: ({ row }: any) => {
       const client = row.original;
       return (
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center justify-center gap-2">
           <Link href={`/org-admin/manage-clients/${client.id}`}>
-            <Button variant="ghost" size="icon" className="text-blue-500 hover:text-blue-700 rounded-full w-8 h-8 bg-blue-100">
+            <button className="w-8 h-8 rounded-full bg-[#4F46E5] text-white flex items-center justify-center hover:bg-[#4338CA] transition-colors">
               <Eye className="h-4 w-4" />
-            </Button>
+            </button>
           </Link>
-          <Button variant="ghost" size="icon" className="text-red-500 hover:text-red-700 rounded-full w-8 h-8 bg-red-100">
+          <button className="w-8 h-8 rounded-full bg-[#EF4444] text-white flex items-center justify-center hover:bg-[#DC2626] transition-colors">
             <Trash2 className="h-4 w-4" />
-          </Button>
+          </button>
         </div>
       );
     },
   },
-];
+] as any;
 
-export function ClientTable() {
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
-  const data = React.useMemo(() => clientData, []);
+interface ClientTableProps {
+  clients?: Client[];
+  loading?: boolean;
+  error?: string | null;
+  onRefresh?: () => void;
+  onExport?: (data: Client[]) => void;
+  onRowClick?: (row: Row<Client>) => void;
+}
 
-  const table = useReactTable({
-    data,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
-    onRowSelectionChange: setRowSelection,
-    state: {
-      sorting,
-      rowSelection,
-    },
-  });
+export function ClientTable({ 
+  clients,
+  loading = false, 
+  error = null, 
+  onRefresh, 
+  onExport,
+  onRowClick 
+}: ClientTableProps) {
+  const data = React.useMemo(() => clients || getClients(), [clients]);
 
   return (
-    <div className="w-full">
-      <div className="rounded-lg border">
-        <Table>
-          <TableHeader className="bg-purple-50 hover:bg-purple-50">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="border-b-0">
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className="font-semibold text-gray-600 py-4">
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-3">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No results.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          Previous
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          Next
-        </Button>
-      </div>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <UnifiedTable
+        data={data}
+        columns={columns}
+        config={{
+          features: {
+            pagination: true,
+            sorting: true,
+            filtering: false,
+            selection: true,
+            columnVisibility: false,
+            globalSearch: false,
+            export: !!onExport,
+            refresh: !!onRefresh,
+          },
+          styling: {
+            variant: 'figma',
+            size: 'md',
+            striped: false,
+            bordered: true,
+            hover: true,
+          },
+          pagination: {
+            pageSize: 10,
+            showSizeSelector: true,
+            showInfo: true,
+          },
+          messages: {
+            loading: 'Loading clients...',
+            empty: 'No clients found',
+            error: 'Failed to load clients',
+            searchPlaceholder: 'Search clients...',
+          },
+        }}
+        loading={loading}
+        error={error}
+        onRowClick={onRowClick}
+        onExport={onExport}
+        onRefresh={onRefresh}
+      />
     </div>
   );
 }

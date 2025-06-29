@@ -62,7 +62,7 @@ const Overview = () => {
 
   return (
     <div className="flex flex-wrap gap-6">
-      {data.map((item, index) => (
+      {data.map((item: StatItem, index: number) => (
         <Card
           key={index}
           title={item.title}

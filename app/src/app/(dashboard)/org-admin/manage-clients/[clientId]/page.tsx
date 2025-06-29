@@ -3,13 +3,14 @@ import { ClientDetailClient } from "../../../../../components/dashboard/org-admi
 import { notFound } from "next/navigation";
 
 interface ClientDetailPageProps {
-  params: {
+  params: Promise<{
     clientId: string;
-  };
+  }>;
 }
 
-export default function ClientDetailPage({ params }: ClientDetailPageProps) {
-  const client = getClientById(params.clientId);
+export default async function ClientDetailPage({ params }: ClientDetailPageProps) {
+  const { clientId } = await params;
+  const client = getClientById(clientId);
 
   if (!client) {
     notFound();

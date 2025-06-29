@@ -2,16 +2,17 @@
 
 import * as React from "react";
 import { UserTable } from "@/components/dashboard/org-admin/manage-users/UserTable";
-import { columns as userColumns, User } from "@/components/dashboard/org-admin/manage-users/columns";
+import { UserTableData } from "@/components/dashboard/org-admin/manage-users/columns";
+import { User } from "@/types";
 import { TeamTable } from "@/components/dashboard/org-admin/manage-teams/TeamTable";
 import { columns as teamColumns, Team } from "@/components/dashboard/org-admin/manage-teams/columns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Search, Users, Building } from "lucide-react";
 import { AddNewUserForm } from "./AddNewUserForm";
 import { AddNewTeamForm } from "../manage-teams/AddNewTeamForm";
+import SlideModal from "@/components/ui/SlideModal";
 
 interface ManageUsersClientProps {
   users: User[];
@@ -20,7 +21,57 @@ interface ManageUsersClientProps {
 
 export function ManageUsersClient({ users, teams }: ManageUsersClientProps) {
   const [activeTab, setActiveTab] = React.useState("users");
-  const [isSheetOpen, setIsSheetOpen] = React.useState(false);
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [filteredUsers, setFilteredUsers] = React.useState<User[]>(users);
+  const [filteredTeams, setFilteredTeams] = React.useState<Team[]>(teams);
+
+  // Global search function for users
+  const searchAllUserColumns = (user: User, query: string): boolean => {
+    const searchableFields = [
+      user.name,
+      user.email,
+      user.phoneNumber,
+      user.assignedTeam,
+      user.status
+    ];
+
+    return searchableFields.some(field => 
+      field.toLowerCase().includes(query.toLowerCase())
+    );
+  };
+
+  // Global search function for teams
+  const searchAllTeamColumns = (team: Team, query: string): boolean => {
+    const searchableFields = [
+      team.teamName,
+      team.teamLead,
+      team.contactNumber,
+      team.assignedProjects,
+      team.teamMembers.map(member => member.id).join(' ')
+    ];
+
+    return searchableFields.some(field => 
+      field.toLowerCase().includes(query.toLowerCase())
+    );
+  };
+
+  // Filter data based on search query
+  React.useEffect(() => {
+    if (searchQuery.trim()) {
+      const filteredUserData = users.filter(user => 
+        searchAllUserColumns(user, searchQuery)
+      );
+      const filteredTeamData = teams.filter(team => 
+        searchAllTeamColumns(team, searchQuery)
+      );
+      setFilteredUsers(filteredUserData);
+      setFilteredTeams(filteredTeamData);
+    } else {
+      setFilteredUsers(users);
+      setFilteredTeams(teams);
+    }
+  }, [searchQuery, users, teams]);
 
   const managementTitle = activeTab === 'users' ? 'User Management' : 'Team Management';
   const createButtonText = activeTab === 'users' ? 'Create User' : 'Create Team';
@@ -35,18 +86,19 @@ export function ManageUsersClient({ users, teams }: ManageUsersClientProps) {
         <div className="flex items-center space-x-2 mt-4 sm:mt-0">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input placeholder="Search" className="pl-9 w-40 md:w-56 bg-gray-50 border-gray-200 rounded-md" />
+            <Input 
+              placeholder="Search..." 
+              className="pl-9 w-40 md:w-56 bg-gray-50 border-gray-200 rounded-md" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
-          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-            <SheetTrigger asChild>
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white">
-                {createButtonText}
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="w-full sm:max-w-md p-0">
-              {activeTab === "users" ? <AddNewUserForm /> : <AddNewTeamForm />}
-            </SheetContent>
-          </Sheet>
+          <Button 
+            onClick={() => setIsModalOpen(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            {createButtonText}
+          </Button>
         </div>
       </header>
 
@@ -71,16 +123,43 @@ export function ManageUsersClient({ users, teams }: ManageUsersClientProps) {
         <div className="mt-6">
           <TabsContent value="users">
             <div className="bg-white border rounded-lg shadow-sm">
-              <UserTable columns={userColumns} data={users} />
+              <UserTable 
+                data={filteredUsers.map(user => ({
+                  ...user,
+                  fullName: user.name
+                }))} 
+              />
             </div>
           </TabsContent>
           <TabsContent value="teams">
             <div className="bg-white border rounded-lg shadow-sm">
-              <TeamTable columns={teamColumns} data={teams} />
+              <TeamTable columns={teamColumns} data={filteredTeams} />
             </div>
           </TabsContent>
         </div>
       </Tabs>
+
+      {/* Add User/Team Modal */}
+      {isModalOpen && (
+        <SlideModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          title={activeTab === "users" ? "Add New User" : "Add New Team"}
+          width="md"
+        >
+          {activeTab === "users" ? (
+            <AddNewUserForm 
+              onFormSubmit={() => setIsModalOpen(false)} 
+              onClose={() => setIsModalOpen(false)} 
+            />
+          ) : (
+            <AddNewTeamForm 
+              onFormSubmit={() => setIsModalOpen(false)} 
+              onClose={() => setIsModalOpen(false)} 
+            />
+          )}
+        </SlideModal>
+      )}
     </div>
   );
 }
