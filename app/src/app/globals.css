@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -115,8 +116,742 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
+=======
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+ 
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+ 
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+ 
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+ 
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+ 
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+ 
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+ 
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --success: 142 76% 36%;
+    --success-foreground: 210 40% 98%;
+
+    --warning: 48 96% 50%;
+    --warning-foreground: 210 40% 98%;
+ 
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+ 
+    --radius: 0.5rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+ 
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+ 
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+ 
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+ 
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+ 
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+ 
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+ 
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+ 
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+ 
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+
+  * {
+    /* Improve rendering performance */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    
+    /* Optimize animations and transitions */
+    backface-visibility: hidden;
+    -webkit-transform-style: preserve-3d;
+    transform-style: preserve-3d;
+  }
+
+  html {
+    /* Prevent layout shifts */
+    scroll-behavior: smooth;
+    /* Optimize rendering */
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    /* Prevent unwanted scrolling behaviors */
+    overscroll-behavior: none;
+    /* Optimize repaints */
+    will-change: auto;
+  }
+
+  /* Optimize table rendering */
+  table {
+    /* Prevent layout recalculations */
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  /* Optimize image rendering */
+  img {
+    /* Prevent layout shifts */
+    height: auto;
+    /* Optimize rendering */
+    image-rendering: -webkit-optimize-contrast;
+  }
+}
+ 
+@layer base {
+  * {
+    @apply border-border;
+>>>>>>> 853ebdd781d8d9e41647cfa4cda935173f172120
   }
   body {
     @apply bg-background text-foreground;
   }
 }
+<<<<<<< HEAD
+=======
+
+/* Custom Animations for Notification-Style Modals */
+@keyframes slide-in-right {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-out-right {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes scale-in {
+  0% {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out forwards;
+}
+
+.animate-slide-out-right {
+  animation: slide-out-right 0.2s ease-in forwards;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.2s ease-out forwards;
+}
+
+/* Custom Table Styling for Figma Pixel-Perfect Design */
+.figma-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.figma-table th {
+  background: #F1F0FF;
+  font-weight: 600;
+  font-size: 14px;
+  color: #1F2937;
+  padding: 16px 24px;
+  text-align: left;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.figma-table td {
+  padding: 20px 24px;
+  font-size: 16px;
+  border-bottom: 1px solid #F3F4F6;
+  vertical-align: middle;
+}
+
+.figma-table tbody tr:hover {
+  background-color: #F9FAFB;
+}
+
+/* Exact Column Widths from Figma */
+.user-table-col-name { width: 18%; }
+.user-table-col-email { width: 26%; }
+.user-table-col-phone { width: 18%; }
+.user-table-col-team { width: 16%; }
+.user-table-col-status { width: 12%; }
+.user-table-col-actions { width: 10%; }
+
+.team-table-col-name { width: 16%; }
+.team-table-col-lead { width: 18%; }
+.team-table-col-contact { width: 18%; }
+.team-table-col-members { width: 20%; }
+.team-table-col-projects { width: 18%; }
+.team-table-col-actions { width: 10%; }
+
+/* Smooth Sidebar Transitions - Prevent Blinking */
+.sidebar-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, width, opacity;
+}
+
+.content-transition {
+  transition: padding-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: padding-left;
+}
+
+/* Hardware Acceleration for Smooth Performance */
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Prevent Text Selection During Transitions */
+.no-select-during-transition {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Perfect Notification Positioning */
+.notification-modal {
+  position: fixed !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+/* Smooth Button Hover Effects */
+.smooth-button {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.smooth-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Improved Focus States */
+.focus-ring:focus {
+  outline: none;
+  ring: 2px;
+  ring-color: rgb(59 130 246);
+  ring-offset: 2px;
+}
+
+@layer components {
+  /* Smooth transition base class */
+  .smooth-transition {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, opacity;
+  }
+
+  /* Optimized button transitions */
+  .btn-optimized {
+    @apply smooth-transition;
+    transform: translateZ(0); /* Force hardware acceleration */
+  }
+
+  .btn-optimized:hover {
+    transform: translateZ(0) scale(1.02);
+  }
+
+  .btn-optimized:active {
+    transform: translateZ(0) scale(0.98);
+  }
+
+  /* Optimized modal animations */
+  .modal-enter {
+    opacity: 0;
+    transform: translateZ(0) scale(0.95);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .modal-enter-active {
+    opacity: 1;
+    transform: translateZ(0) scale(1);
+  }
+
+  .modal-exit {
+    opacity: 1;
+    transform: translateZ(0) scale(1);
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.6, 1);
+  }
+
+  .modal-exit-active {
+    opacity: 0;
+    transform: translateZ(0) scale(0.95);
+  }
+
+  /* Optimized table row animations */
+  .table-row-optimized {
+    @apply smooth-transition;
+    transform: translateZ(0);
+  }
+
+  .table-row-optimized:hover {
+    background-color: rgba(249, 250, 251, 0.8);
+    transform: translateZ(0);
+  }
+
+  /* Prevent content shift during loading */
+  .loading-container {
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Optimized search input */
+  .search-input-optimized {
+    @apply smooth-transition;
+    will-change: border-color, box-shadow;
+  }
+
+  .search-input-optimized:focus {
+    outline: none;
+    border-color: #4F46E5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  }
+
+  /* Smooth dropdown animations */
+  .dropdown-optimized {
+    transform: translateZ(0);
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dropdown-enter {
+    opacity: 0;
+    transform: translateZ(0) translateY(-4px);
+  }
+
+  .dropdown-enter-active {
+    opacity: 1;
+    transform: translateZ(0) translateY(0);
+  }
+
+  /* Optimized tooltip animations */
+  .tooltip-optimized {
+    transform: translateZ(0);
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+  }
+
+  /* Prevent reflow during tab switches */
+  .tab-content-optimized {
+    min-height: 400px;
+    will-change: contents;
+  }
+
+  /* Smooth status badge transitions */
+  .status-badge-optimized {
+    @apply smooth-transition;
+    transform: translateZ(0);
+  }
+
+  /* Optimized sidebar transitions */
+  .sidebar-optimized {
+    transform: translateZ(0);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform;
+  }
+
+  .sidebar-optimized.closed {
+    transform: translateZ(0) translateX(-100%);
+  }
+
+  .sidebar-optimized.open {
+    transform: translateZ(0) translateX(0);
+  }
+}
+
+@layer utilities {
+  /* Hardware acceleration utilities */
+  .gpu-accelerated {
+    transform: translateZ(0);
+    will-change: transform;
+  }
+
+  /* Prevent layout shift utilities */
+  .prevent-shift {
+    contain: layout style paint;
+  }
+
+  /* Smooth scroll utilities */
+  .smooth-scroll {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Optimized flex utilities */
+  .flex-optimized {
+    display: flex;
+    will-change: auto;
+  }
+
+  /* Prevent text selection flicker */
+  .no-select-flicker {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Modal and Dialog Positioning Fixes */
+.modal-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 50 !important;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  position: relative !important;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  z-index: 51 !important;
+}
+
+/* Form Dialog Positioning */
+.dialog-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 50 !important;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dialog-content {
+  position: relative !important;
+  background-color: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  z-index: 51 !important;
+}
+
+/* Responsive modal positioning that accounts for sidebar */
+@media (min-width: 1024px) {
+  .modal-responsive {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 50 !important;
+  }
+  
+  .dialog-responsive {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    z-index: 50 !important;
+  }
+}
+
+/* Sheet/Slide Modal Positioning */
+.sheet-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 50 !important;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.sheet-content {
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100%;
+  max-width: 32rem;
+  background-color: white;
+  box-shadow: -10px 0 15px -3px rgba(0, 0, 0, 0.1);
+  z-index: 51 !important;
+  transform: translateX(0);
+  transition: transform 0.3s ease-in-out;
+}
+
+.sheet-content[data-state="closed"] {
+  transform: translateX(100%);
+}
+
+/* Popover Positioning */
+.popover-content {
+  z-index: 50 !important;
+  position: absolute !important;
+}
+
+/* Dropdown Menu Positioning */
+.dropdown-content {
+  z-index: 50 !important;
+  position: absolute !important;
+}
+
+/* Command Palette Positioning */
+.command-dialog {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 50 !important;
+  width: 90vw;
+  max-width: 28rem;
+  background-color: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* Ensure forms don't get clipped */
+.form-container {
+  position: relative;
+  z-index: 10;
+}
+
+/* Full screen modal positioning */
+.full-screen-modal {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: 50 !important;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.full-screen-modal-content {
+  position: relative !important;
+  background-color: white;
+  border-radius: 0.5rem;
+  width: 90vw;
+  height: 90vh;
+  max-width: 64rem;
+  overflow-y: auto;
+  z-index: 51 !important;
+}
+
+/* Toast positioning */
+.toast-viewport {
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  z-index: 100 !important;
+  max-width: 420px;
+  margin: 1rem;
+}
+
+/* Alert dialog positioning */
+.alert-dialog-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 50 !important;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.alert-dialog-content {
+  position: relative !important;
+  background-color: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  max-width: 90vw;
+  z-index: 51 !important;
+}
+
+/* Z-Index Hierarchy - Ensures proper layering */
+.z-base { z-index: 0; }
+.z-sidebar { z-index: 40; }
+.z-header { z-index: 45; }
+.z-dropdown { z-index: 50; }
+.z-overlay { z-index: 9999; }
+.z-modal { z-index: 10000; }
+.z-toast { z-index: 10001; }
+
+/* Global Modal and Dialog Overrides */
+[data-radix-portal] {
+  z-index: 9999 !important;
+}
+
+.radix-dialog-overlay,
+.radix-alert-dialog-overlay {
+  z-index: 9999 !important;
+}
+
+.radix-dialog-content,
+.radix-alert-dialog-content {
+  z-index: 10000 !important;
+}
+
+/* Sonner Toast Override */
+[data-sonner-toaster] {
+  z-index: 10001 !important;
+}
+
+/* Sheet/SlideModal Override */
+[data-sheet-overlay] {
+  z-index: 9999 !important;
+}
+
+[data-sheet-content] {
+  z-index: 10000 !important;
+}
+
+/* Command Dialog Override */
+[cmdk-root] {
+  z-index: 10000 !important;
+}
+
+/* React Hook Form Modal Override */
+.react-hook-form-modal {
+  z-index: 10000 !important;
+}
+
+/* Any fixed positioned form */
+.fixed-form, .modal-form, .dialog-form {
+  z-index: 10000 !important;
+}
+
+/* Ensure all modals appear above everything */
+.modal-overlay-supreme {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 9999 !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+.modal-content-supreme {
+  position: fixed !important;
+  z-index: 10000 !important;
+  pointer-events: auto !important;
+}
+
+/* Force full viewport coverage */
+.modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+  z-index: 9999 !important;
+}
+
+/* Sidebar height fix */
+.sidebar-container {
+  height: 100vh !important;
+  overflow: hidden !important;
+}
+
+.sidebar-nav-area {
+  flex: 1 1 0% !important;
+  overflow-y: auto !important;
+  min-height: 0 !important;
+}
+
+.sidebar-bottom-nav {
+  flex-shrink: 0 !important;
+  margin-top: auto !important;
+}
+
+/* Layout responsiveness */
+.layout-responsive {
+  transition: margin-left 0.3s ease-in-out !important;
+}
+
+@media (min-width: 1024px) {
+  .layout-sidebar-collapsed {
+    margin-left: 5rem !important; /* 80px */
+  }
+  
+  .layout-sidebar-expanded {
+    margin-left: 20rem !important; /* 320px */
+  }
+}
+
+/* Modal positioning overrides */
+[role="dialog"] {
+  z-index: 10000 !important;
+}
+
+[data-state="open"] {
+  z-index: 10000 !important;
+}
+
+/* Additional Modal and Dialog Positioning Fixes */
+
+>>>>>>> 853ebdd781d8d9e41647cfa4cda935173f172120
