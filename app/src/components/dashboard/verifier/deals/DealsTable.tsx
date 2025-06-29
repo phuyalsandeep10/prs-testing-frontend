@@ -2,22 +2,18 @@
 
 import React, { useMemo, useState, useCallback } from "react";
 import { ColumnDef } from "@tanstack/react-table";
-import { Edit, Plus, ChevronDown, ChevronUp } from "lucide-react";
-import { format } from "date-fns";
 import { UnifiedTable } from "@/components/core";
 import ExpandButton from "@/components/dashboard/salesperson/deals/ExpandButton";
 
-// Tooltip component for payment amounts
+// Payment tooltip for hovering on payment badges
 interface PaymentTooltipProps {
   children: React.ReactNode;
   amount: string;
 }
 
-// Memoized Tooltip component for payment amounts
 const PaymentTooltip = React.memo<PaymentTooltipProps>(
   ({ children, amount }) => {
     const [isVisible, setIsVisible] = useState(false);
-
     const showTooltip = useCallback(() => setIsVisible(true), []);
     const hideTooltip = useCallback(() => setIsVisible(false), []);
 
@@ -33,7 +29,6 @@ const PaymentTooltip = React.memo<PaymentTooltipProps>(
         {isVisible && (
           <div className="absolute z-50 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg shadow-lg bottom-full left-1/2 transform -translate-x-1/2 mb-2 whitespace-nowrap">
             Amount: {amount}
-            {/* Tooltip arrow */}
             <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
           </div>
         )}
@@ -44,8 +39,17 @@ const PaymentTooltip = React.memo<PaymentTooltipProps>(
 
 PaymentTooltip.displayName = "PaymentTooltip";
 
-// Parent table data structure
-interface MainUsers {
+// Data interfaces
+export interface NestedDealData {
+  "Payment Date": string;
+  "Payment Value": number;
+  "Payment Method": string;
+  Payment: number;
+  Status: string;
+  Remarks: string;
+}
+
+export interface MainUsers {
   id: string;
   "Deal Name": string;
   "Client Name": string;
@@ -53,30 +57,15 @@ interface MainUsers {
   Remarks: string;
   "Deal Value": string;
   "Deal Date": string;
-  "Pay Method": string;
   Payment: string;
+  "Pay Method": string;
   "Due Date": string;
   Version: string;
   "Sales Person": string;
-  isRejected?: boolean; // Add this for red row highlighting
   nestedData?: NestedDealData[];
+  isRejected?: boolean;
 }
 
-interface NestedDealData {
-  id: string;
-  Payment: number;
-  "Payment Date": string;
-  "Payment Created": string;
-  "Payment Value": number;
-  "Payment Version": string;
-  "Payment Status": string;
-  "Receipt Link": string;
-  "Verified By": string;
-  Remarks: string;
-  "Verification Remarks": string;
-}
-
-// Updated dummy data with payment status indicators and rejection status
 const Mainusers: MainUsers[] = [
   {
     id: "1",
@@ -315,7 +304,6 @@ const NestedDealColumns = [
       </div>
     ),
   },
-
   {
     accessorKey: "Payment Status",
     header: "Payment Status",
@@ -353,11 +341,7 @@ const NestedDealColumns = [
         {row.getValue("Verified By")}
       </div>
     ),
-    cell: ({ row }) => (
-      <div >
-        {row.getValue("Verified By")}
-      </div>
-    ),
+    cell: ({ row }) => <div>{row.getValue("Verified By")}</div>,
   },
   {
     accessorKey: "Remarks",
@@ -406,7 +390,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
     );
   }, [searchTerm]);
 
-  // Parent table column configuration
+  // Parent table columns without Edit and Delete buttons, but with Expand button
   const columns = useMemo(
     () =>
       [
@@ -481,7 +465,6 @@ const DealsTable: React.FC<DealsTableProps> = ({
             const deal = row.original;
             if (!payment) return null;
 
-            // Parse payment string like "First:verified Second:rejected"
             const payments = payment.split(" ");
 
             return (
@@ -489,13 +472,11 @@ const DealsTable: React.FC<DealsTableProps> = ({
                 {payments.map((paymentInfo, index) => {
                   const [paymentType, status] = paymentInfo.split(":");
 
-                  // Determine color based on status
                   const isVerified = status === "verified";
                   const badgeClass = isVerified
-                    ? "bg-green-100 text-green-800 border-green-200" // Green for verified
-                    : "bg-red-100 text-red-800 border-red-200"; // Red for rejected
+                    ? "bg-green-100 text-green-800 border-green-200"
+                    : "bg-red-100 text-red-800 border-red-200";
 
-                  // Get payment amount from nested data
                   const paymentData = deal.nestedData?.find(
                     (nested: any) => nested.Payment === index + 1
                   );
@@ -505,7 +486,6 @@ const DealsTable: React.FC<DealsTableProps> = ({
                       ).toLocaleString()}`
                     : "N/A";
 
-                  // Show tooltip for all payments (both verified and rejected)
                   return (
                     <PaymentTooltip key={index} amount={paymentAmount}>
                       <span
@@ -570,33 +550,21 @@ const DealsTable: React.FC<DealsTableProps> = ({
           header: "Actions",
           cell: ({ row }: any) => (
             <div className="flex items-center justify-center gap-1">
-              <button
-                onClick={() => onEditDeal?.(row.original.id)}
-                className="w-6 h-6 rounded-full bg-[#4F46E5] text-white flex items-center justify-center hover:bg-[#4338CA] transition-colors"
-                title="Edit Deal"
-              >
-                <Edit className="w-3 h-3" />
-              </button>
-              <button
-                onClick={() => onAddPayment?.(row.original.id)}
-                className="w-6 h-6 rounded-full bg-[#22C55E] text-white flex items-center justify-center hover:bg-[#16A34A] transition-colors"
-                title="Add Payment"
-              >
-                <Plus className="w-3 h-3" />
-              </button>
               <ExpandButton
                 isExpanded={expandedRows[row.index] || false}
                 onToggle={() => {
-                  const newExpanded = { ...expandedRows };
-                  newExpanded[row.index] = !newExpanded[row.index];
-                  setExpandedRows(newExpanded);
+                  setExpandedRows((prev) => {
+                    const newExpanded = { ...prev };
+                    newExpanded[row.index] = !newExpanded[row.index];
+                    return newExpanded;
+                  });
                 }}
               />
             </div>
           ),
         },
-      ] as any,
-    [expandedRows, onEditDeal, onAddPayment]
+      ] as ColumnDef<MainUsers>[],
+    [expandedRows]
   );
 
   const expandedContent = (row: any) => {

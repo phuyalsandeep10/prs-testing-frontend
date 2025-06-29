@@ -2,7 +2,9 @@
 
 import React, { useMemo, useState, useCallback } from "react";
 import { ColumnDef } from "@tanstack/react-table";
-import { Edit, Plus, ChevronDown, ChevronUp } from "lucide-react";
+import { Edit, ChevronDown, ChevronUp } from "lucide-react";
+import deleteIcon from "@/assets/icons/delete.svg";
+import Image from "next/image";
 import { format } from "date-fns";
 import { UnifiedTable } from "@/components/core";
 import ExpandButton from "@/components/dashboard/salesperson/deals/ExpandButton";
@@ -353,11 +355,7 @@ const NestedDealColumns = [
         {row.getValue("Verified By")}
       </div>
     ),
-    cell: ({ row }) => (
-      <div >
-        {row.getValue("Verified By")}
-      </div>
-    ),
+    cell: ({ row }) => <div>{row.getValue("Verified By")}</div>,
   },
   {
     accessorKey: "Remarks",
@@ -578,11 +576,10 @@ const DealsTable: React.FC<DealsTableProps> = ({
                 <Edit className="w-3 h-3" />
               </button>
               <button
-                onClick={() => onAddPayment?.(row.original.id)}
-                className="w-6 h-6 rounded-full bg-[#22C55E] text-white flex items-center justify-center hover:bg-[#16A34A] transition-colors"
-                title="Add Payment"
+                title="Delete Payment"
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-red-100 hover:bg-red-200 transition-colors"
               >
-                <Plus className="w-3 h-3" />
+                <Image src={deleteIcon} alt="Delete" width={16} height={16} />
               </button>
               <ExpandButton
                 isExpanded={expandedRows[row.index] || false}

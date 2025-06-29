@@ -61,8 +61,8 @@ export interface TableFeatures {
 }
 
 export interface TableStyling {
-  variant?: 'default' | 'minimal' | 'professional' | 'compact' | 'figma';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: "default" | "minimal" | "professional" | "compact" | "figma";
+  size?: "sm" | "md" | "lg";
   striped?: boolean;
   bordered?: boolean;
   hover?: boolean;
@@ -116,48 +116,53 @@ const defaultFeatures: TableFeatures = {
 };
 
 const defaultStyling: TableStyling = {
-  variant: 'default',
-  size: 'md',
+  variant: "default",
+  size: "md",
   striped: false,
   bordered: true,
   hover: true,
 };
 
 const defaultMessages = {
-  loading: 'Loading data...',
-  empty: 'No data available',
-  error: 'Failed to load data',
-  searchPlaceholder: 'Search...',
+  loading: "Loading data...",
+  empty: "No data available",
+  error: "Failed to load data",
+  searchPlaceholder: "Search...",
 };
 
 // ==================== STYLING VARIANTS ====================
 const getTableVariant = (variant: string, size: string) => {
   const variants = {
     default: {
-      table: "w-full border-collapse",
+      table: "w-auto border-collapse",
       header: "bg-gray-50 border-b border-gray-200",
-      headerCell: "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider",
+      headerCell:
+        "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider",
       row: "border-b border-gray-200 hover:bg-gray-50 transition-colors",
       cell: "px-6 py-4 whitespace-nowrap text-sm text-gray-900",
     },
     minimal: {
-      table: "w-full",
+      table: "w-auto",
       header: "border-b",
       headerCell: "pb-3 text-left text-sm font-medium text-gray-700",
       row: "border-b border-gray-100 hover:bg-gray-25",
       cell: "py-3 text-sm text-gray-600",
     },
     professional: {
-      table: "w-full border-collapse bg-white shadow-sm rounded-lg overflow-hidden",
-      header: "bg-gradient-to-r from-blue-50 to-indigo-50 border-b-2 border-blue-200",
-      headerCell: "px-6 py-4 text-left text-sm font-semibold text-blue-900 uppercase tracking-wide",
+      table:
+        "w-auto border-collapse bg-white shadow-sm rounded-lg overflow-hidden",
+      header:
+        "bg-gradient-to-r from-blue-50 to-indigo-50 border-b-2 border-blue-200",
+      headerCell:
+        "px-6 py-4 text-left text-sm font-semibold text-blue-900 uppercase tracking-wide",
       row: "border-b border-gray-100 hover:bg-blue-25 transition-all duration-200",
       cell: "px-6 py-4 text-sm text-gray-800",
     },
     compact: {
-      table: "w-full text-sm",
+      table: "w-auto text-sm",
       header: "bg-gray-100 border-b",
-      headerCell: "px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase",
+      headerCell:
+        "px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase",
       row: "border-b border-gray-100 hover:bg-gray-50",
       cell: "px-3 py-2 text-xs text-gray-700",
     },
@@ -176,7 +181,7 @@ const getTableVariant = (variant: string, size: string) => {
 // ==================== PAGINATION COMPONENT ====================
 interface PaginationProps {
   table: any;
-  config?: TableConfig['pagination'];
+  config?: TableConfig["pagination"];
 }
 
 const TablePagination: React.FC<PaginationProps> = ({ table, config }) => {
@@ -185,7 +190,7 @@ const TablePagination: React.FC<PaginationProps> = ({ table, config }) => {
   return (
     <div className="px-6 py-4 bg-white border-t border-gray-100 flex items-center justify-between">
       <div className="flex items-center gap-2">
-        <button 
+        <button
           onClick={() => table.previousPage()}
           disabled={!table.getCanPreviousPage()}
           className="px-4 py-2 text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
@@ -193,7 +198,7 @@ const TablePagination: React.FC<PaginationProps> = ({ table, config }) => {
           ← Previous
         </button>
       </div>
-      
+
       <div className="flex items-center gap-1">
         <button className="w-9 h-9 flex items-center justify-center text-[14px] bg-[#4F46E5] text-white rounded-lg transition-colors font-medium">
           1
@@ -215,9 +220,9 @@ const TablePagination: React.FC<PaginationProps> = ({ table, config }) => {
           10
         </button>
       </div>
-      
+
       <div className="flex items-center gap-2">
-        <button 
+        <button
           onClick={() => table.nextPage()}
           disabled={!table.getCanNextPage()}
           className="px-4 py-2 text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
@@ -280,7 +285,11 @@ const TableToolbar = <TData,>({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => onExport?.(table.getFilteredRowModel().rows.map((row: any) => row.original))}
+            onClick={() =>
+              onExport?.(
+                table.getFilteredRowModel().rows.map((row: any) => row.original)
+              )
+            }
           >
             <Download className="h-4 w-4 mr-2" />
             Export
@@ -310,7 +319,9 @@ const TableToolbar = <TData,>({
                     key={column.id}
                     className="capitalize"
                     checked={column.getIsVisible()}
-                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                    onCheckedChange={(value) =>
+                      column.toggleVisibility(!!value)
+                    }
                   >
                     {column.id}
                   </DropdownMenuCheckboxItem>
@@ -324,233 +335,286 @@ const TableToolbar = <TData,>({
 };
 
 // ==================== MAIN COMPONENT ====================
-export const UnifiedTable = React.memo(<TData,>({
-  data,
-  columns,
-  config = {},
-  loading = false,
-  error = null,
-  onRowClick,
-  onRowSelect,
-  onExport,
-  onRefresh,
-  className,
-  expandedContent,
-  toolbar,
-  getRowProps,
-  expandedRows,
-  onExpandedRowsChange,
-}: UnifiedTableProps<TData>) => {
-  // Memoize configurations to prevent unnecessary re-calculations
-  const features = React.useMemo(() => ({ ...defaultFeatures, ...config.features }), [config.features]);
-  const styling = React.useMemo(() => ({ ...defaultStyling, ...config.styling }), [config.styling]);
-  const messages = React.useMemo(() => ({ ...defaultMessages, ...config.messages }), [config.messages]);
-
-  // Table state
-  const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
-  const [rowSelection, setRowSelection] = React.useState({});
-  const [globalFilter, setGlobalFilter] = React.useState("");
-  const [internalExpandedRows, setInternalExpandedRows] = React.useState<Record<string, boolean>>({});
-
-  // Use controlled expansion state if provided, otherwise use internal state
-  const currentExpandedRows = expandedRows || internalExpandedRows;
-  const setCurrentExpandedRows = onExpandedRowsChange || setInternalExpandedRows;
-
-  // Memoize table configuration
-  const tableConfig = React.useMemo(() => ({
+export const UnifiedTable = React.memo(
+  <TData,>({
     data,
     columns,
-    state: {
-      sorting,
-      columnFilters,
-      columnVisibility,
-      rowSelection,
-      globalFilter,
-    },
-    enableRowSelection: features.selection,
-    onRowSelectionChange: setRowSelection,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
-    onGlobalFilterChange: setGlobalFilter,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: features.pagination ? getPaginationRowModel() : undefined,
-    getSortedRowModel: getSortedRowModel(),
-    initialState: {
-      pagination: {
-        pageSize: config.pagination?.pageSize || 10,
+    config = {},
+    loading = false,
+    error = null,
+    onRowClick,
+    onRowSelect,
+    onExport,
+    onRefresh,
+    className,
+    expandedContent,
+    toolbar,
+    getRowProps,
+    expandedRows,
+    onExpandedRowsChange,
+  }: UnifiedTableProps<TData>) => {
+    // Memoize configurations to prevent unnecessary re-calculations
+    const features = React.useMemo(
+      () => ({ ...defaultFeatures, ...config.features }),
+      [config.features]
+    );
+    const styling = React.useMemo(
+      () => ({ ...defaultStyling, ...config.styling }),
+      [config.styling]
+    );
+    const messages = React.useMemo(
+      () => ({ ...defaultMessages, ...config.messages }),
+      [config.messages]
+    );
+
+    // Table state
+    const [sorting, setSorting] = React.useState<SortingState>([]);
+    const [columnFilters, setColumnFilters] =
+      React.useState<ColumnFiltersState>([]);
+    const [columnVisibility, setColumnVisibility] =
+      React.useState<VisibilityState>({});
+    const [rowSelection, setRowSelection] = React.useState({});
+    const [globalFilter, setGlobalFilter] = React.useState("");
+    const [internalExpandedRows, setInternalExpandedRows] = React.useState<
+      Record<string, boolean>
+    >({});
+
+    // Use controlled expansion state if provided, otherwise use internal state
+    const currentExpandedRows = expandedRows || internalExpandedRows;
+    const setCurrentExpandedRows =
+      onExpandedRowsChange || setInternalExpandedRows;
+
+    // Memoize table configuration
+    const tableConfig = React.useMemo(
+      () => ({
+        data,
+        columns,
+        state: {
+          sorting,
+          columnFilters,
+          columnVisibility,
+          rowSelection,
+          globalFilter,
+        },
+        enableRowSelection: features.selection,
+        onRowSelectionChange: setRowSelection,
+        onSortingChange: setSorting,
+        onColumnFiltersChange: setColumnFilters,
+        onColumnVisibilityChange: setColumnVisibility,
+        onGlobalFilterChange: setGlobalFilter,
+        getCoreRowModel: getCoreRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        getPaginationRowModel: features.pagination
+          ? getPaginationRowModel()
+          : undefined,
+        getSortedRowModel: getSortedRowModel(),
+        initialState: {
+          pagination: {
+            pageSize: config.pagination?.pageSize || 10,
+          },
+        },
+      }),
+      [
+        data,
+        columns,
+        sorting,
+        columnFilters,
+        columnVisibility,
+        rowSelection,
+        globalFilter,
+        features.selection,
+        features.pagination,
+        config.pagination?.pageSize,
+      ]
+    );
+
+    // Table instance
+    const table = useReactTable(tableConfig);
+
+    // Memoized callback for row selection
+    const handleRowSelection = React.useCallback(() => {
+      if (features.selection && onRowSelect) {
+        const selectedRows = table
+          .getFilteredSelectedRowModel()
+          .rows.map((row) => row.original);
+        onRowSelect(selectedRows);
+      }
+    }, [features.selection, onRowSelect, table, rowSelection]);
+
+    // Handle row selection
+    React.useEffect(() => {
+      handleRowSelection();
+    }, [handleRowSelection]);
+
+    // Memoize styling classes
+    const styles = React.useMemo(
+      () => getTableVariant(styling.variant!, styling.size!),
+      [styling.variant, styling.size]
+    );
+
+    // Memoized row click handler
+    const handleRowClick = React.useCallback(
+      (row: any) => {
+        onRowClick?.(row);
       },
-    },
-  }), [
-    data, 
-    columns, 
-    sorting, 
-    columnFilters, 
-    columnVisibility, 
-    rowSelection, 
-    globalFilter, 
-    features.selection, 
-    features.pagination, 
-    config.pagination?.pageSize
-  ]);
+      [onRowClick]
+    );
 
-  // Table instance
-  const table = useReactTable(tableConfig);
-
-  // Memoized callback for row selection
-  const handleRowSelection = React.useCallback(() => {
-    if (features.selection && onRowSelect) {
-      const selectedRows = table.getFilteredSelectedRowModel().rows.map((row) => row.original);
-      onRowSelect(selectedRows);
+    // Render loading state
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center h-64 bg-white rounded-lg border">
+          <div className="text-center">
+            <RefreshCw className="h-8 w-8 animate-spin text-gray-400 mx-auto mb-2" />
+            <p className="text-gray-500">{messages.loading}</p>
+          </div>
+        </div>
+      );
     }
-  }, [features.selection, onRowSelect, table, rowSelection]);
 
-  // Handle row selection
-  React.useEffect(() => {
-    handleRowSelection();
-  }, [handleRowSelection]);
-
-  // Memoize styling classes
-  const styles = React.useMemo(() => getTableVariant(styling.variant!, styling.size!), [styling.variant, styling.size]);
-
-  // Memoized row click handler
-  const handleRowClick = React.useCallback((row: any) => {
-    onRowClick?.(row);
-  }, [onRowClick]);
-
-  // Render loading state
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64 bg-white rounded-lg border">
-        <div className="text-center">
-          <RefreshCw className="h-8 w-8 animate-spin text-gray-400 mx-auto mb-2" />
-          <p className="text-gray-500">{messages.loading}</p>
+    // Render error state
+    if (error) {
+      return (
+        <div className="flex items-center justify-center h-64 bg-white rounded-lg border border-red-200">
+          <div className="text-center">
+            <div className="text-red-500 mb-2">⚠️</div>
+            <p className="text-red-600">{error}</p>
+            {onRefresh && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onRefresh}
+                className="mt-2"
+              >
+                Try Again
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  // Render error state
-  if (error) {
     return (
-      <div className="flex items-center justify-center h-64 bg-white rounded-lg border border-red-200">
-        <div className="text-center">
-          <div className="text-red-500 mb-2">⚠️</div>
-          <p className="text-red-600">{error}</p>
-          {onRefresh && (
-            <Button variant="outline" size="sm" onClick={onRefresh} className="mt-2">
-              Try Again
-            </Button>
-          )}
-        </div>
-      </div>
-    );
-  }
+      <div className={cn("space-y-4", className)}>
+        {/* Toolbar - Only show if any toolbar features are enabled */}
+        {(features.globalSearch ||
+          features.filtering ||
+          features.export ||
+          features.refresh ||
+          features.columnVisibility ||
+          toolbar) && (
+          <TableToolbar
+            table={table}
+            config={config}
+            onExport={onExport}
+            onRefresh={onRefresh}
+            globalFilter={globalFilter}
+            setGlobalFilter={setGlobalFilter}
+            toolbar={toolbar}
+          />
+        )}
 
-  return (
-    <div className={cn("space-y-4", className)}>
-      {/* Toolbar - Only show if any toolbar features are enabled */}
-      {(features.globalSearch || features.filtering || features.export || features.refresh || features.columnVisibility || toolbar) && (
-        <TableToolbar
-          table={table}
-          config={config}
-          onExport={onExport}
-          onRefresh={onRefresh}
-          globalFilter={globalFilter}
-          setGlobalFilter={setGlobalFilter}
-          toolbar={toolbar}
-        />
-      )}
-
-      {/* Table */}
-      <div className="rounded-md border overflow-hidden">
-        <Table className={styles.table}>
-          <TableHeader className={styles.header}>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id} className={styles.headerCell}>
-                    {header.isPlaceholder ? null : (
-                      <div
-                        className={cn(
-                          "flex items-center space-x-2",
-                          header.column.getCanSort() && "cursor-pointer select-none"
-                        )}
-                        onClick={header.column.getToggleSortingHandler()}
-                      >
-                        <span>
-                          {flexRender(header.column.columnDef.header, header.getContext())}
-                        </span>
-                        {features.sorting && header.column.getCanSort() && (
-                          <span className="ml-2">
-                            {header.column.getIsSorted() === "desc" ? (
-                              <ChevronDown className="h-4 w-4" />
-                            ) : header.column.getIsSorted() === "asc" ? (
-                              <ChevronUp className="h-4 w-4" />
-                            ) : (
-                              <div className="h-4 w-4 opacity-50">
-                                <ChevronUp className="h-3 w-3" />
-                                <ChevronDown className="h-3 w-3 -mt-1" />
-                              </div>
+        {/* Table */}
+        <div className="rounded-md border overflow-hidden">
+          <Table className={styles.table} >
+            <TableHeader className={`!w-auto ${styles.header}`}>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id} className={styles.headerCell}>
+                      {header.isPlaceholder ? null : (
+                        <div
+                          className={cn(
+                            "flex items-center space-x-2",
+                            header.column.getCanSort() &&
+                              "cursor-pointer select-none"
+                          )}
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          <span>
+                            {flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
                             )}
                           </span>
-                        )}
-                      </div>
-                    )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <React.Fragment key={row.id}>
-                  <TableRow
-                    data-state={row.getIsSelected() && "selected"}
-                    className={cn(
-                      styles.row,
-                      onRowClick && "cursor-pointer",
-                      row.getIsSelected() && "bg-blue-50"
-                    )}
-                    onClick={() => handleRowClick(row)}
-                    {...(getRowProps ? getRowProps(row) : {} as React.HTMLAttributes<HTMLTableRowElement>)}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className={styles.cell}>
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                  {features.expansion && expandedContent && currentExpandedRows[row.id] && (
-                    <TableRow>
-                      <TableCell colSpan={columns.length} className="p-0">
-                        <div className="p-4 bg-gray-50 border-t">
-                          {expandedContent(row)}
+                          {features.sorting && header.column.getCanSort() && (
+                            <span className="ml-2">
+                              {header.column.getIsSorted() === "desc" ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : header.column.getIsSorted() === "asc" ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <div className="h-4 w-4 opacity-50">
+                                  <ChevronUp className="h-3 w-3" />
+                                  <ChevronDown className="h-3 w-3 -mt-1" />
+                                </div>
+                              )}
+                            </span>
+                          )}
                         </div>
-                      </TableCell>
+                      )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <React.Fragment key={row.id}>
+                    <TableRow
+                      data-state={row.getIsSelected() && "selected"}
+                      className={cn(
+                        styles.row,
+                        onRowClick && "cursor-pointer",
+                        row.getIsSelected() && "bg-blue-50"
+                      )}
+                      onClick={() => handleRowClick(row)}
+                      {...(getRowProps
+                        ? getRowProps(row)
+                        : ({} as React.HTMLAttributes<HTMLTableRowElement>))}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id} className={styles.cell}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
+                      ))}
                     </TableRow>
-                  )}
-                </React.Fragment>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-gray-500">
-                  {messages.empty}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
+                    {features.expansion &&
+                      expandedContent &&
+                      currentExpandedRows[row.id] && (
+                        <TableRow>
+                          <TableCell colSpan={columns.length} className="p-0">
+                            <div className="p-4 bg-gray-50 border-t">
+                              {expandedContent(row)}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                  </React.Fragment>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center text-gray-500"
+                  >
+                    {messages.empty}
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
 
-      {/* Pagination */}
-      {features.pagination && (
-        <TablePagination table={table} config={config.pagination} />
-      )}
-    </div>
-  );
-}); 
+        {/* Pagination */}
+        {features.pagination && (
+          <TablePagination table={table} config={config.pagination} />
+        )}
+      </div>
+    );
+  }
+);

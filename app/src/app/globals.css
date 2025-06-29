@@ -80,49 +80,8 @@
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
   }
-
-  * {
-    /* Improve rendering performance */
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    
-    /* Optimize animations and transitions */
-    backface-visibility: hidden;
-    -webkit-transform-style: preserve-3d;
-    transform-style: preserve-3d;
-  }
-
-  html {
-    /* Prevent layout shifts */
-    scroll-behavior: smooth;
-    /* Optimize rendering */
-    -webkit-text-size-adjust: 100%;
-    text-rendering: optimizeLegibility;
-  }
-
-  body {
-    /* Prevent unwanted scrolling behaviors */
-    overscroll-behavior: none;
-    /* Optimize repaints */
-    will-change: auto;
-  }
-
-  /* Optimize table rendering */
-  table {
-    /* Prevent layout recalculations */
-    table-layout: fixed;
-    width: 100%;
-  }
-
-  /* Optimize image rendering */
-  img {
-    /* Prevent layout shifts */
-    height: auto;
-    /* Optimize rendering */
-    image-rendering: -webkit-optimize-contrast;
-  }
 }
- 
+
 @layer base {
   * {
     @apply border-border;
@@ -315,131 +274,116 @@
     transform: translateZ(0) scale(0.95);
   }
 
-  /* Optimized table row animations */
+  /* Optimized table row hover */
   .table-row-optimized {
-    @apply smooth-transition;
-    transform: translateZ(0);
+    transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .table-row-optimized:hover {
-    background-color: rgba(249, 250, 251, 0.8);
-    transform: translateZ(0);
+    background-color: hsl(var(--muted) / 0.5);
   }
 
-  /* Prevent content shift during loading */
+  /* Loading state optimizations */
   .loading-container {
     min-height: 200px;
     display: flex;
     align-items: center;
     justify-content: center;
+    background-color: hsl(var(--background));
   }
 
   /* Optimized search input */
   .search-input-optimized {
-    @apply smooth-transition;
-    will-change: border-color, box-shadow;
+    transition: border-color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .search-input-optimized:focus {
-    outline: none;
-    border-color: #4F46E5;
-    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 2px hsl(var(--primary) / 0.1);
   }
 
-  /* Smooth dropdown animations */
+  /* Optimized dropdown animations */
   .dropdown-optimized {
-    transform: translateZ(0);
-    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dropdown-enter {
     opacity: 0;
-    transform: translateZ(0) translateY(-4px);
+    transform: translateY(-10px);
   }
 
   .dropdown-enter-active {
     opacity: 1;
-    transform: translateZ(0) translateY(0);
+    transform: translateY(0);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Optimized tooltip animations */
+  /* Optimized tooltip */
   .tooltip-optimized {
-    transform: translateZ(0);
-    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-    pointer-events: none;
+    transition: opacity 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: opacity;
   }
 
-  /* Prevent reflow during tab switches */
+  /* Optimized tab content transitions */
   .tab-content-optimized {
-    min-height: 400px;
-    will-change: contents;
+    transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Smooth status badge transitions */
+  /* Optimized status badges */
   .status-badge-optimized {
-    @apply smooth-transition;
-    transform: translateZ(0);
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  /* Optimized sidebar transitions */
+  /* Optimized sidebar */
   .sidebar-optimized {
-    transform: translateZ(0);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     will-change: transform;
   }
 
   .sidebar-optimized.closed {
-    transform: translateZ(0) translateX(-100%);
+    transform: translateX(-100%);
   }
 
   .sidebar-optimized.open {
-    transform: translateZ(0) translateX(0);
+    transform: translateX(0);
   }
-}
 
-@layer utilities {
-  /* Hardware acceleration utilities */
+  /* Additional performance optimizations */
   .gpu-accelerated {
     transform: translateZ(0);
-    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
   }
 
-  /* Prevent layout shift utilities */
   .prevent-shift {
-    contain: layout style paint;
+    contain: layout;
   }
 
-  /* Smooth scroll utilities */
   .smooth-scroll {
     scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch;
   }
 
-  /* Optimized flex utilities */
+  /* Flex optimizations */
   .flex-optimized {
     display: flex;
-    will-change: auto;
+    contain: layout;
   }
 
-  /* Prevent text selection flicker */
+  /* Prevent selection flicker during animations */
   .no-select-flicker {
+    user-select: none;
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
   }
 }
 
-/* Modal and Dialog Positioning Fixes */
+/* Modal and Dialog Positioning */
 .modal-overlay {
   position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
+  inset: 0 !important;
   z-index: 50 !important;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -447,13 +391,14 @@
 
 .modal-content {
   position: relative !important;
+  background-color: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
   max-width: 90vw;
   max-height: 90vh;
   overflow-y: auto;
-  z-index: 51 !important;
 }
 
-/* Form Dialog Positioning */
 .dialog-overlay {
   position: fixed !important;
   inset: 0 !important;
@@ -472,29 +417,21 @@
   max-width: 90vw;
   max-height: 90vh;
   overflow-y: auto;
-  z-index: 51 !important;
 }
 
-/* Responsive modal positioning that accounts for sidebar */
 @media (min-width: 1024px) {
   .modal-responsive {
-    position: fixed !important;
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    z-index: 50 !important;
+    max-width: 32rem;
+    width: 100%;
   }
-  
+
   .dialog-responsive {
-    position: fixed !important;
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    z-index: 50 !important;
+    max-width: 28rem;
+    width: 100%;
   }
 }
 
-/* Sheet/Slide Modal Positioning */
+/* Sheet/SlideModal Positioning */
 .sheet-overlay {
   position: fixed !important;
   inset: 0 !important;
@@ -504,35 +441,26 @@
 
 .sheet-content {
   position: fixed !important;
-  top: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  width: 100%;
-  max-width: 32rem;
-  background-color: white;
-  box-shadow: -10px 0 15px -3px rgba(0, 0, 0, 0.1);
   z-index: 51 !important;
-  transform: translateX(0);
-  transition: transform 0.3s ease-in-out;
+  gap: 1rem;
+  background-color: white;
+  padding: 1.5rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sheet-content[data-state="closed"] {
   transform: translateX(100%);
 }
 
-/* Popover Positioning */
 .popover-content {
   z-index: 50 !important;
-  position: absolute !important;
 }
 
-/* Dropdown Menu Positioning */
 .dropdown-content {
   z-index: 50 !important;
-  position: absolute !important;
 }
 
-/* Command Palette Positioning */
 .command-dialog {
   position: fixed !important;
   top: 50% !important;
@@ -729,6 +657,3 @@
 [data-state="open"] {
   z-index: 10000 !important;
 }
-
-/* Additional Modal and Dialog Positioning Fixes */
-
