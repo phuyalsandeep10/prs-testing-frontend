@@ -5,7 +5,7 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import pillsButton from "@/assets/icons/pills-button.svg";
-import DealsTable from "@/components/dashboard/org-admin/deals/DealsTable";
+import DealsTable from "@/components/dashboard/verifier/deals/DealsTable";
 import Image from "next/image";
 import DealModal from "@/components/salesperson/Deal/DealModal";
 
@@ -34,17 +34,6 @@ const DealsPage = () => {
 
   const closeModal = () => {
     setModalState((prev) => ({ ...prev, isOpen: false }));
-  };
-
-  // NOTE: handleEditDeal stays if you want modal in edit mode;
-  // but buttons removed from table so no way to trigger it from there currently.
-  const handleEditDeal = (dealId: string) => {
-    const dealData = { id: dealId };
-    openModal("edit", dealId, dealData);
-  };
-
-  const handleAddPayment = (dealId: string) => {
-    openModal("payment", dealId);
   };
 
   return (
@@ -85,11 +74,7 @@ const DealsPage = () => {
 
       {/* Main Content */}
       <div className="px-8 py-6">
-        <DealsTable
-          onEditDeal={handleEditDeal}
-          onAddPayment={handleAddPayment}
-          searchTerm={searchTerm}
-        />
+        <DealsTable searchTerm={searchTerm} />
       </div>
 
       {/* Unified Deal Modal */}
