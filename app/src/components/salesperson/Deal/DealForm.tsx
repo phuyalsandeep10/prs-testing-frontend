@@ -43,6 +43,7 @@ const DealForm = ({ onSave, onCancel, mode }: DealFormProps = {}) => {
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
+    watch
   } = useForm<DealFormData>({
     resolver: zodResolver(DealSchema),
   });
@@ -356,7 +357,10 @@ const DealForm = ({ onSave, onCancel, mode }: DealFormProps = {}) => {
                     htmlFor="uploadReceipt"
                     className="mt-1 flex items-center justify-between w-full h-[33px] p-2 text-[12px] font-normal border rounded-[6px] border-[#C3C3CB] cursor-pointer bg-white"
                   >
-                    <span className="underline">Receipt.pdf</span>
+                    <span className="underline">
+                      {watch("uploadReceipt")?.[0]?.name || "Upload Receipt"}
+                    </span>
+
                     <svg
                       width="13"
                       height="14"

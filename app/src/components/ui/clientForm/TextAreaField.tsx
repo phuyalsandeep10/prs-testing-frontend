@@ -15,6 +15,7 @@ interface TextAreaFieldProps {
   labelClassName?: string;
   textareaClassName?: string;
   wrapperClassName?: string;
+  readOnly?: boolean;
 }
 
 const TextAreaField: React.FC<TextAreaFieldProps> = ({
@@ -30,6 +31,7 @@ const TextAreaField: React.FC<TextAreaFieldProps> = ({
   labelClassName,
   textareaClassName = "",
   wrapperClassName,
+  readOnly
 }) => {
   return (
     <InputWrapper
@@ -44,6 +46,7 @@ const TextAreaField: React.FC<TextAreaFieldProps> = ({
       <textarea
         id={id}
         placeholder={placeholder}
+        readOnly={readOnly}
         {...registration}
         className={`mt-1 p-2 mb-1 block rounded-[6px] text-[12px] font-normal resize-none outline-none focus:ring-[#6B7FFF] focus:border-[#6B7FFF] border ${borderColor} ${width} ${height} ${textareaClassName}`}
       />

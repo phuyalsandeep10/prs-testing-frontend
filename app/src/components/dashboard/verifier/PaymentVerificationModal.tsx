@@ -42,16 +42,24 @@ const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({
   };
 
   const getTitle = () => {
-    switch (mode) {
-      case "verification":
-        return "PAYMENT VERIFICATION";
-      case "view":
-        return "View Payment Details";
-      default:
-        return "Payment Verification";
+    if (mode === "verification") {
+      const paymentId = "PA - 14670"; 
+      return (
+        <>
+          <span className="text-[#31323A]">Payment for </span>
+          <span className="text-[#465FFF]">{paymentId}</span>
+        </>
+      );
     }
-  };
 
+    if (mode === "view") {
+      return <span className="text-[#31323A]">View Payment Details</span>;
+    }
+
+    return <span className="text-[#31323A]">Payment Verification</span>;
+  };
+  
+  
   const getModalSize = () => {
     return "w-[90vw] h-[90vh] max-w-[1200px] max-h-[800px]";
   };
@@ -81,9 +89,7 @@ const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 bg-white">
           <div className="flex items-center justify-between">
-            <h1 className="text-[20px] font-semibold text-[#465FFF]">
-              {getTitle()}
-            </h1>
+            <h1 className="text-[20px] font-bold">{getTitle()}</h1>
             <Button
               variant="ghost"
               size="sm"
