@@ -348,14 +348,13 @@ const NestedDealColumns = [
     ),
   },
   {
-    accessorKey: "Verified By",
-    header: () => <span className="text-[#009959]">Verified By</span>,
     cell: ({ row }) => (
       <div className="text-[12px] text-gray-800">
         {row.getValue("Verified By")}
       </div>
     ),
-    cell: ({ row }) => <div>{row.getValue("Verified By")}</div>,
+    accessorKey: "Verified By",
+    header: () => <span className="text-[#009959]">Verified By</span>,
   },
   {
     accessorKey: "Remarks",

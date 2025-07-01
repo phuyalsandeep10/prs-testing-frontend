@@ -45,7 +45,9 @@ export interface Client extends BaseEntity {
   lastContact: string;
   expectedClose: string;
   value: number;
+  totalSales?: number;
   status: ClientStatus;
+  projects: number;
   satisfaction: ClientSatisfaction;
   remarks: string;
   primaryContactName: string;
