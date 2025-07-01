@@ -137,7 +137,7 @@ const DealForm = () => {
                     className="block text-[13px] font-semibold"
                   >
                     Pay Status<span className="text-[#F61818]">*</span>
-                  </label>
+                  </label> vv            
                   <select
                     id="payStatus"
                     {...register("payStatus")}

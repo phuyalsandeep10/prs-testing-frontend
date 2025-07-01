@@ -10,9 +10,13 @@ const AddPaymentSchema = z.object({
   paymentDate: z.string().min(1, "Payment date is required"),
   receivedAmount: z.string().min(1, "Received amount is required"),
   chequeNo: z.string().min(1, "Cheque number is required"),
-  attachReceipt: z.any().optional(),
+  attachReceipt: z
+    .any()
+    .refine((file) => file instanceof FileList && file.length > 0, {
+      message: "Receipt is required",
+    }),
   paymentType: z.string().min(1, "Payment type is required"),
-  remarks: z.string().optional(),
+  remarks: z.string().min(1, "Remarks is required"),
 });
 
 type AddPaymentData = z.infer<typeof AddPaymentSchema>;
@@ -25,7 +29,7 @@ interface AddPaymentProps {
 
 const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => {
   const [selectedPaymentType, setSelectedPaymentType] = useState("Advance");
-  const [showDropdown, setShowDropdown] = useState(false); // Only show when clicked
+  const [showDropdown, setShowDropdown] = useState(false); 
 
   const {
     register,
@@ -35,13 +39,6 @@ const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => 
     formState: { errors },
   } = useForm<AddPaymentData>({
     resolver: zodResolver(AddPaymentSchema),
-    defaultValues: {
-      paymentDate: "19 - 08 - 2002",
-      receivedAmount: "$150,000",
-      chequeNo: "12145235",
-      paymentType: "advance",
-      remarks: ""
-    }
   });
 
   const paymentTypes = [
@@ -104,7 +101,6 @@ const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => 
                 {...register("paymentDate")}
                 type="text"
                 className="w-full h-[48px] px-4 border-2 border-[#4F46E5] rounded-lg text-[16px] focus:outline-none focus:border-[#4338CA] bg-white"
-                defaultValue="19 - 08 - 2002"
               />
               {errors.paymentDate && (
                 <p className="text-red-500 text-sm mt-1">{String(errors.paymentDate.message)}</p>
@@ -120,7 +116,6 @@ const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => 
                 {...register("receivedAmount")}
                 type="text"
                 className="w-full h-[48px] px-4 border border-gray-300 rounded-lg text-[16px] focus:outline-none focus:border-gray-400 bg-white"
-                defaultValue="$150,000"
               />
               {errors.receivedAmount && (
                 <p className="text-red-500 text-sm mt-1">{String(errors.receivedAmount.message)}</p>
@@ -136,7 +131,6 @@ const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => 
                 {...register("chequeNo")}
                 type="text"
                 className="w-full h-[48px] px-4 border border-gray-300 rounded-lg text-[16px] focus:outline-none focus:border-gray-400 bg-white"
-                defaultValue="12145235"
               />
               {errors.chequeNo && (
                 <p className="text-red-500 text-sm mt-1">{String(errors.chequeNo.message)}</p>
