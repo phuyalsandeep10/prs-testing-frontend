@@ -23,7 +23,7 @@ const CommissionArc: React.FC<CommissionArcProps> = ({
   subtitle,
   increaseLabel,
   salesAmount,
-  width = 420,
+  width = 500,
   height = 174,
   gapDegree = 2,
 }) => {
@@ -107,9 +107,9 @@ const CommissionArc: React.FC<CommissionArcProps> = ({
       .attr("alignment-baseline", "middle")
       .attr("fill", "#000000")
       .attr("font-weight", "700")
-      .attr("font-size", radius * 0.2)
+      .attr("font-size", radius * 0.17)
       .attr("x", 0)
-      .attr("y", radius * -0.4)
+      .attr("y", radius * -0.3)
       .attr("transform", `rotate(-90)`);
 
     // Group for increaseLabel with background
@@ -140,7 +140,8 @@ const CommissionArc: React.FC<CommissionArcProps> = ({
       .append("text")
       .text(increaseLabel)
       .attr("text-anchor", "middle")
-      .attr("alignment-baseline", "middle")
+      .attr("dominant-baseline", "middle")
+      .attr("dy", "0.1rem")
       .attr("fill", "white")
       .attr("font-weight", "500")
       .attr("font-size", radius * 0.12);
@@ -155,7 +156,7 @@ const CommissionArc: React.FC<CommissionArcProps> = ({
         border: "1px solid #ccc",
         borderRadius: 8,
         padding: 12,
-        margin: "0px 0 4px",
+        margin: 0,
         textAlign: "center",
         fontFamily: "Arial, sans-serif",
         overflow: "hidden",

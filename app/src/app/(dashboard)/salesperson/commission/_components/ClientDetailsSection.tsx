@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useMemo, useCallback } from "react";
-import { Eye, Edit, Trash2 } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { UnifiedTable } from "@/components/core";
 import { getClients } from "@/data/clients";
@@ -9,6 +8,10 @@ import type { Client } from "@/types";
 import { createPortal } from "react-dom";
 import { ClientDetailCard } from "../../client/ClientDetailCard";
 import EditClientForm from "../../client/EditClientForm";
+import Eye from "@/assets/icons/Eye.svg";
+import edit from "@/assets/icons/edit.svg";
+import cancel from "@/assets/icons/Cancel.svg";
+import Image from "next/image";
 
 // Helper for status and satisfaction badge styles (same as before)
 const getStatusColor = (status: string) => {
@@ -86,32 +89,6 @@ const ClientDetailsSection: React.FC = () => {
 
   const columns = useMemo(
     () => [
-      // Checkbox column
-      {
-        id: "select",
-        header: () => (
-          <input
-            type="checkbox"
-            checked={selectedIds.size === clients.length && clients.length > 0}
-            onChange={toggleSelectAll}
-            aria-label="Select all clients"
-            className="accent-[#009959]"
-          />
-        ),
-        cell: ({ row }: any) => {
-          const client = row.original as Client;
-          return (
-            <input
-              type="checkbox"
-              checked={selectedIds.has(client.id)}
-              onChange={() => toggleSelect(client.id)}
-              aria-label={`Select client ${client.name}`}
-              className="accent-[#009959]"
-            />
-          );
-        },
-        size: 20,
-      },
       {
         accessorFn: (row: Client) => row.name,
         id: "name",
@@ -184,24 +161,24 @@ const ClientDetailsSection: React.FC = () => {
             <div className="flex items-center justify-center gap-2">
               <button
                 onClick={() => handleView(client)}
-                className="w-8 h-8 rounded-full bg-[#4F46E5] text-white flex items-center justify-center hover:bg-[#4338CA]"
+                className="text-white flex items-center justify-center"
                 title="View"
               >
-                <Eye className="h-4 w-4" />
+                <Image src={Eye} alt="View" className="w-5 h-5" />
               </button>
               <button
                 onClick={() => handleEdit(client)}
-                className="w-8 h-8 rounded-full bg-[#4F46E5] text-white flex items-center justify-center hover:bg-[#4338CA]"
+                className="text-white flex items-center justify-center"
                 title="Edit"
               >
-                <Edit className="h-4 w-4" />
+                <Image src={edit} alt="View" className="w-5 h-5" />
               </button>
               <button
                 onClick={() => handleDelete(client.id)}
-                className="w-8 h-8 rounded-full bg-[#EF4444] text-white flex items-center justify-center hover:bg-[#DC2626]"
+                className=" text-white flex items-center justify-center"
                 title="Delete"
               >
-                <Trash2 className="h-4 w-4" />
+                <Image src={cancel} alt="View" className="w-5 h-5" />
               </button>
             </div>
           );
