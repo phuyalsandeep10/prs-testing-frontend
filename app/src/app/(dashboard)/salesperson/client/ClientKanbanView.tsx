@@ -2,7 +2,8 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { type Client, type ClientStatus } from "@/data/clients";
+import { type Client } from "@/lib/types/roles";
+import { useRouter } from "next/navigation";
 
 interface ClientKanbanViewProps {
   clients: Client[];
@@ -22,8 +23,8 @@ const statusConfig = {
     bgColor: "bg-orange-500",
     cardBorder: "border-orange-200",
   },
-  "bad-depth": {
-    label: "Bad depth",
+  "bad_debt": {
+    label: "Bad Debt",
     color: "text-red-600", 
     bgColor: "bg-red-500",
     cardBorder: "border-red-200",
@@ -33,21 +34,16 @@ const statusConfig = {
 export function ClientKanbanView({ clients, onViewDetails }: ClientKanbanViewProps) {
   // Group clients by status instead of category
   const clientsByStatus = clients.reduce((acc, client) => {
-    if (!acc[client.status]) {
-      acc[client.status] = [];
+    const status = client.status || "pending"; // Default to pending if status is null
+    if (!acc[status]) {
+      acc[status] = [];
     }
-    acc[client.status].push(client);
+    acc[status].push(client);
     return acc;
-  }, {} as Record<ClientStatus, Client[]>);
+  }, {} as Record<"clear" | "pending" | "bad_debt", Client[]>);
 
   // Ensure all statuses are represented even if empty
-  const statuses: ClientStatus[] = ["clear", "pending", "bad-depth"];
-
-  const handleViewDetails = (client: Client) => {
-    if (onViewDetails) {
-      onViewDetails(client);
-    }
-  };
+  const statuses: ("clear" | "pending" | "bad_debt")[] = ["clear", "pending", "bad_debt"];
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -66,7 +62,7 @@ export function ClientKanbanView({ clients, onViewDetails }: ClientKanbanViewPro
             {/* Client Cards */}
             <div className="space-y-4">
               {statusClients.map((client) => (
-                <KanbanCard key={client.id} client={client} onViewDetails={handleViewDetails} />
+                <KanbanCard key={client.id} client={client} />
               ))}
               {statusClients.length === 0 && (
                 <div className="text-center py-8 text-gray-500 text-[14px]">
@@ -81,45 +77,48 @@ export function ClientKanbanView({ clients, onViewDetails }: ClientKanbanViewPro
   );
 }
 
-function KanbanCard({ client, onViewDetails }: { client: Client; onViewDetails: (client: Client) => void }) {
+function KanbanCard({ client }: { client: Client; onViewDetails?: (client: Client) => void }) {
+  const router = useRouter();
+
+  const handleCardClick = () => {
+    router.push(`/dashboard/salesperson/client/${client.id}/deals`);
+  };
+
   return (
-    <Card className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-      <CardHeader className="pb-3">
-        <h3 className="text-[18px] font-semibold text-gray-900 mb-1">{client.name}</h3>
-      </CardHeader>
-      
-      <CardContent className="pt-0 pb-4">
-        <div className="space-y-3">
-          {/* Salesperson Row */}
-          <div className="flex justify-between items-center">
-            <span className="text-[14px] text-gray-500">Salesperson (Referral)</span>
-            <span className="text-[14px] text-gray-500">Last Contact</span>
+    <div onClick={handleCardClick} className="cursor-pointer">
+      <Card className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+        <CardHeader className="pb-3">
+          <h3 className="text-[18px] font-semibold text-gray-900 mb-1">{client.client_name}</h3>
+        </CardHeader>
+        
+        <CardContent className="pt-0 pb-4">
+          <div className="space-y-3">
+            {/* Email Row */}
+            <div className="flex justify-between items-center">
+              <span className="text-[14px] text-gray-500">Email</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[14px] font-medium text-gray-900">{client.email}</span>
+            </div>
+            
+            {/* Phone Number Row */}
+            <div className="flex justify-between items-center">
+              <span className="text-[14px] text-gray-500">Phone</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-[14px] font-medium text-gray-900">{client.phone_number}</span>
+            </div>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-[14px] font-medium text-gray-900">{client.salesperson}</span>
-            <span className="text-[14px] font-medium text-gray-900">{client.lastContact}</span>
-          </div>
-          
-          {/* Value Row */}
-          <div className="flex justify-between items-center">
-            <span className="text-[14px] text-gray-500">Value</span>
-            <span className="text-[14px] text-gray-500">Expected Close</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-[16px] font-semibold text-gray-900">${client.value.toLocaleString()}</span>
-            <span className="text-[14px] font-medium text-gray-900">{client.expectedClose}</span>
-          </div>
-        </div>
-      </CardContent>
-      
-      <CardFooter className="pt-0">
-        <Button 
-          onClick={() => onViewDetails(client)}
-          className="w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white font-medium text-[14px] h-10 rounded-lg transition-colors"
-        >
-          View Details
-        </Button>
-      </CardFooter>
-    </Card>
+        </CardContent>
+        
+        <CardFooter className="pt-0">
+          <Button 
+            className="w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white font-medium text-[14px] h-10 rounded-lg transition-colors"
+          >
+            View Details
+          </Button>
+        </CardFooter>
+      </Card>
+    </div>
   );
 } 
