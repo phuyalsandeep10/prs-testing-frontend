@@ -161,7 +161,7 @@ export function TeamsTable({ data, onView, onEdit, onDelete }: TeamsTableProps) 
                     <div className="flex -space-x-2">
                       {team.teamMembers.slice(0, 3).map((member, idx) => (
                         <div 
-                          key={idx}
+                          key={member.id}
                           className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-[12px] font-medium border-2 border-white relative"
                           style={{ zIndex: 10 - idx }}
                           title={member.name}
@@ -194,7 +194,7 @@ export function TeamsTable({ data, onView, onEdit, onDelete }: TeamsTableProps) 
                       <div className="ml-4 flex flex-wrap gap-2">
                         {team.teamMembers.slice(3).map((member, idx) => (
                           <div 
-                            key={idx + 3}
+                            key={member.id}
                             className="h-6 w-6 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white text-[10px] font-medium"
                             title={member.name}
                           >
