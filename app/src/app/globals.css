@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Font Display Optimization */
+@font-face {
+  font-family: 'Geist';
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Geist Mono';
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Outfit';
+  font-display: swap;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

@@ -6,6 +6,8 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { toast } from "sonner";
 import { Loader2, X } from "lucide-react";
+import { apiClient } from "@/lib/api/client";
+import { Client } from "@/lib/types/roles";
 
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -14,19 +16,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 
 const formSchema = z.object({
-  clientName: z.string().min(1, "Client name is required"),
+  client_name: z.string().min(1, "Client name is required"),
   email: z.string().email("Invalid email address"),
-  contactNumber: z.string().min(10, "Contact number must be at least 10 digits"),
+  phone_number: z.string().min(10, "Contact number must be at least 10 digits"),
   nationality: z.string().min(1, "Nationality is required"),
   remarks: z.string().optional(),
 });
 
 interface AddNewClientFormProps {
   onClose: () => void;
-  onFormSubmit?: () => void;
+  onClientAdded: (newClient: Client) => void;
 }
 
-export default function AddNewClientForm({ onClose, onFormSubmit }: AddNewClientFormProps) {
+export default function AddNewClientForm({ onClose, onClientAdded }: AddNewClientFormProps) {
   const [isLoading, setIsLoading] = React.useState(false);
   const [isVisible, setIsVisible] = React.useState(false);
 
@@ -39,9 +41,9 @@ export default function AddNewClientForm({ onClose, onFormSubmit }: AddNewClient
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      clientName: "",
+      client_name: "",
       email: "",
-      contactNumber: "",
+      phone_number: "",
       nationality: "",
       remarks: "",
     },
@@ -50,18 +52,17 @@ export default function AddNewClientForm({ onClose, onFormSubmit }: AddNewClient
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      console.log("Form values:", values);
-      toast.success("Client created successfully!");
-      form.reset();
-      if (onFormSubmit) {
-        onFormSubmit();
+      const response = await apiClient.createClient(values);
+      if (response.success && response.data) {
+        toast.success("Client created successfully!");
+        onClientAdded(response.data);
+        handleClose();
+      } else {
+        toast.error(response.message || "Failed to create client.");
       }
-      handleClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to create client:", error);
-      toast.error("Failed to create client. Please try again.");
+      toast.error(error.message || "Failed to create client. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -141,7 +142,7 @@ export default function AddNewClientForm({ onClose, onFormSubmit }: AddNewClient
               {/* Client Name */}
               <FormField
                 control={form.control}
-                name="clientName"
+                name="client_name"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
@@ -187,7 +188,7 @@ export default function AddNewClientForm({ onClose, onFormSubmit }: AddNewClient
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="contactNumber"
+                  name="phone_number"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
