@@ -1,7 +1,8 @@
-'use client'
-import PaymentOverview from "@/components/dashboard/verifier/dashboard/PaymentOverview";
+"use client";
 import React from "react";
+import PaymentOverview from "@/components/dashboard/verifier/dashboard/PaymentOverview";
 import { useQuery } from "@tanstack/react-query";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const fetchInvoiceStatusOverview = async () => {
   await new Promise((res) => setTimeout(res, 800));
@@ -120,60 +121,72 @@ const fetchPaymentFailureReasons = async () => {
 };
 
 const PaymentSection = () => {
-    const {
-      data: invoiceStatus,
-      isLoading: invoiceLoading,
-      isError: invoiceError,
-    } = useQuery({
-      queryKey: ["invoiceStatusOverview"],
-      queryFn: fetchInvoiceStatusOverview,
-    });
+  const {
+    data: invoiceStatus,
+    isLoading: invoiceLoading,
+    isError: invoiceError,
+  } = useQuery({
+    queryKey: ["invoiceStatusOverview"],
+    queryFn: fetchInvoiceStatusOverview,
+  });
 
-    const {
-      data: paymentMethods,
-      isLoading: methodsLoading,
-      isError: methodsError,
-    } = useQuery({
-      queryKey: ["paymentMethodsBreakdown"],
-      queryFn: fetchPaymentMethodsBreakdown,
-    });
+  const {
+    data: paymentMethods,
+    isLoading: methodsLoading,
+    isError: methodsError,
+  } = useQuery({
+    queryKey: ["paymentMethodsBreakdown"],
+    queryFn: fetchPaymentMethodsBreakdown,
+  });
 
-    const {
-      data: failureReasons,
-      isLoading: failureLoading,
-      isError: failureError,
-    } = useQuery({
-      queryKey: ["paymentFailureReasons"],
-      queryFn: fetchPaymentFailureReasons,
-    });
+  const {
+    data: failureReasons,
+    isLoading: failureLoading,
+    isError: failureError,
+  } = useQuery({
+    queryKey: ["paymentFailureReasons"],
+    queryFn: fetchPaymentFailureReasons,
+  });
 
-  if (invoiceLoading || methodsLoading || failureLoading)
-    return <p>Loading Payment Data...</p>;
+  const isLoading = invoiceLoading || methodsLoading || failureLoading;
+  const isError = invoiceError || methodsError || failureError;
 
-  if (invoiceError || methodsError || failureError)
-    return <p>Error loading payment data.</p>;
+  if (isLoading) {
+    return (
+      <div className="flex flex-wrap gap-10">
+        {[...Array(3)].map((_, index) => (
+          <Skeleton key={index} className="w-[376px] h-[220px] rounded-md" />
+        ))}
+      </div>
+    );
+  }
+
+  if (isError) {
+    return <p className="text-sm text-red-500">Error loading payment data.</p>;
+  }
 
   return (
-    <div className="flex flex-wrap gap-10">
-      <PaymentOverview
-        title="Invoice Status Overview"
-        className="bg-[#FFFFFF] h-auto w-[376px]"
-        subtitles={invoiceStatus || []}
-      />
-
-      <PaymentOverview
-        title="Payment Methods Breakdown"
-        className="bg-[#FFFFFF] h-auto w-[376px]"
-        subtitles={paymentMethods || []}
-      />
-
-      <PaymentOverview
-        title="Payment Failure Reasons"
-        className="bg-[#FFFFFF] h-auto w-[376px]"
-        subtitles={failureReasons || []}
-      />
+    <div className="w-full">
+      <div className="flex flex-wrap gap-10 w-full">
+        <PaymentOverview
+          title="Invoice Status Overview"
+          className="bg-[#FFFFFF] h-auto flex-1 min-w-[300px]"
+          subtitles={invoiceStatus || []}
+        />
+        <PaymentOverview
+          title="Payment Methods Breakdown"
+          className="bg-[#FFFFFF] h-auto flex-1 min-w-[300px]"
+          subtitles={paymentMethods || []}
+        />
+        <PaymentOverview
+          title="Payment Failure Reasons"
+          className="bg-[#FFFFFF] h-auto flex-1 min-w-[300px]"
+          subtitles={failureReasons || []}
+        />
+      </div>
     </div>
   );
+  
 };
 
 export default PaymentSection;

@@ -3,6 +3,7 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import CommissionArc from "@/components/salesperson/commission/CommissionArc";
+import { Skeleton } from "@/components/ui/skeleton";
 
 async function fetchCommissionData() {
   return new Promise<{
@@ -28,7 +29,32 @@ const CommissionSection: React.FC = () => {
     queryFn: fetchCommissionData,
   });
 
-  if (isLoading) return <div>Loading commission data...</div>;
+  if (isLoading) {
+    return (
+      <div style={{ maxWidth: 480, width: "100%" }}>
+        <div className="space-y-4">
+          {/* Title skeleton */}
+          <Skeleton className="h-6 w-32" />
+
+          {/* Arc chart skeleton - matching the dimensions of your CommissionArc */}
+          <Skeleton className="h-[174px] w-full rounded-lg" />
+
+          {/* Stats skeletons */}
+          <div className="flex justify-between items-center">
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-8 w-24" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-6 w-12" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (error) return <div>Error loading commission data</div>;
 
   const subtitle =

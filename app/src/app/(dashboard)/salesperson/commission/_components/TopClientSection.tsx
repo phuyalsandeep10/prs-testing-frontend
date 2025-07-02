@@ -3,13 +3,13 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import TopClientCard from "@/components/salesperson/commission/TopClientCard";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface ClientData {
   name: string;
   value: number;
 }
 
-// Mock API functions (replace with actual API calls)
 const fetchDailyTopClients = async (): Promise<ClientData[]> => {
   return [
     { name: "Alice Johnson", value: 25000 },
@@ -65,6 +65,23 @@ const TopClientSection: React.FC = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="space-y-3 p-6">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div key={index} className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Skeleton className="h-6 w-6 rounded" />
+              <Skeleton className="h-10 w-10 rounded-full" />
+              <Skeleton className="h-5 w-32" />
+            </div>
+            <Skeleton className="h-5 w-20" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="w-full mx-auto border border-[#D1D1D1] p-6 rounded-md">
       <div className="flex justify-start items-start gap-x-52">
@@ -91,7 +108,6 @@ const TopClientSection: React.FC = () => {
         </div>
       </div>
 
-      {isLoading && <p className="text-gray-500">Loading...</p>}
       {error && <p className="text-red-500">Error: {error.message}</p>}
       {data && <TopClientCard data={data} />}
     </div>

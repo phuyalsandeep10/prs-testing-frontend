@@ -55,7 +55,7 @@ const DealsPage = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Search"
-                className="pl-10 w-[320px] h-[40px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5]"
+                className="pl-10 w-[120px] h-[40px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5]"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />

@@ -9,7 +9,7 @@ import PaymentVerificationForm from "./PaymentVerificationForm";
 interface PaymentVerificationModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  mode: 'verification' | 'view';
+  mode: "verification" | "view";
   invoiceId?: string;
   invoiceData?: any;
 }
@@ -34,7 +34,7 @@ const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({
 
   const handleSave = (data: any) => {
     console.log(`Payment verification ${mode} saved:`, data);
-    onOpenChange(false); 
+    onOpenChange(false);
   };
 
   const handleCancel = () => {
@@ -43,7 +43,7 @@ const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({
 
   const getTitle = () => {
     if (mode === "verification") {
-      const paymentId = "PA - 14670"; 
+      const paymentId = "PA - 14670";
       return (
         <>
           <span className="text-[#31323A]">Payment for </span>
@@ -58,8 +58,7 @@ const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({
 
     return <span className="text-[#31323A]">Payment Verification</span>;
   };
-  
-  
+
   const getModalSize = () => {
     return "w-[90vw] h-[90vh] max-w-[1200px] max-h-[800px]";
   };
@@ -77,6 +76,7 @@ const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({
         bottom: 0,
         zIndex: 99999,
       }}
+      onClick={() => onOpenChange(false)} // <-- CLOSE modal on clicking outside
     >
       <div
         className={`p-0 bg-white border shadow-xl ${getModalSize()} rounded-lg overflow-hidden flex flex-col z-[100000]`}
@@ -85,6 +85,7 @@ const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({
           zIndex: 100000,
           margin: 0,
         }}
+        onClick={(e) => e.stopPropagation()} // <-- PREVENT closing when clicking inside modal
       >
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 bg-white">
@@ -119,4 +120,4 @@ const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({
   );
 };
 
-export default PaymentVerificationModal; 
+export default PaymentVerificationModal;

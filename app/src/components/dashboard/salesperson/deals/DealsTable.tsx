@@ -57,7 +57,6 @@ interface MainUsers {
   Payment: string;
   "Due Date": string;
   Version: string;
-  "Sales Person": string;
   isRejected?: boolean; // Add this for red row highlighting
   nestedData?: NestedDealData[];
 }
@@ -90,7 +89,6 @@ const Mainusers: MainUsers[] = [
     "Pay Method": "Mobile Wallet",
     "Due Date": "Sep 05, 2026",
     Version: "Edited",
-    "Sales Person": "Yubesh Koirala",
     isRejected: true, // This will make the row red (because second payment is rejected)
     nestedData: [
       {
@@ -134,7 +132,6 @@ const Mainusers: MainUsers[] = [
     "Pay Method": "E-Cheque",
     "Due Date": "Sep 05, 2026",
     Version: "Original",
-    "Sales Person": "Kushal Shrestha",
     isRejected: false, // No rejected payments
     nestedData: [
       {
@@ -164,7 +161,6 @@ const Mainusers: MainUsers[] = [
     "Pay Method": "Bank Transfer",
     "Due Date": "Sep 05, 2026",
     Version: "Original",
-    "Sales Person": "Kumar Raj Archarya",
     isRejected: true, // Second payment rejected
     nestedData: [
       {
@@ -207,7 +203,6 @@ const Mainusers: MainUsers[] = [
     "Pay Method": "QR Payment",
     "Due Date": "Sep 05, 2026",
     Version: "Original",
-    "Sales Person": "Kushal Shrestha",
     isRejected: false, // No rejected payments
     nestedData: [
       {
@@ -237,7 +232,6 @@ const Mainusers: MainUsers[] = [
     "Pay Method": "Cash On Hand",
     "Due Date": "Sep 05, 2026",
     Version: "Original",
-    "Sales Person": "Yubesh Koirala",
     isRejected: true, // Second payment rejected
     nestedData: [
       {
@@ -396,7 +390,6 @@ const DealsTable: React.FC<DealsTableProps> = ({
         deal["Client Name"].toLowerCase().includes(searchLower) ||
         deal["Pay Status"].toLowerCase().includes(searchLower) ||
         deal["Pay Method"].toLowerCase().includes(searchLower) ||
-        deal["Sales Person"].toLowerCase().includes(searchLower) ||
         deal.Version.toLowerCase().includes(searchLower)
     );
   }, [searchTerm]);
@@ -550,15 +543,6 @@ const DealsTable: React.FC<DealsTableProps> = ({
               </span>
             );
           },
-        },
-        {
-          accessorKey: "Sales Person",
-          header: "Sales Person",
-          cell: ({ row }: any) => (
-            <div className="text-[12px] text-gray-700">
-              {row.getValue("Sales Person")}
-            </div>
-          ),
         },
         {
           id: "actions",

@@ -4,6 +4,9 @@ import { Search, FileText, Minus } from 'lucide-react';
 import { ColumnDef } from "@tanstack/react-table";
 import { UnifiedTable } from "@/components/core";
 import PaymentVerificationModal from "@/components/dashboard/verifier/PaymentVerificationModal";
+import Image from 'next/image';
+import Cancel from "@/assets/icons/Cancel.svg";
+import file from "@/assets/icons/file.svg";
 
 interface InvoiceData {
   id: string;
@@ -220,17 +223,17 @@ const VerifyInvoice = () => {
                 invoiceData: row.original,
               });
             }}
-            className="w-8 h-8 rounded-full bg-[#4F46E5] text-white flex items-center justify-center hover:bg-[#4338CA] transition-colors"
+            className="text-white flex items-center justify-center"
             title="Open Payment Verification Form"
           >
-            <FileText className="w-4 h-4" />
+            <Image src={file} alt="file icon"/>
           </button>
           <button
             onClick={() => console.log("Action 2 for invoice:", row.original.id)}
-            className="w-8 h-8 rounded-full bg-[#EF4444] text-white flex items-center justify-center hover:bg-[#DC2626] transition-colors"
+            className=" text-white flex items-center justify-center"
             title="Secondary Action"
           >
-            <Minus className="w-4 h-4" />
+          <Image src={Cancel} alt="cancel icon"/>
           </button>
         </div>
       ),
@@ -260,7 +263,7 @@ const VerifyInvoice = () => {
                 placeholder="Search invoices..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-[320px] pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent"
+                className="w-[200px] pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#4F46E5] focus:border-transparent"
               />
             </div>
           </div>

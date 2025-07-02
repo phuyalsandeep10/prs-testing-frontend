@@ -2,17 +2,23 @@
 
 import React, { useMemo, useState, useCallback } from "react";
 import { ColumnDef } from "@tanstack/react-table";
+import { Edit, ChevronDown, ChevronUp } from "lucide-react";
+import Image from "next/image";
+import { format } from "date-fns";
 import { UnifiedTable } from "@/components/core";
 import ExpandButton from "@/components/dashboard/salesperson/deals/ExpandButton";
 
+// Tooltip component for payment amounts
 interface PaymentTooltipProps {
   children: React.ReactNode;
   amount: string;
 }
 
+// Memoized Tooltip component for payment amounts
 const PaymentTooltip = React.memo<PaymentTooltipProps>(
   ({ children, amount }) => {
     const [isVisible, setIsVisible] = useState(false);
+
     const showTooltip = useCallback(() => setIsVisible(true), []);
     const hideTooltip = useCallback(() => setIsVisible(false), []);
 
@@ -28,6 +34,7 @@ const PaymentTooltip = React.memo<PaymentTooltipProps>(
         {isVisible && (
           <div className="absolute z-50 px-3 py-2 bg-gray-900 text-white text-sm rounded-lg shadow-lg bottom-full left-1/2 transform -translate-x-1/2 mb-2 whitespace-nowrap">
             Amount: {amount}
+            {/* Tooltip arrow */}
             <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-gray-900"></div>
           </div>
         )}
@@ -38,7 +45,25 @@ const PaymentTooltip = React.memo<PaymentTooltipProps>(
 
 PaymentTooltip.displayName = "PaymentTooltip";
 
-export interface NestedDealData {
+// Parent table data structure
+interface MainUsers {
+  id: string;
+  "Deal Name": string;
+  "Client Name": string;
+  "Pay Status": string;
+  Remarks: string;
+  "Deal Value": string;
+  "Deal Date": string;
+  "Pay Method": string;
+  Payment: string;
+  "Due Date": string;
+  Version: string;
+  "Sales Person": string;
+  isRejected?: boolean; // Add this for red row highlighting
+  nestedData?: NestedDealData[];
+}
+
+interface NestedDealData {
   id: string;
   Payment: number;
   "Payment Date": string;
@@ -52,24 +77,7 @@ export interface NestedDealData {
   "Verification Remarks": string;
 }
 
-export interface MainUsers {
-  id: string;
-  "Deal Name": string;
-  "Client Name": string;
-  "Pay Status": string;
-  Remarks: string;
-  "Deal Value": string;
-  "Deal Date": string;
-  Payment: string;
-  "Pay Method": string;
-  "Due Date": string;
-  Version: string;
-  "Sales Person": string;
-  nestedData?: NestedDealData[];
-  isRejected?: boolean;
-}
-
-// Example Mainusers data
+// Updated dummy data with payment status indicators and rejection status
 const Mainusers: MainUsers[] = [
   {
     id: "1",
@@ -268,14 +276,14 @@ const NestedDealColumns = [
   {
     accessorKey: "Payment",
     header: "Payment",
-    cell: ({ row }) => (
+    cell: ({ row }: any) => (
       <div className="text-[12px] text-gray-800">{row.getValue("Payment")}</div>
     ),
   },
   {
     accessorKey: "Payment Date",
     header: "Payment Date",
-    cell: ({ row }) => (
+    cell: ({ row }: any) => (
       <div className="text-[12px] text-gray-800">
         {row.getValue("Payment Date")}
       </div>
@@ -284,7 +292,7 @@ const NestedDealColumns = [
   {
     accessorKey: "Payment Created",
     header: "Payment Created",
-    cell: ({ row }) => (
+    cell: ({ row }: any) => (
       <div className="text-[12px] text-gray-800">
         {row.getValue("Payment Created")}
       </div>
@@ -293,7 +301,7 @@ const NestedDealColumns = [
   {
     accessorKey: "Payment Value",
     header: "Payment Value",
-    cell: ({ row }) => (
+    cell: ({ row }: any) => (
       <div className="text-[12px] text-gray-800">
         {row.getValue("Payment Value")}
       </div>
@@ -302,16 +310,17 @@ const NestedDealColumns = [
   {
     accessorKey: "Payment Version",
     header: "Payment Version",
-    cell: ({ row }) => (
+    cell: ({ row }: any) => (
       <div className="text-[12px] text-gray-800">
         {row.getValue("Payment Version")}
       </div>
     ),
   },
+
   {
     accessorKey: "Payment Status",
     header: "Payment Status",
-    cell: ({ row }) => {
+    cell: ({ row }: any) => {
       const status = row.getValue("Payment Status") as string;
       const getStatusColor = () => {
         switch (status.toLowerCase()) {
@@ -331,7 +340,7 @@ const NestedDealColumns = [
   {
     accessorKey: "Receipt Link",
     header: "Receipt Link",
-    cell: ({ row }) => (
+    cell: ({ row }: any) => (
       <div className="text-[12px] text-gray-800">
         {row.getValue("Receipt Link")}
       </div>
@@ -349,36 +358,34 @@ const NestedDealColumns = [
   {
     accessorKey: "Remarks",
     header: "Remarks",
-    cell: ({ row }) => (
+    cell: ({ row }: any) => (
       <div className="text-[12px] text-gray-800">{row.getValue("Remarks")}</div>
     ),
   },
   {
     accessorKey: "Verification Remarks",
     header: "Verification Remarks",
-    cell: ({ row }) => (
+    cell: ({ row }: any) => (
       <div className="text-[12px] text-gray-800">
         {row.getValue("Verification Remarks")}
       </div>
     ),
   },
-];
+] as any;
 
 interface DealsTableProps {
-  onEditDeal?: (dealId: string) => void;
-  onAddPayment?: (dealId: string) => void;
   searchTerm?: string;
 }
 
 const DealsTable: React.FC<DealsTableProps> = ({
-  onEditDeal,
-  onAddPayment,
   searchTerm = "",
 }) => {
-  const [expandedRows, setExpandedRows] = useState<Record<number, boolean>>({});
+  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
 
+  // Filter data based on search term
   const filteredData = useMemo(() => {
     if (!searchTerm.trim()) return Mainusers;
+
     const searchLower = searchTerm.toLowerCase();
     return Mainusers.filter(
       (deal) =>
@@ -391,181 +398,187 @@ const DealsTable: React.FC<DealsTableProps> = ({
     );
   }, [searchTerm]);
 
-  const columns: ColumnDef<unknown>[] = useMemo(
-    () => [
-      {
-        accessorKey: "Deal Name",
-        header: "Deal Name",
-        cell: ({ row }) => (
-          <div className="text-[12px] font-medium text-gray-900">
-            {row.getValue("Deal Name")}
-          </div>
-        ),
-      },
-      {
-        accessorKey: "Client Name",
-        header: "Client Name",
-        cell: ({ row }) => (
-          <div className="text-[12px] text-gray-700">
-            {row.getValue("Client Name")}
-          </div>
-        ),
-      },
-      {
-        accessorKey: "Pay Status",
-        header: "Pay Status",
-        cell: ({ row }) => {
-          const status = row.getValue("Pay Status") as string;
-          const getStatusColor = () => {
-            switch (status.toLowerCase()) {
-              case "full pay":
-                return "bg-[#E6F7FF] text-[#16A34A] px-3 py-1 text-[12px] font-medium rounded-full";
-              case "partial pay":
-                return "bg-[#FFF7ED] text-[#EA580C] px-3 py-1 text-[12px] font-medium rounded-full";
-              default:
-                return "bg-gray-100 text-gray-600 px-3 py-1 text-[12px] font-medium rounded-full";
-            }
-          };
-          return <span className={getStatusColor()}>{status}</span>;
-        },
-      },
-      {
-        accessorKey: "Remarks",
-        header: "Remarks",
-        cell: ({ row }) => (
-          <div className="text-[12px] text-gray-700 max-w-xs truncate">
-            {row.getValue("Remarks")}
-          </div>
-        ),
-      },
-      {
-        accessorKey: "Deal Value",
-        header: "Deal Value",
-        cell: ({ row }) => (
-          <div className="text-[12px] font-medium text-gray-900">
-            {row.getValue("Deal Value")}
-          </div>
-        ),
-      },
-      {
-        accessorKey: "Deal Date",
-        header: "Deal Date",
-        cell: ({ row }) => (
-          <div className="text-[12px] text-gray-700">
-            {row.getValue("Deal Date")}
-          </div>
-        ),
-      },
-      {
-        accessorKey: "Payment",
-        header: "Payment",
-        cell: ({ row }) => {
-          const payment = row.getValue("Payment") as string;
-          const deal = row.original as MainUsers;
-          if (!payment) return null;
-
-          const payments = payment.split(" ");
-
-          return (
-            <div className="flex gap-1 flex-wrap">
-              {payments.map((paymentInfo, index) => {
-                const [paymentType, status] = paymentInfo.split(":");
-
-                const isVerified = status === "verified";
-                const badgeClass = isVerified
-                  ? "bg-green-100 text-green-800 border-green-200"
-                  : "bg-red-100 text-red-800 border-red-200";
-
-                const paymentData = deal.nestedData?.find(
-                  (nested) => nested.Payment === index + 1
-                );
-                const paymentAmount = paymentData
-                  ? `$${(paymentData["Payment Value"] / 100).toLocaleString()}`
-                  : "N/A";
-
-                return (
-                  <PaymentTooltip key={index} amount={paymentAmount}>
-                    <span
-                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${badgeClass}`}
-                    >
-                      {paymentType}
-                    </span>
-                  </PaymentTooltip>
-                );
-              })}
+  // Parent table column configuration
+  const columns = useMemo(
+    () =>
+      [
+        {
+          accessorKey: "Deal Name",
+          header: "Deal Name",
+          cell: ({ row }: any) => (
+            <div className="text-[12px] font-medium text-gray-900">
+              {row.getValue("Deal Name")}
             </div>
-          );
+          ),
         },
-      },
-      {
-        accessorKey: "Pay Method",
-        header: "Pay Method",
-        cell: ({ row }) => (
-          <div className="text-[12px] text-gray-700">
-            {row.getValue("Pay Method")}
-          </div>
-        ),
-      },
-      {
-        accessorKey: "Due Date",
-        header: "Due Date",
-        cell: ({ row }) => (
-          <div className="text-[12px] text-gray-700">
-            {row.getValue("Due Date")}
-          </div>
-        ),
-      },
-      {
-        accessorKey: "Version",
-        header: "Version",
-        cell: ({ row }) => {
-          const version = row.getValue("Version") as string;
-          return (
-            <span
-              className={`px-2 py-1 text-[12px] font-medium rounded ${
-                version.toLowerCase() === "edited"
-                  ? "bg-blue-100 text-blue-700"
-                  : "bg-gray-100 text-gray-600"
-              }`}
-            >
-              {version}
-            </span>
-          );
+        {
+          accessorKey: "Client Name",
+          header: "Client Name",
+          cell: ({ row }: any) => (
+            <div className="text-[12px] text-gray-700">
+              {row.getValue("Client Name")}
+            </div>
+          ),
         },
-      },
-      {
-        accessorKey: "Sales Person",
-        header: "Sales Person",
-        cell: ({ row }) => (
-          <div className="text-[12px] text-gray-700">
-            {row.getValue("Sales Person")}
-          </div>
-        ),
-      },
-      {
-        id: "actions",
-        header: "Actions",
-        cell: ({ row }) => (
-          <div className="flex items-center justify-center gap-1">
-            <ExpandButton
-              isExpanded={expandedRows[row.index] || false}
-              onToggle={() => {
-                setExpandedRows((prev) => {
-                  const newExpanded = { ...prev };
+        {
+          accessorKey: "Pay Status",
+          header: "Pay Status",
+          cell: ({ row }: any) => {
+            const status = row.getValue("Pay Status") as string;
+            const getStatusColor = () => {
+              switch (status.toLowerCase()) {
+                case "full pay":
+                  return "bg-[#E6F7FF] text-[#16A34A] px-3 py-1 text-[12px] font-medium rounded-full";
+                case "partial pay":
+                  return "bg-[#FFF7ED] text-[#EA580C] px-3 py-1 text-[12px] font-medium rounded-full";
+                default:
+                  return "bg-gray-100 text-gray-600 px-3 py-1 text-[12px] font-medium rounded-full";
+              }
+            };
+            return <span className={getStatusColor()}>{status}</span>;
+          },
+        },
+        {
+          accessorKey: "Remarks",
+          header: "Remarks",
+          cell: ({ row }: any) => (
+            <div className="text-[12px] text-gray-700 max-w-xs truncate">
+              {row.getValue("Remarks")}
+            </div>
+          ),
+        },
+        {
+          accessorKey: "Deal Value",
+          header: "Deal Value",
+          cell: ({ row }: any) => (
+            <div className="text-[12px] font-medium text-gray-900">
+              {row.getValue("Deal Value")}
+            </div>
+          ),
+        },
+        {
+          accessorKey: "Deal Date",
+          header: "Deal Date",
+          cell: ({ row }: any) => (
+            <div className="text-[12px] text-gray-700">
+              {row.getValue("Deal Date")}
+            </div>
+          ),
+        },
+        {
+          accessorKey: "Payment",
+          header: "Payment",
+          cell: ({ row }: any) => {
+            const payment = row.getValue("Payment") as string;
+            const deal = row.original;
+            if (!payment) return null;
+
+            // Parse payment string like "First:verified Second:rejected"
+            const payments = payment.split(" ");
+
+            return (
+              <div className="flex gap-1 flex-wrap">
+                {payments.map((paymentInfo, index) => {
+                  const [paymentType, status] = paymentInfo.split(":");
+
+                  // Determine color based on status
+                  const isVerified = status === "verified";
+                  const badgeClass = isVerified
+                    ? "bg-green-100 text-green-800 border-green-200" // Green for verified
+                    : "bg-red-100 text-red-800 border-red-200"; // Red for rejected
+
+                  // Get payment amount from nested data
+                  const paymentData = deal.nestedData?.find(
+                    (nested: any) => nested.Payment === index + 1
+                  );
+                  const paymentAmount = paymentData
+                    ? `$${(
+                        paymentData["Payment Value"] / 100
+                      ).toLocaleString()}`
+                    : "N/A";
+
+                  // Show tooltip for all payments (both verified and rejected)
+                  return (
+                    <PaymentTooltip key={index} amount={paymentAmount}>
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${badgeClass}`}
+                      >
+                        {paymentType}
+                      </span>
+                    </PaymentTooltip>
+                  );
+                })}
+              </div>
+            );
+          },
+        },
+        {
+          accessorKey: "Pay Method",
+          header: "Pay Method",
+          cell: ({ row }: any) => (
+            <div className="text-[12px] text-gray-700">
+              {row.getValue("Pay Method")}
+            </div>
+          ),
+        },
+        {
+          accessorKey: "Due Date",
+          header: "Due Date",
+          cell: ({ row }: any) => (
+            <div className="text-[12px] text-gray-700">
+              {row.getValue("Due Date")}
+            </div>
+          ),
+        },
+        {
+          accessorKey: "Version",
+          header: "Version",
+          cell: ({ row }: any) => {
+            const version = row.getValue("Version") as string;
+            return (
+              <span
+                className={`px-2 py-1 text-[12px] font-medium rounded ${
+                  version.toLowerCase() === "edited"
+                    ? "bg-blue-100 text-blue-700"
+                    : "bg-gray-100 text-gray-600"
+                }`}
+              >
+                {version}
+              </span>
+            );
+          },
+        },
+        {
+          accessorKey: "Sales Person",
+          header: "Sales Person",
+          cell: ({ row }: any) => (
+            <div className="text-[12px] text-gray-700">
+              {row.getValue("Sales Person")}
+            </div>
+          ),
+        },
+        {
+          id: "actions",
+          header: "Actions",
+          cell: ({ row }: any) => (
+            <div className="flex items-center justify-center gap-2">
+              <ExpandButton
+                isExpanded={expandedRows[row.index] || false}
+                onToggle={() => {
+                  const newExpanded = { ...expandedRows };
                   newExpanded[row.index] = !newExpanded[row.index];
-                  return newExpanded;
-                });
-              }}
-            />
-          </div>
-        ),
-      },
-    ],
+                  setExpandedRows(newExpanded);
+                }}
+              />
+            </div>
+          ),
+        },
+      ] as any,
     [expandedRows]
   );
 
   const expandedContent = (row: any) => {
-    const nestedData = (row.original as MainUsers).nestedData || [];
+    const nestedData = row.original.nestedData || [];
     if (nestedData.length === 0) return null;
 
     return (
@@ -573,12 +586,12 @@ const DealsTable: React.FC<DealsTableProps> = ({
         <div className="px-3 py-2 bg-gray-100 border-b border-gray-200">
           <h4 className="text-[12px] font-semibold text-gray-800 flex items-center gap-2">
             <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-            Payment Details for {(row.original as MainUsers)["Deal Name"]}
+            Payment Details for {row.original["Deal Name"]}
           </h4>
         </div>
         <div className="p-0">
           <UnifiedTable
-            data={nestedData as unknown[]}
+            data={nestedData}
             columns={NestedDealColumns}
             config={{
               features: {
@@ -601,7 +614,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
       <UnifiedTable
-        data={filteredData as unknown[]}
+        data={filteredData}
         columns={columns}
         config={{
           features: {
@@ -631,10 +644,10 @@ const DealsTable: React.FC<DealsTableProps> = ({
         expandedRows={expandedRows}
         onExpandedRowsChange={setExpandedRows}
         getRowProps={(row: any) => ({
-          className: (row.original as MainUsers).isRejected
+          className: row.original.isRejected
             ? "bg-red-50 hover:bg-red-100 transition-colors"
             : "",
-          "data-rejected": (row.original as MainUsers).isRejected || false,
+          "data-rejected": row.original.isRejected || false,
         })}
       />
     </div>
