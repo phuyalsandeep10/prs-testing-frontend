@@ -5,7 +5,12 @@ import { z } from "zod";
 import closeicon from "@/assets/icons/close icon.svg";
 import Image from "next/image";
 
-const DealPaymentForm = () => {
+interface DealPaymentFormProps {
+  togglePaymentForm?: boolean;
+  setTogglePaymentForm?: (value: boolean) => void;
+}
+
+const DealPaymentForm: React.FC<DealPaymentFormProps> = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const schema = z.object({
