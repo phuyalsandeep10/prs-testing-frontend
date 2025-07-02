@@ -157,19 +157,19 @@ const PaymentSection = () => {
     <div className="flex flex-wrap gap-10">
       <PaymentOverview
         title="Invoice Status Overview"
-        className="bg-[#FFFFFF] h-auto w-[367px]"
+        className="bg-[#FFFFFF] h-auto w-[376px]"
         subtitles={invoiceStatus || []}
       />
 
       <PaymentOverview
         title="Payment Methods Breakdown"
-        className="bg-[#FFFFFF] h-auto w-[367px]"
+        className="bg-[#FFFFFF] h-auto w-[376px]"
         subtitles={paymentMethods || []}
       />
 
       <PaymentOverview
         title="Payment Failure Reasons"
-        className="bg-[#FFFFFF] h-auto w-[367px]"
+        className="bg-[#FFFFFF] h-auto w-[376px]"
         subtitles={failureReasons || []}
       />
     </div>

@@ -2,15 +2,11 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { type Client } from "@/data/clients";
+import { type Client } from "@/lib/types/roles";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
-interface ClientDetailClientProps {
-  client: Client;
-}
-
-export function ClientDetailClient({ client }: ClientDetailClientProps) {
+export function ClientDetailClient({ client }: { client: any }) {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Clean White Header - Matching Figma */}

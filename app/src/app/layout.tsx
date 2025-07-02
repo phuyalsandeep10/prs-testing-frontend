@@ -2,20 +2,34 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Outfit } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider } from "@/contexts/AuthContext";
+import Providers from "./providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
+  preload: true,
+  weight: ["400", "500", "600", "700"], // Only load weights that are used
+  fallback: ["system-ui", "arial"], // Add fallback fonts
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  weight: ["400", "500"], // Minimal weights for mono font
+  fallback: ["ui-monospace", "monospace"], // Add fallback fonts
 });
 
 const outfit = Outfit({
   subsets: ["latin"],
   variable: "--font-outfit",
+  display: "swap",
+  preload: true,
+  weight: ["400", "500", "600", "700"], // Only load weights that are used
+  fallback: ["system-ui", "sans-serif"], // Add fallback fonts
 });
 
 export const metadata: Metadata = {
@@ -31,7 +45,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} antialiased`}>
-        {children}
+        <Providers>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </Providers>
         <Toaster />
       </body>
     </html>

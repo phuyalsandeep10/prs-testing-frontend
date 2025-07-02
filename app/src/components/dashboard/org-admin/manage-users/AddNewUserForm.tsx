@@ -12,9 +12,14 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// These should ideally be passed as props
-const roles = ["Verifier", "Supervisor", "Salesperson"];
-const teams = ["Design Wizards", "Team SEO Warriors", "Sales Giants"];
+// Define available roles as per user requirements
+const availableRoles = ["Salesperson", "Verifier", "Team Member", "Supervisor/Team Lead"];
+
+// Interface for team data
+interface TeamOption {
+  id: number;
+  name: string;
+}
 
 const formSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
@@ -23,7 +28,7 @@ const formSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string(),
   role: z.string().min(1, "Role is required"),
-  team: z.string().min(1, "Team is required"),
+  team: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -40,6 +45,8 @@ export function AddNewUserForm({ onClose, onFormSubmit, initialData, isEdit = fa
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
+  const [teams, setTeams] = React.useState<TeamOption[]>([]);
+  const [teamsLoading, setTeamsLoading] = React.useState(true);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -54,21 +61,117 @@ export function AddNewUserForm({ onClose, onFormSubmit, initialData, isEdit = fa
     },
   });
 
+  // Load teams from API
+  React.useEffect(() => {
+    const loadTeams = async () => {
+      try {
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+          setTeamsLoading(false);
+          return;
+        }
+
+        const response = await fetch('http://localhost:8000/api/v1/teams/', {
+          headers: {
+            'Authorization': `Token ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const teamsList = Array.isArray(data) ? data : data.results || [];
+          setTeams(teamsList.map((team: any) => ({
+            id: team.id,
+            name: team.name
+          })));
+        } else {
+          console.error('Failed to load teams:', response.status);
+        }
+      } catch (error) {
+        console.error('Error loading teams:', error);
+      } finally {
+        setTeamsLoading(false);
+      }
+    };
+
+    loadTeams();
+  }, []);
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      console.log("Form values:", values);
-      toast.success(`User ${isEdit ? 'updated' : 'created'} successfully!`);
-      form.reset();
-      if (onFormSubmit) {
-        onFormSubmit();
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        toast.error('No authentication token found. Please login again.');
+        setIsLoading(false);
+        return;
       }
-      onClose();
+
+      // Prepare user data
+      const [firstName, ...lastNameParts] = values.fullName.trim().split(' ');
+      const lastName = lastNameParts.join(' ') || firstName;
+      
+      const userData: any = {
+        username: values.email.split('@')[0],
+        first_name: firstName,
+        last_name: lastName,
+        email: values.email,
+        contact_number: `+977-${values.contactNumber}`,
+        password: values.password,
+        role_name: values.role,
+        is_active: true
+      };
+
+      if (values.team) {
+        userData.teams = [values.team];
+      }
+
+      console.log('Sending user data:', userData);
+
+      const url = isEdit 
+        ? `http://localhost:8000/api/v1/auth/users/${initialData?.id}/`
+        : 'http://localhost:8000/api/v1/auth/users/';
+        
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Authorization': `Token ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
+
+      const responseData = await response.json();
+      console.log('API Response:', responseData);
+
+      if (response.ok) {
+        toast.success(`User ${isEdit ? 'updated' : 'created'} successfully!`);
+        
+        // Trigger refresh events
+        const event = new CustomEvent(isEdit ? 'userUpdated' : 'userCreated', {
+          detail: responseData
+        });
+        window.dispatchEvent(event);
+        
+        form.reset();
+        if (onFormSubmit) {
+          onFormSubmit();
+        }
+        onClose();
+      } else {
+        const errorMessage = responseData.detail || 
+                           responseData.message || 
+                           Object.values(responseData).flat().join(', ') ||
+                           `Failed to ${isEdit ? 'update' : 'create'} user`;
+        console.error('API Error:', errorMessage);
+        toast.error(errorMessage);
+      }
     } catch (error) {
-      console.error(`Failed to ${isEdit ? 'update' : 'create'} user:`, error);
-      toast.error(`Failed to ${isEdit ? 'update' : 'create'} user. Please try again.`);
+      console.error(`Network error ${isEdit ? 'updating' : 'creating'} user:`, error);
+      toast.error(`Network error. Please check your connection and try again.`);
     } finally {
       setIsLoading(false);
     }
@@ -262,20 +365,20 @@ export function AddNewUserForm({ onClose, onFormSubmit, initialData, isEdit = fa
                     <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
                       Roles<span className="text-red-500 ml-1">*</span>
                     </FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
-                      <FormControl>
-                        <SelectTrigger className="w-full h-[48px] border-gray-300 focus:border-[#4F46E5] text-[16px] rounded-lg">
-                          <SelectValue placeholder="Verifier" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {roles.map((role) => (
-                          <SelectItem key={role} value={role}>
+                    <FormControl>
+                      <select
+                        {...field}
+                        disabled={isLoading}
+                        className="w-full h-[48px] border border-gray-300 focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] text-[16px] rounded-lg px-3 bg-white"
+                      >
+                        <option value="">Select a role</option>
+                        {availableRoles.map((role) => (
+                          <option key={role} value={role}>
                             {role}
-                          </SelectItem>
+                          </option>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </select>
+                    </FormControl>
                     <FormMessage className="text-[12px] text-red-500 mt-1" />
                   </FormItem>
                 )}
@@ -285,24 +388,26 @@ export function AddNewUserForm({ onClose, onFormSubmit, initialData, isEdit = fa
                 control={form.control}
                 name="team"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">Team</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
-                      <FormControl>
-                        <SelectTrigger className="w-full h-[48px] border-gray-300 focus:border-[#4F46E5] text-[16px] rounded-lg">
-                          <SelectValue placeholder="Design wizards" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {teams.map((team) => (
-                          <SelectItem key={team} value={team}>
-                            {team}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage className="text-[12px] text-red-500 mt-1" />
-                  </FormItem>
+                                  <FormItem>
+                  <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">Team</FormLabel>
+                  <FormControl>
+                    <select
+                      {...field}
+                      disabled={isLoading || teamsLoading}
+                      className="w-full h-[48px] border border-gray-300 focus:border-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] text-[16px] rounded-lg px-3 bg-white"
+                    >
+                      <option value="">
+                        {teamsLoading ? "Loading teams..." : teams.length === 0 ? "No teams available" : "Select team"}
+                      </option>
+                      {teams.map((team) => (
+                        <option key={team.id} value={team.name}>
+                          {team.name}
+                        </option>
+                      ))}
+                    </select>
+                  </FormControl>
+                  <FormMessage className="text-[12px] text-red-500 mt-1" />
+                </FormItem>
                 )}
               />
             </div>

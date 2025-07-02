@@ -16,6 +16,7 @@ interface SelectFieldProps {
   labelClassName?: string;
   selectClassName?: string;
   wrapperClassName?: string;
+  disabled?: boolean;
 }
 
 const SelectField: React.FC<SelectFieldProps> = ({
@@ -32,6 +33,7 @@ const SelectField: React.FC<SelectFieldProps> = ({
   labelClassName,
   selectClassName = "",
   wrapperClassName,
+  disabled = false,
 }) => {
   const colorMap = {
     status: {
@@ -59,7 +61,10 @@ const SelectField: React.FC<SelectFieldProps> = ({
       <select
         id={id}
         {...registration}
-        className={`mt-1 block rounded-[6px] shadow-[0_0_4px_#8393FC] p-2 text-[12px] font-normal outline-none focus:ring-[#6B7FFF] focus:border-[#6B7FFF] border ${borderColor} ${width} ${height} bg-white ${selectClassName}`}
+        className={`mt-1 block rounded-[6px] shadow-[0_0_4px_#8393FC] p-2 text-[12px] font-normal outline-none focus:ring-[#6B7FFF] focus:border-[#6B7FFF] border ${borderColor} ${width} ${height} bg-white ${selectClassName} ${
+          error ? "border-red-500" : ""
+        }`}
+        disabled={disabled}
       >
         <option value="">{placeholder}</option>
         {options.map((opt) => {
@@ -83,6 +88,7 @@ const SelectField: React.FC<SelectFieldProps> = ({
           );
         })}
       </select>
+      {error && <p className="text-red-500 text-sm mt-1">{error.message}</p>}
     </InputWrapper>
   );
 };

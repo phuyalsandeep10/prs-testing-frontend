@@ -13,7 +13,7 @@ import {
 } from '@/types';
 
 // ==================== API CONFIGURATION ====================
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 const API_TIMEOUT = 10000;
 
 class ApiClient {
@@ -34,11 +34,14 @@ class ApiClient {
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
     try {
+      const authToken = localStorage.getItem('authToken');
+      
       const response = await fetch(url, {
         ...options,
         signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
+          ...(authToken && { 'Authorization': `Token ${authToken}` }),
           ...options.headers,
         },
       });
@@ -60,22 +63,19 @@ class ApiClient {
         success: true,
         message: data.message,
       };
-         } catch (error: any) {
-       clearTimeout(timeoutId);
-       
-       if (error instanceof ApiError) {
-         throw error;
-       }
-       
-       if (error?.name === 'AbortError') {
-         throw new ApiError('Request timeout', 'TIMEOUT');
-       }
-       
-       throw new ApiError(
-         error?.message || 'An unexpected error occurred',
-         'UNKNOWN_ERROR'
-       );
-     }
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      if (error?.name === 'AbortError') {
+        throw new ApiError('Request timeout', 'TIMEOUT');
+      }
+      throw new ApiError(
+        error?.message || 'An unexpected error occurred',
+        'UNKNOWN_ERROR'
+      );
+    }
   }
 
   // ==================== GENERIC CRUD METHODS ====================
@@ -89,6 +89,56 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  async postMultipart<T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
+    const url = `${this.baseURL}${endpoint}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const headers: HeadersInit = {
+        ...(authToken && { 'Authorization': `Token ${authToken}` }),
+      };
+
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData,
+        signal: controller.signal,
+        headers,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new ApiError(
+          errorData.message || `HTTP ${response.status}: ${response.statusText}`,
+          response.status.toString(),
+          errorData
+        );
+      }
+
+      const data = await response.json();
+      return {
+        data,
+        success: true,
+        message: data.message,
+      };
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      if (error?.name === 'AbortError') {
+        throw new ApiError('Request timeout', 'TIMEOUT');
+      }
+      throw new ApiError(
+        error?.message || 'An unexpected error occurred',
+        'UNKNOWN_ERROR'
+      );
+    }
   }
 
   async put<T>(endpoint: string, data: any): Promise<ApiResponse<T>> {
@@ -197,66 +247,6 @@ export const teamApi = {
     apiClient.delete<Team>(`/teams/${teamId}/members/${userId}`),
 };
 
-// ==================== COMMISSION API ====================
-export const commissionApi = {
-  getAll: (params?: { 
-    page?: number; 
-    limit?: number; 
-    search?: string;
-    currency?: string;
-  }) =>
-    apiClient.getPaginated<CommissionData>('/commission', params?.page, params?.limit, params),
-  
-  getById: (id: string) =>
-    apiClient.get<CommissionData>(`/commission/${id}`),
-  
-  update: (data: UpdateInput<CommissionData>) =>
-    apiClient.put<CommissionData>(`/commission/${data.id}`, data),
-  
-  bulkUpdate: (data: UpdateInput<CommissionData>[]) =>
-    apiClient.put<CommissionData[]>('/commission/bulk', data),
-  
-  calculate: (id: string) =>
-    apiClient.post<CommissionData>(`/commission/${id}/calculate`, {}),
-  
-  export: (format: 'csv' | 'pdf', filters?: Record<string, any>) =>
-    apiClient.get<Blob>(`/commission/export/${format}`, filters),
-};
-
-// ==================== AUTHENTICATION API ====================
-export const authApi = {
-  login: (credentials: { email: string; password: string }) =>
-    apiClient.post<{ user: User; token: string }>('/auth/login', credentials),
-  
-  logout: () =>
-    apiClient.post<void>('/auth/logout', {}),
-  
-  refreshToken: () =>
-    apiClient.post<{ token: string }>('/auth/refresh', {}),
-  
-  forgotPassword: (email: string) =>
-    apiClient.post<void>('/auth/forgot-password', { email }),
-  
-  resetPassword: (token: string, password: string) =>
-    apiClient.post<void>('/auth/reset-password', { token, password }),
-  
-  verifyEmail: (token: string) =>
-    apiClient.post<void>('/auth/verify-email', { token }),
-};
-
-// ==================== DASHBOARD API ====================
-export const dashboardApi = {
-  getStats: (role: User['role']) =>
-    apiClient.get<DashboardStats>(`/dashboard/stats?role=${role}`),
-  
-  getRecentActivities: (limit: number = 10) =>
-    apiClient.get<Activity[]>(`/dashboard/activities?limit=${limit}`),
-  
-  getNotifications: (params?: { page?: number; limit?: number; unread?: boolean }) =>
-    apiClient.getPaginated<Notification>('/notifications', params?.page, params?.limit, params),
-};
-
-// ==================== ERROR HANDLING UTILITIES ====================
 export class ApiError extends Error {
   code?: string;
   details?: Record<string, any>;
@@ -268,38 +258,3 @@ export class ApiError extends Error {
     this.details = details;
   }
 }
-
-export const handleApiError = (error: unknown): ApiError => {
-  if (error instanceof ApiError) {
-    return error;
-  }
-  
-  if (error instanceof Error) {
-    return new ApiError(error.message);
-  }
-  
-  return new ApiError('An unexpected error occurred');
-};
-
-// ==================== RESPONSE HELPERS ====================
-export const isApiSuccess = <T>(response: ApiResponse<T>): response is ApiResponse<T> & { success: true } => {
-  return response.success === true;
-};
-
-export const extractApiData = <T>(response: ApiResponse<T>): T => {
-  if (!isApiSuccess(response)) {
-    throw new ApiError(response.errors?.join(', ') || 'API request failed');
-  }
-  return response.data;
-};
-
-// ==================== MOCK DATA FALLBACKS (Development Only) ====================
-export const mockDataFallbacks = {
-  users: [] as User[],
-  clients: [] as Client[],
-  teams: [] as Team[],
-  commission: [] as CommissionData[],
-};
-
-// Enable mock data in development
-export const enableMockData = process.env.NODE_ENV === 'development' && !process.env.NEXT_PUBLIC_API_URL;

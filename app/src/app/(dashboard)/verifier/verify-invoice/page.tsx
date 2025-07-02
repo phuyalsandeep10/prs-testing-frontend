@@ -1,8 +1,9 @@
 'use client';
 import React, { useState, useMemo } from 'react';
-import { Search, FileText, Trash2, Eye } from 'lucide-react';
+import { Search, FileText, Minus } from 'lucide-react';
 import { ColumnDef } from "@tanstack/react-table";
 import { UnifiedTable } from "@/components/core";
+import PaymentVerificationModal from "@/components/dashboard/verifier/PaymentVerificationModal";
 
 interface InvoiceData {
   id: string;
@@ -17,6 +18,12 @@ interface InvoiceData {
 const VerifyInvoice = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [modalState, setModalState] = useState({
+    isOpen: false,
+    mode: 'verification' as 'verification' | 'view',
+    invoiceId: null as string | null,
+    invoiceData: null as InvoiceData | null,
+  });
 
   const invoiceData: InvoiceData[] = [
     {
@@ -113,6 +120,15 @@ const VerifyInvoice = () => {
     ).length;
   };
 
+  const handleCloseModal = () => {
+    setModalState({
+      isOpen: false,
+      mode: 'verification',
+      invoiceId: null,
+      invoiceData: null,
+    });
+  };
+
   // Filter data based on active tab and search term
   const filteredData = useMemo(() => {
     let data = invoiceData.filter(invoice => 
@@ -196,16 +212,25 @@ const VerifyInvoice = () => {
       cell: ({ row }: any) => (
         <div className="flex items-center gap-2">
           <button
-            onClick={() => console.log("View invoice:", row.original.id)}
+            onClick={() => {
+              setModalState({
+                isOpen: true,
+                mode: 'verification',
+                invoiceId: row.original.id,
+                invoiceData: row.original,
+              });
+            }}
             className="w-8 h-8 rounded-full bg-[#4F46E5] text-white flex items-center justify-center hover:bg-[#4338CA] transition-colors"
+            title="Open Payment Verification Form"
           >
-            <Eye className="w-4 h-4" />
+            <FileText className="w-4 h-4" />
           </button>
           <button
-            onClick={() => console.log("Delete invoice:", row.original.id)}
+            onClick={() => console.log("Action 2 for invoice:", row.original.id)}
             className="w-8 h-8 rounded-full bg-[#EF4444] text-white flex items-center justify-center hover:bg-[#DC2626] transition-colors"
+            title="Secondary Action"
           >
-            <Trash2 className="w-4 h-4" />
+            <Minus className="w-4 h-4" />
           </button>
         </div>
       ),
@@ -329,6 +354,17 @@ const VerifyInvoice = () => {
           />
         </div>
       </div>
+
+      {/* Payment Verification Modal */}
+      <PaymentVerificationModal
+        isOpen={modalState.isOpen}
+        onOpenChange={(open) => {
+          if (!open) handleCloseModal();
+        }}
+        mode={modalState.mode}
+        invoiceId={modalState.invoiceId}
+        invoiceData={modalState.invoiceData}
+      />
     </div>
   );
 };

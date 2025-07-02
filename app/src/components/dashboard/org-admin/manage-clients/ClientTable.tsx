@@ -5,32 +5,42 @@ import { ColumnDef, Row } from "@tanstack/react-table";
 import { Eye, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import Image from "next/image";
 import Link from "next/link";
 import { UnifiedTable } from "@/components/core";
-import { getClients, type Client } from "@/data/clients";
+import { type Client } from "@/lib/types/roles";
 
 const formatDate = (dateString: string) => {
   try {
     const date = new Date(dateString);
-    const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
-    return date.toLocaleDateString('en-US', options).replace(' ', '-');
+    if (isNaN(date.getTime())) return "Invalid Date";
+    const options: Intl.DateTimeFormatOptions = {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    };
+    return date.toLocaleDateString('en-US', options);
   } catch {
     return dateString;
   }
 };
 
-const columns = [
+const columns: ColumnDef<Client>[] = [
   {
     id: "select",
-    header: ({ table }: any) => (
+    header: ({ table }) => (
       <Checkbox
-        checked={table.getIsAllPageRowsSelected() ? true : table.getIsSomePageRowsSelected() ? "indeterminate" : false}
+        checked={
+          table.getIsAllPageRowsSelected()
+            ? true
+            : table.getIsSomePageRowsSelected()
+            ? "indeterminate"
+            : false
+        }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
       />
     ),
-    cell: ({ row }: any) => (
+    cell: ({ row }) => (
       <Checkbox
         checked={row.getIsSelected()}
         onCheckedChange={(value) => row.toggleSelected(!!value)}
@@ -41,85 +51,62 @@ const columns = [
     enableHiding: false,
   },
   {
-    accessorKey: "name",
+    accessorKey: "client_name",
     header: "Client Name",
-    cell: ({ row }: any) => {
+    cell: ({ row }) => {
       const client = row.original;
       return (
         <div className="flex items-center gap-3">
-          <Image
-            src={client.avatarUrl || '/avatars/default.png'}
-            alt={client.name}
-            width={28}
-            height={28}
-            className="rounded-full"
-          />
-          <span className="font-medium">{client.name}</span>
+          <span className="font-medium">{client.client_name}</span>
         </div>
       );
     },
   },
   {
-    accessorKey: "activeDate",
-    header: "Active Date",
-    cell: ({ row }: any) => formatDate(row.getValue("activeDate")),
+    accessorKey: "created_at",
+    header: "Created Date",
+    cell: ({ row }) => formatDate(row.getValue("created_at")),
   },
   {
     accessorKey: "status",
     header: "Status",
-    cell: ({ row }: any) => {
+    cell: ({ row }) => {
       const status = row.getValue("status") as Client["status"];
-      const statusColor: Record<Client["status"], string> = {
-        "clear": "text-green-600",
-        "pending": "text-orange-500",
-        "bad-depth": "text-red-600",
+      if (!status) return 'N/A';
+      const statusConfig = {
+        clear: { label: "Clear", className: "text-green-600" },
+        pending: { label: "Pending", className: "text-orange-500" },
+        bad_debt: { label: "Bad Debt", className: "text-red-600" },
       };
-      return <span className={statusColor[status]}>{status}</span>;
-    },
-  },
-  {
-    accessorKey: "salesLeadsAvatars",
-    header: "Sales Leads",
-    cell: ({ row }: any) => {
-      const leads = row.getValue("salesLeadsAvatars") as string[];
-      return (
-        <div className="flex -space-x-2 overflow-hidden">
-          {leads.map((lead, index) => (
-            <Image 
-              key={index} 
-              className="inline-block h-7 w-7 rounded-full ring-2 ring-white" 
-              src={lead} 
-              alt={`lead ${index + 1}`} 
-              width={28} 
-              height={28} 
-            />
-          ))}
-        </div>
-      );
+      const config = status ? statusConfig[status] : null;
+      return config ? <span className={config.className}>{config.label}</span> : 'N/A';
     },
   },
   {
     accessorKey: "satisfaction",
     header: "Satisfaction",
-    cell: ({ row }: any) => {
+    cell: ({ row }) => {
       const satisfaction = row.getValue("satisfaction") as Client["satisfaction"];
-      const satisfactionColor: Record<Client["satisfaction"], string> = {
-        "positive": "text-green-600",
-        "neutral": "text-orange-500",
-        "negative": "text-red-600",
+      if (!satisfaction) return 'N/A';
+      const satisfactionConfig = {
+        excellent: { label: 'Excellent', className: 'text-green-600' },
+        good: { label: 'Good', className: 'text-blue-500' },
+        average: { label: 'Average', className: 'text-yellow-500' },
+        poor: { label: 'Poor', className: 'text-red-600' },
       };
-      return <span className={satisfactionColor[satisfaction]}>{satisfaction}</span>;
+      const config = satisfaction ? satisfactionConfig[satisfaction] : null;
+      return config ? <span className={config.className}>{config.label}</span> : 'N/A';
     },
   },
   {
     accessorKey: "remarks",
     header: "Remarks",
-    cell: ({ row }: any) => <div className="truncate w-40">{row.getValue("remarks")}</div>,
+    cell: ({ row }) => <div className="truncate w-40">{row.getValue("remarks") || 'No remarks'}</div>,
   },
   {
     id: "actions",
     header: "Actions",
-    cell: ({ row }: any) => {
+    cell: ({ row }) => {
       const client = row.original;
       return (
         <div className="flex items-center justify-center gap-2">
@@ -135,10 +122,10 @@ const columns = [
       );
     },
   },
-] as any;
+];
 
 interface ClientTableProps {
-  clients?: Client[];
+  clients: Client[];
   loading?: boolean;
   error?: string | null;
   onRefresh?: () => void;
@@ -146,21 +133,19 @@ interface ClientTableProps {
   onRowClick?: (row: Row<Client>) => void;
 }
 
-export function ClientTable({ 
+export function ClientTable({
   clients,
-  loading = false, 
-  error = null, 
-  onRefresh, 
+  loading = false,
+  error = null,
+  onRefresh,
   onExport,
-  onRowClick 
+  onRowClick
 }: ClientTableProps) {
-  const data = React.useMemo(() => clients || getClients(), [clients]);
-
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
       <UnifiedTable
-        data={data}
-        columns={columns}
+        data={clients}
+        columns={columns as ColumnDef<unknown>[]}
         config={{
           features: {
             pagination: true,
