@@ -16,6 +16,7 @@ interface InputFieldProps {
   labelClassName?: string;
   inputClassName?: string;
   wrapperClassName?: string;
+  disabled?: boolean;
 }
 
 const InputField: React.FC<InputFieldProps> = ({
@@ -32,6 +33,7 @@ const InputField: React.FC<InputFieldProps> = ({
   labelClassName,
   inputClassName = "",
   wrapperClassName,
+  disabled = false,
 }) => {
   return (
     <InputWrapper
@@ -48,7 +50,10 @@ const InputField: React.FC<InputFieldProps> = ({
         type={type}
         placeholder={placeholder}
         {...registration}
-        className={`mt-1 block ${width} ${height} p-2 rounded-[6px] text-[12px] font-normal outline-none focus:ring-[#6B7FFF] focus:border-[#6B7FFF] border ${borderColor} shadow-[0_0_4px_#8393FC] ${inputClassName}`}
+        className={`mt-1 block ${width} ${height} p-2 rounded-[6px] text-[12px] font-normal outline-none focus:ring-[#6B7FFF] focus:border-[#6B7FFF] border ${borderColor} shadow-[0_0_4px_#8393FC] ${inputClassName} ${
+          error ? "border-red-500" : ""
+        }`}
+        disabled={disabled}
       />
     </InputWrapper>
   );
