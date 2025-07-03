@@ -12,7 +12,7 @@ const PaymentVerificationStatus = () => {
   const rejectedPercent = (rejected / total) * 100;
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 w-full max-w-[500px] h-[295px]">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 w-full  h-[295px]">
       <div className="flex justify-between items-start mb-5">
         <div>
           <h2 className="text-lg font-semibold font-outfit text-gray-900">

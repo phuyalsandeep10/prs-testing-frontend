@@ -29,7 +29,7 @@ export default function Shortcuts() {
   );
 
   return (
-    <Card className="w-full max-w-[390px] h-[295px] rounded-xl shadow-sm border p-5 gap-0 relative">
+    <Card className="w-full  h-[295px] rounded-xl shadow-sm border p-5 gap-0 relative">
       <h2 className="text-xl font-semibold font-outfit text-black pb-1">
         Shortcuts
       </h2>
@@ -38,13 +38,16 @@ export default function Shortcuts() {
       </p>
 
       {/* Add padding-bottom to prevent overlap */}
-      <div className="flex flex-wrap gap-[14px] justify-start pb-12">
+      {/* <div className="flex flex-wrap gap-y-4 pb-12"> */}
+      {/* Shortcut buttons (spread with justify-between) */}
+      <div className="flex flex-wrap gap-2 pb-12">
         {paginatedShortcuts.map((shortcut, index) => (
           <Button
             key={index}
             variant="ghost"
             className={cn(
-              "flex flex-col items-center justify-center py-5 rounded-lg border text-[8px] font-outfit font-medium h-[73px] w-[73px]",
+              "flex flex-col items-center justify-center py-5 rounded-lg border text-[8px] font-outfit font-medium h-[73px]",
+              "min-w-[70px] basis-[73px] max-w-[120px] flex-grow",
               shortcut.active
                 ? "bg-indigo-500 text-white"
                 : "bg-indigo-100 text-indigo-500"
@@ -54,14 +57,17 @@ export default function Shortcuts() {
             <span>{shortcut.label}</span>
           </Button>
         ))}
-        <div className="w-[73px] h-[73px] flex flex-col items-center justify-center border border-dashed border-gray-300 rounded-lg py-5 text-gray-400 text-[8px] cursor-pointer hover:border-gray-400">
+
+        {/* Add Shortcut Button as part of the wrap */}
+        <div className="min-w-[70px] basis-[73px] max-w-[120px] flex-grow h-[73px] flex flex-col items-center justify-center border border-dashed border-gray-300 rounded-lg py-5 text-gray-400 text-[8px] cursor-pointer hover:border-gray-400">
           <Add />
           <span>Add Shortcuts</span>
         </div>
       </div>
+      {/* </div> */}
 
       {/* Fixed-position pagination inside the card */}
-      <div className="absolute bottom-5 left-5 right-5 flex items-center justify-between">
+      <div className="absolute bottom-5 left-5 right-5 flex items-center justify-between pt-2">
         <div className="flex items-center gap-1 cursor-pointer">
           {Array.from({ length: totalPages }).map((_, i) => (
             <div

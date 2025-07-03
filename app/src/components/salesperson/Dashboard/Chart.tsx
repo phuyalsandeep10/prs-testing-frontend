@@ -126,7 +126,7 @@ const ChartDashboard = () => {
   };
 
   return (
-    <Card className="p-5 shadow-sm border rounded-xl w-full">
+    <Card className="p-5 shadow-sm border rounded-xl w-full ">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4">
         <div>
           <h2 className="text-xl font-semibold font-outfit text-black">

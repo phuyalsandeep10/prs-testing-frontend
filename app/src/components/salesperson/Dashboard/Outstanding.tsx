@@ -83,7 +83,7 @@ const Outstanding: React.FC = () => {
   };
 
   return (
-    <div className="w-full  max-w-[450px] min-h-[295px]">
+    <div className="w-full min-h-[295px]">
       <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
         <div className="px-4 sm:px-6 pt-7 pb-5">
           <h2 className="text-xl font-semibold text-[#000000] font-outfit">
