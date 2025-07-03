@@ -58,7 +58,7 @@ const Acheve = () => {
 
   return (
     <Card
-      className="relative w-full max-w-[800px] h-[212px] border rounded-lg pl-8 overflow-hidden shadow-md"
+      className="relative w-full  h-[212px] border rounded-lg pl-8 overflow-hidden shadow-md"
       style={{ backgroundColor: bgColor }}
     >
       <div
@@ -106,51 +106,52 @@ const Acheve = () => {
         >
           Welcome Message.
         </h2>
-
-        <div className="bg-white rounded-lg shadow-sm w-full max-w-[468px] h-[64px] flex flex-col justify-start">
-          <p className="text-md font-outfit font-medium text-black px-6 pt-3 mb-[6px] leading-tight">
-            {message}
-            <span className="float-right font-semibold">
-              <span className="text-[#465FFF]">
-                ${currentAmount.toLocaleString()}
+        <div className="pr-32">
+          <div className="bg-white rounded-lg shadow-sm w-full  h-[64px] flex flex-col justify-start">
+            <p className="text-md font-outfit font-medium text-black px-6 pt-3 mb-[6px] leading-tight">
+              {message}
+              <span className="float-right font-semibold">
+                <span className="text-[#465FFF]">
+                  ${currentAmount.toLocaleString()}
+                </span>
+                <span className="text-gray-500"> / </span>
+                <span className="text-black">
+                  ${targetAmount.toLocaleString()}
+                </span>
               </span>
-              <span className="text-gray-500"> / </span>
-              <span className="text-black">
-                ${targetAmount.toLocaleString()}
-              </span>
-            </span>
-          </p>
-          <div className="px-6 pb-[12px]">
-            <div className="relative w-full h-[10px] bg-gray-200 rounded-md overflow-hidden">
-              <div
-                className="h-full"
-                style={{
-                  width: `${percentage}%`,
-                  background:
-                    "linear-gradient(to right, #A7D9FF,#7ABFFF,#4D9FFF,#2080FF)",
-                }}
-              ></div>
+            </p>
+            <div className="px-6 pb-[12px]">
+              <div className="relative w-full h-[10px] bg-gray-200 rounded-md overflow-hidden">
+                <div
+                  className="h-full"
+                  style={{
+                    width: `${percentage}%`,
+                    background:
+                      "linear-gradient(to right, #A7D9FF,#7ABFFF,#4D9FFF,#2080FF)",
+                  }}
+                ></div>
 
-              {/* Milestone indicators */}
-              <div className="absolute inset-0">
-                {percentage < 45 && (
-                  <div
-                    className="absolute top-0 bottom-0 w-[1px] bg-[#7E7E7E]"
-                    style={{ left: "45%" }}
-                  />
-                )}
-                {percentage < 65 && (
-                  <div
-                    className="absolute top-0 bottom-0 w-[1px] bg-[#7E7E7E]"
-                    style={{ left: "65%" }}
-                  />
-                )}
-                {percentage < 85 && (
-                  <div
-                    className="absolute top-0 bottom-0 w-[1px] bg-[#7E7E7E]"
-                    style={{ left: "85%" }}
-                  />
-                )}
+                {/* Milestone indicators */}
+                <div className="absolute inset-0">
+                  {percentage < 45 && (
+                    <div
+                      className="absolute top-0 bottom-0 w-[1px] bg-[#7E7E7E]"
+                      style={{ left: "45%" }}
+                    />
+                  )}
+                  {percentage < 65 && (
+                    <div
+                      className="absolute top-0 bottom-0 w-[1px] bg-[#7E7E7E]"
+                      style={{ left: "65%" }}
+                    />
+                  )}
+                  {percentage < 85 && (
+                    <div
+                      className="absolute top-0 bottom-0 w-[1px] bg-[#7E7E7E]"
+                      style={{ left: "85%" }}
+                    />
+                  )}
+                </div>
               </div>
             </div>
           </div>

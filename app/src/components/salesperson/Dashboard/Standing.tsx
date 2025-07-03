@@ -43,7 +43,7 @@ export default function Standing() {
   const standings = tab === "top" ? sortedTop : sortedBottom;
 
   return (
-    <div className="w-full max-w-[388px] h-[527px] border rounded-xl shadow-sm px-5">
+    <div className="w-full  h-[527px] border rounded-xl shadow-sm px-5">
       <h1 className="text-xl font-semibold font-outfit mb-4 pt-[16px]">
         {period.charAt(0).toUpperCase() + period.slice(1)} Standings
       </h1>
@@ -109,16 +109,16 @@ export default function Standing() {
           Bottom Standings
         </button>
       </div>
-      <div className="flex flex-col gap-6 pt-[16px]">
+      <div className="flex flex-col gap-[23px] pt-[16px]">
         {standings.map((team, index) => (
           <div
             key={team.name}
-            className={`flex items-center bg-[#DADFFF] rounded pr-4 ${
+            className={`flex items-center bg-[#DADFFF] rounded pr-4 h-[25px] ${
               index === 0
-                ? "w-full max-w-[221px] h-[25px]"
+                ? "w-full md:w-[85%]"
                 : index === 1
-                ? "w-full max-w-[189px] h-[25px]"
-                : "w-full max-w-[155px] h-[25px]"
+                ? "w-full md:w-[70%]"
+                : "w-full md:w-[50%]"
             }`}
           >
             <div className="flex items-center gap-2 text-[14px] font-normal font-outfit text-black">
@@ -143,7 +143,7 @@ export default function Standing() {
         ))}
       </div>
       <div className="flex flex-col items-center">
-        <div className="relative flex justify-center w-full gap-3 ml-1">
+        <div className="relative flex justify-center w-full gap-2  ml-1">
           {[2, 1, 0].map((i, idx) => {
             const team = standings[i];
             const PodiumComponent =
@@ -163,7 +163,7 @@ export default function Standing() {
               <div
                 key={team.name}
                 className={`flex flex-col items-center ${
-                  idx === 0 ? "mt-[95px]" : idx === 1 ? "mt-[50px]" : "mt-[0px]"
+                  idx === 0 ? "mt-[96px]" : idx === 1 ? "mt-[52px]" : "mt-[0px]"
                 }`}
               >
                 <div className="relative">
