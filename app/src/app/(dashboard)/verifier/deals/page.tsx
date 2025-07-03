@@ -5,7 +5,7 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import pillsButton from "@/assets/icons/pills-button.svg";
-import DealsTable from "@/components/dashboard/org-admin/deals/DealsTable";
+import DealsTable from "@/components/dashboard/verifier/deals/DealsTable";
 import Image from "next/image";
 import DealModal from "@/components/salesperson/Deal/DealModal";
 
@@ -36,17 +36,6 @@ const DealsPage = () => {
     setModalState((prev) => ({ ...prev, isOpen: false }));
   };
 
-  // NOTE: handleEditDeal stays if you want modal in edit mode;
-  // but buttons removed from table so no way to trigger it from there currently.
-  const handleEditDeal = (dealId: string) => {
-    const dealData = { id: dealId };
-    openModal("edit", dealId, dealData);
-  };
-
-  const handleAddPayment = (dealId: string) => {
-    openModal("payment", dealId);
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 font-outfit">
       {/* Header Section */}
@@ -66,7 +55,7 @@ const DealsPage = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Search"
-                className="pl-10 w-[320px] h-[40px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5]"
+                className="pl-10 w-[120px] h-[40px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5]"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -85,11 +74,7 @@ const DealsPage = () => {
 
       {/* Main Content */}
       <div className="px-8 py-6">
-        <DealsTable
-          onEditDeal={handleEditDeal}
-          onAddPayment={handleAddPayment}
-          searchTerm={searchTerm}
-        />
+        <DealsTable searchTerm={searchTerm} />
       </div>
 
       {/* Unified Deal Modal */}

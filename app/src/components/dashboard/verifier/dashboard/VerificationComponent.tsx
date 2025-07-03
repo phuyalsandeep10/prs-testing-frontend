@@ -16,7 +16,7 @@ const VerificationComponent: React.FC<VerificationComponentProps> = ({
   data,
 }) => {
   return (
-    <div className="overflow-x-auto border border-gray-300">
+    <div className="overflow-x-auto">
       <table className="min-w-[600px] w-full table-auto border-collapse">
         <thead>
           <tr className="text-left text-[16px] font-medium text-[#31323A] border-b bg-[#DADFFF] border-gray-400">

@@ -22,8 +22,8 @@ const PaymentOverview: React.FC<CardProps> = ({
     <div
       className={`rounded-[6px] border-[0.5px] border-[#A9A9A9] p-6 pb-2 pl-4 w-[282px] min-h-[129px] ${className}`}
     >
-      <h3 className="text-[#465FFF] text-[20px] font-semibold mb-8">{title}</h3>
-      <div className="space-y-5">
+      <h3 className="text-[#465FFF] text-[20px] font-semibold mb-4">{title}</h3>
+      <div className="space-y-6">
         {subtitles.map((item, index) => (
           <div
             key={index}

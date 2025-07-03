@@ -6,13 +6,25 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { toast } from "sonner";
 import { Loader2, X } from "lucide-react";
-import { apiClient } from "@/lib/api/client";
 import { Client } from "@/lib/types/roles";
 
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
 const formSchema = z.object({
@@ -28,7 +40,10 @@ interface AddNewClientFormProps {
   onClientAdded: (newClient: Client) => void;
 }
 
-export default function AddNewClientForm({ onClose, onClientAdded }: AddNewClientFormProps) {
+export default function AddNewClientForm({
+  onClose,
+  onClientAdded,
+}: AddNewClientFormProps) {
   const [isLoading, setIsLoading] = React.useState(false);
   const [isVisible, setIsVisible] = React.useState(false);
 
@@ -52,7 +67,7 @@ export default function AddNewClientForm({ onClose, onClientAdded }: AddNewClien
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     try {
-      const response = await apiClient.createClient(values);
+      const response = await fetch.get("/api/clients");
       if (response.success && response.data) {
         toast.success("Client created successfully!");
         onClientAdded(response.data);
@@ -62,7 +77,9 @@ export default function AddNewClientForm({ onClose, onClientAdded }: AddNewClien
       }
     } catch (error: any) {
       console.error("Failed to create client:", error);
-      toast.error(error.message || "Failed to create client. Please try again.");
+      toast.error(
+        error.message || "Failed to create client. Please try again."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -83,13 +100,13 @@ export default function AddNewClientForm({ onClose, onClientAdded }: AddNewClien
   // Handle escape key
   React.useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         handleClose();
       }
     };
 
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
   }, []);
 
   // Handle backdrop click
@@ -100,18 +117,26 @@ export default function AddNewClientForm({ onClose, onClientAdded }: AddNewClien
   };
 
   return (
-    <div 
+    <div
       onClick={handleBackdropClick}
       className="fixed inset-0 bg-black/50 backdrop-blur-sm flex z-[99999]"
-      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 99999 }}
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        zIndex: 99999,
+      }}
     >
-      <div 
+      <div
         className="ml-auto w-full max-w-md bg-white shadow-xl transform transition-transform duration-300 ease-in-out z-[100000] flex flex-col"
-        style={{ 
-          transform: isVisible ? 'translateX(0)' : 'translateX(100%)', 
+        style={{
+          transform: isVisible ? "translateX(0)" : "translateX(100%)",
           zIndex: 100000,
-          height: '100vh',
-          minHeight: '100vh'
+          height: "100vh",
+          minHeight: "100vh",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -121,8 +146,8 @@ export default function AddNewClientForm({ onClose, onClientAdded }: AddNewClien
             <h2 className="text-[20px] font-semibold text-[#4F46E5]">
               Add New Client
             </h2>
-            <button 
-              onClick={handleClose} 
+            <button
+              onClick={handleClose}
               className="text-gray-400 hover:text-gray-600 transition-colors p-1"
             >
               <X className="h-5 w-5" />
@@ -136,7 +161,9 @@ export default function AddNewClientForm({ onClose, onClientAdded }: AddNewClien
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               {/* Contact Information Section */}
               <div>
-                <h3 className="text-[16px] font-medium text-gray-900 mb-4">Contact Information</h3>
+                <h3 className="text-[16px] font-medium text-gray-900 mb-4">
+                  Contact Information
+                </h3>
               </div>
 
               {/* Client Name */}
@@ -149,11 +176,11 @@ export default function AddNewClientForm({ onClose, onClientAdded }: AddNewClien
                       Client Name<span className="text-red-500 ml-1">*</span>
                     </FormLabel>
                     <FormControl>
-                      <Input 
-                        className="h-[48px] border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg" 
-                        placeholder="Abinash Gokte Babu Tiwari" 
-                        {...field} 
-                        disabled={isLoading} 
+                      <Input
+                        className="h-[48px] border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg"
+                        placeholder="Abinash Gokte Babu Tiwari"
+                        {...field}
+                        disabled={isLoading}
                       />
                     </FormControl>
                     <FormMessage className="text-[12px] text-red-500 mt-1" />
@@ -171,12 +198,12 @@ export default function AddNewClientForm({ onClose, onClientAdded }: AddNewClien
                       Email<span className="text-red-500 ml-1">*</span>
                     </FormLabel>
                     <FormControl>
-                      <Input 
-                        type="email" 
-                        className="h-[48px] border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg" 
-                        placeholder="Abinashgoktebabutiwari666@gmail.com" 
-                        {...field} 
-                        disabled={isLoading} 
+                      <Input
+                        type="email"
+                        className="h-[48px] border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg"
+                        placeholder="Abinashgoktebabutiwari666@gmail.com"
+                        {...field}
+                        disabled={isLoading}
                       />
                     </FormControl>
                     <FormMessage className="text-[12px] text-red-500 mt-1" />
@@ -192,7 +219,8 @@ export default function AddNewClientForm({ onClose, onClientAdded }: AddNewClien
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
-                        Contact Number<span className="text-red-500 ml-1">*</span>
+                        Contact Number
+                        <span className="text-red-500 ml-1">*</span>
                       </FormLabel>
                       <div className="flex items-center gap-0">
                         <Select defaultValue="+977" disabled={isLoading}>
@@ -205,11 +233,11 @@ export default function AddNewClientForm({ onClose, onClientAdded }: AddNewClien
                           </SelectContent>
                         </Select>
                         <FormControl>
-                          <Input 
-                            placeholder="9807057526" 
-                            {...field} 
-                            className="h-[48px] border-2 border-[#4F46E5] border-l-0 focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-l-none rounded-r-lg" 
-                            disabled={isLoading} 
+                          <Input
+                            placeholder="9807057526"
+                            {...field}
+                            className="h-[48px] border-2 border-[#4F46E5] border-l-0 focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-l-none rounded-r-lg"
+                            disabled={isLoading}
                           />
                         </FormControl>
                       </div>
@@ -231,11 +259,11 @@ export default function AddNewClientForm({ onClose, onClientAdded }: AddNewClien
                           <span className="text-lg">🇳🇵</span>
                         </div>
                         <FormControl>
-                          <Input 
-                            className="h-[48px] border-2 border-[#4F46E5] border-l-0 focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-l-none rounded-r-lg" 
-                            placeholder="Nepalese" 
-                            {...field} 
-                            disabled={isLoading} 
+                          <Input
+                            className="h-[48px] border-2 border-[#4F46E5] border-l-0 focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-l-none rounded-r-lg"
+                            placeholder="Nepalese"
+                            {...field}
+                            disabled={isLoading}
                           />
                         </FormControl>
                       </div>
@@ -247,7 +275,9 @@ export default function AddNewClientForm({ onClose, onClientAdded }: AddNewClien
 
               {/* Additional Notes Section */}
               <div className="pt-4">
-                <h3 className="text-[16px] font-medium text-gray-900 mb-4">Additional Notes</h3>
+                <h3 className="text-[16px] font-medium text-gray-900 mb-4">
+                  Additional Notes
+                </h3>
               </div>
 
               {/* Remarks */}
@@ -260,11 +290,11 @@ export default function AddNewClientForm({ onClose, onClientAdded }: AddNewClien
                       Remarks
                     </FormLabel>
                     <FormControl>
-                      <Textarea 
-                        className="min-h-[120px] border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg resize-none" 
-                        placeholder="Enter remarks" 
-                        {...field} 
-                        disabled={isLoading} 
+                      <Textarea
+                        className="min-h-[120px] border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg resize-none"
+                        placeholder="Enter remarks"
+                        {...field}
+                        disabled={isLoading}
                       />
                     </FormControl>
                     <FormMessage className="text-[12px] text-red-500 mt-1" />
@@ -305,4 +335,4 @@ export default function AddNewClientForm({ onClose, onClientAdded }: AddNewClien
       </div>
     </div>
   );
-} 
+}

@@ -10,16 +10,16 @@ const page = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Page Container with consistent padding */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        
+      <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
           <div className="space-y-1">
-            <h1 className="text-2xl font-semibold text-gray-900"> 
-              Verifier Dashboard 
+            <h1 className="text-2xl font-semibold text-gray-900">
+              Verifier Dashboard
             </h1>
             <p className="text-gray-600 font-normal text-sm">
-              View your overall stats and metrics at one place. Boost your productivity.
+              View your overall stats and metrics at one place. Boost your
+              productivity.
             </p>
           </div>
 
@@ -47,18 +47,16 @@ const page = () => {
 
         {/* Main Content Area with consistent spacing */}
         <div className="space-y-8">
-          
           {/* Overview Section */}
           <section>
             <Overview />
           </section>
 
-          {/* Chart and Audit Section */}
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
+            <div className="w-full">
               <PaymentChart />
             </div>
-            <div>
+            <div className="w-full">
               <AuditSection />
             </div>
           </section>
@@ -77,7 +75,6 @@ const page = () => {
           <section>
             <VerificationSection />
           </section>
-          
         </div>
       </div>
     </div>

@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { UnifiedTable } from "@/components/core";
-import { apiClient } from '@/lib/api/client';
 import type { Client } from '@/lib/types/roles';
 import { ClientKanbanView } from './ClientKanbanView';
 import AddNewClientForm from './AddNewClientForm';
@@ -79,12 +78,7 @@ const ClientsPage = React.memo(() => {
     const fetchClients = async () => {
       try {
         setLoading(true);
-        const response = await apiClient.getClients();
-        if (response.success) {
-          setClients(response.data);
-        } else {
-          setError(response.message || 'Failed to fetch clients.');
-        }
+        const response = await fetch("/app/clients");
       } catch (err: any) {
         console.error("Failed to fetch clients:", err);
         let errorMessage = 'An unexpected error occurred.';

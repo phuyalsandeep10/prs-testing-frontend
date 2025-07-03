@@ -14,7 +14,7 @@ type AuditComponentProps = {
 
 const AuditComponents: React.FC<AuditComponentProps> = ({ data }) => {
   return (
-    <div className="overflow-x-auto border border-gray-300">
+    <div className="overflow-x-auto">
       <table className="min-w-[580px] w-full table-auto border-collapse">
         <thead>
           <tr className="text-left text-[16px] font-medium text-[#31323A] border-b bg-[#DADFFF] border-gray-400">
@@ -30,7 +30,7 @@ const AuditComponents: React.FC<AuditComponentProps> = ({ data }) => {
               <td className="py-3 px-4 break-words">{row.timestamp}</td>
               <td className="py-3 px-4 break-words">{row.verifier}</td>
               <td className="py-3 px-4 break-words">
-                {row.actions}{" "}
+                {row.actions} {row.txnid}{" "}
                 <span
                   className={
                     row.status === "Pending"

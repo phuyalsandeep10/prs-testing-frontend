@@ -1,7 +1,8 @@
-'use client'
+"use client";
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import VerificationComponent from "@/components/dashboard/verifier/dashboard/VerificationComponent";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const VerificationSection = () => {
   const fetchVerificationData = async () => {
@@ -56,7 +57,22 @@ const VerificationSection = () => {
     queryFn: fetchVerificationData,
   });
 
-  if (isLoading) return <p className="text-sm text-gray-600">Loading...</p>;
+  if (isLoading)
+    return (
+      <div className="space-y-3 w-fit rounded-[6px] p-4">
+        {/* Render skeleton rows resembling your verification data */}
+        {Array.from({ length: 6 }).map((_, idx) => (
+          <div key={idx} className="flex space-x-4 items-center">
+            <Skeleton className="w-20 h-6 rounded" /> {/* ID */}
+            <Skeleton className="w-32 h-6 rounded" /> {/* client */}
+            <Skeleton className="w-20 h-6 rounded" /> {/* amount */}
+            <Skeleton className="w-24 h-6 rounded" /> {/* status */}
+            <Skeleton className="w-20 h-6 rounded" /> {/* actions */}
+          </div>
+        ))}
+      </div>
+    );
+
   if (isError || !data)
     return <p className="text-sm text-red-500">Failed to load data</p>;
 

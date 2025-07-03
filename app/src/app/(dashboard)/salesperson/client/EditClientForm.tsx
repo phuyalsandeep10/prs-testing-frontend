@@ -13,7 +13,6 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { type Client } from "@/lib/types/roles";
-import { apiClient } from "@/lib/api/client";
 
 const formSchema = z.object({
   client_name: z.string().min(1, "Client name is required"),

@@ -17,6 +17,7 @@ interface InputFieldProps {
   inputClassName?: string;
   wrapperClassName?: string;
   disabled?: boolean;
+  readOnly?: boolean;
 }
 
 const InputField: React.FC<InputFieldProps> = ({
@@ -34,6 +35,7 @@ const InputField: React.FC<InputFieldProps> = ({
   inputClassName = "",
   wrapperClassName,
   disabled = false,
+  readOnly = false
 }) => {
   return (
     <InputWrapper
@@ -49,6 +51,7 @@ const InputField: React.FC<InputFieldProps> = ({
         id={id}
         type={type}
         placeholder={placeholder}
+        readOnly={readOnly}
         {...registration}
         className={`mt-1 block ${width} ${height} p-2 rounded-[6px] text-[12px] font-normal outline-none focus:ring-[#6B7FFF] focus:border-[#6B7FFF] border ${borderColor} shadow-[0_0_4px_#8393FC] ${inputClassName} ${
           error ? "border-red-500" : ""

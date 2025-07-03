@@ -51,7 +51,7 @@ export default function ExpandButton({ onToggle, isExpanded = false }: ExpandBut
           transition: 'transform 0.3s ease'
         }}
       >
-        <Image src={expand} alt={isExpanded ? "Collapse" : "Expand"} width={16} height={16} />
+        <Image src={expand} alt={isExpanded ? "Collapse" : "Expand"} width={10} height={10} />
       </div>
     </button>
   );
