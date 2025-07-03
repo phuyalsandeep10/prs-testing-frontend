@@ -1,5 +1,26 @@
 "use client";
 
+<<<<<<< HEAD
+import React, { useState, useEffect, useMemo } from "react";
+import {
+  Search,
+  Plus,
+  Eye,
+  Edit,
+  Trash2,
+  X,
+  ChevronUp,
+  ChevronDown,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { UserTable } from "@/components/dashboard/org-admin/manage-users/UserTable";
+import { TeamsTable } from "@/components/dashboard/org-admin/manage-teams/TeamsTable";
+import { AddNewUserForm } from "@/components/dashboard/org-admin/manage-users/AddNewUserForm";
+import { AddNewTeamForm } from "@/components/dashboard/org-admin/manage-teams/AddNewTeamForm";
+import { createPortal } from "react-dom";
+=======
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Plus, Eye, Edit, Trash2, X, ChevronUp, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,10 +32,86 @@ import { AddNewUserForm } from '@/components/dashboard/org-admin/manage-users/Ad
 import { AddNewTeamForm } from '@/components/dashboard/org-admin/manage-teams/AddNewTeamForm';
 import { createPortal } from 'react-dom';
 import { toast } from "sonner";
+>>>>>>> 88d5680dfbe26cde199938a510b8c65c45e12f46
 
-type TabType = 'users' | 'team';
-type ModalType = 'add-user' | 'add-team' | 'edit-team' | 'view-team' | 'edit-user' | 'view-user' | null;
+type TabType = "users" | "team";
+type ModalType =
+  | "add-user"
+  | "add-team"
+  | "edit-team"
+  | "view-team"
+  | "edit-user"
+  | "view-user"
+  | null;
 
+<<<<<<< HEAD
+// Sample team data matching your Figma design
+const sampleTeams = [
+  {
+    id: "1",
+    teamName: "Design Wizards",
+    teamLead: "Yubesh Koirala",
+    contactNumber: "+977 - 9876543210",
+    teamMembers: [
+      { id: "1", name: "Carla Johnson", avatar: "/avatars/carla.jpg" },
+      { id: "2", name: "Yubesh Parsad Koirala", avatar: "/avatars/yubesh.jpg" },
+      { id: "3", name: "Sandesh Dhungana", avatar: "/avatars/sandesh.jpg" },
+      { id: "4", name: "John Doe", avatar: "/avatars/john.jpg" },
+    ],
+    assignedProjects: "Peek Word Landing Page",
+    extraProjectsCount: 0,
+  },
+  {
+    id: "2",
+    teamName: "Team SEO Warriors",
+    teamLead: "Pooja Budhathoki",
+    contactNumber: "+977 - 9876543210",
+    teamMembers: [
+      { id: "1", name: "Member 1", avatar: "/avatars/m1.jpg" },
+      { id: "2", name: "Member 2", avatar: "/avatars/m2.jpg" },
+      { id: "3", name: "Member 3", avatar: "/avatars/m3.jpg" },
+      { id: "4", name: "Member 4", avatar: "/avatars/m4.jpg" },
+      { id: "5", name: "Member 5", avatar: "/avatars/m5.jpg" },
+    ],
+    assignedProjects: "SEO & SEM, Traffic boost",
+    extraProjectsCount: 1,
+  },
+];
+
+// Sample user data matching UserTableData type (User + fullName)
+const sampleUsers = [
+  {
+    id: "1",
+    name: "Yubesh Parsad Koirala",
+    fullName: "Yubesh Parsad Koirala",
+    email: "yubeshkoirala@gmail.com",
+    phoneNumber: "+977 - 9876543210",
+    role: "team-member" as const,
+    assignedTeam: "Design Wizards",
+    status: "active" as const,
+  },
+  {
+    id: "2",
+    name: "Abinash Babu Tiwari",
+    fullName: "Abinash Babu Tiwari",
+    email: "tiwariabinash@gmail.com",
+    phoneNumber: "+977 - 9876543210",
+    role: "salesperson" as const,
+    assignedTeam: "Team SEO Warriors",
+    status: "active" as const,
+  },
+  {
+    id: "3",
+    name: "Lalit Rai",
+    fullName: "Lalit Rai",
+    email: "railalit@gmail.com",
+    phoneNumber: "+977 - 9876543210",
+    role: "org-admin" as const,
+    assignedTeam: "Sales Giants",
+    status: "inactive" as const,
+  },
+];
+=======
 // Type definitions for API data
 interface User {
   id: number;
@@ -59,10 +156,11 @@ interface Team {
     name: string;
   }[];
 }
+>>>>>>> 88d5680dfbe26cde199938a510b8c65c45e12f46
 
 export default function ManageUsersPage() {
-  const [activeTab, setActiveTab] = useState<TabType>('users');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState<TabType>("users");
+  const [searchTerm, setSearchTerm] = useState("");
   const [openModal, setOpenModal] = useState<ModalType>(null);
   const [selectedTeam, setSelectedTeam] = useState<any>(null);
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -178,17 +276,24 @@ export default function ManageUsersPage() {
     };
   }, []);
 
+  console.log("model view", openModal);
   // Global search function for users
   const searchAllUserColumns = (user: User, query: string): boolean => {
     const searchableFields = [
       `${user.first_name} ${user.last_name}`,
       user.email,
+<<<<<<< HEAD
+      user.phoneNumber,
+      user.assignedTeam,
+      user.status,
+=======
       user.contact_number || '',
       user.role?.name || '',
       user.is_active ? 'active' : 'inactive'
+>>>>>>> 88d5680dfbe26cde199938a510b8c65c45e12f46
     ];
 
-    return searchableFields.some(field => 
+    return searchableFields.some((field) =>
       field.toLowerCase().includes(query.toLowerCase())
     );
   };
@@ -196,14 +301,22 @@ export default function ManageUsersPage() {
   // Global search function for teams
   const searchAllTeamColumns = (team: Team, query: string): boolean => {
     const searchableFields = [
+<<<<<<< HEAD
+      team.teamName,
+      team.teamLead,
+      team.contactNumber,
+      team.assignedProjects,
+      team.teamMembers.map((member: any) => member.name).join(" "),
+=======
       team.name,
       team.team_lead_details ? `${team.team_lead_details.first_name} ${team.team_lead_details.last_name}` : '',
       team.contact_number || '',
       ...(team.members_details?.map(m => `${m.first_name} ${m.last_name}`) || []),
       ...(team.projects_details?.map(p => p.name) || [])
+>>>>>>> 88d5680dfbe26cde199938a510b8c65c45e12f46
     ];
 
-    return searchableFields.some(field => 
+    return searchableFields.some((field) =>
       field.toLowerCase().includes(query.toLowerCase())
     );
   };
@@ -211,10 +324,17 @@ export default function ManageUsersPage() {
   // Filter data based on search query
   useEffect(() => {
     if (searchTerm.trim()) {
+<<<<<<< HEAD
+      const filteredUserData = sampleUsers.filter((user) =>
+        searchAllUserColumns(user, searchTerm)
+      );
+      const filteredTeamData = sampleTeams.filter((team) =>
+=======
       const filteredUserData = users.filter(user => 
         searchAllUserColumns(user, searchTerm)
       );
       const filteredTeamData = teams.filter(team => 
+>>>>>>> 88d5680dfbe26cde199938a510b8c65c45e12f46
         searchAllTeamColumns(team, searchTerm)
       );
       setFilteredUsers(filteredUserData);
@@ -275,22 +395,22 @@ export default function ManageUsersPage() {
 
   const handleViewTeam = (team: any) => {
     setSelectedTeam(team);
-    setOpenModal('view-team');
+    setOpenModal("view-team");
   };
 
   const handleEditTeam = (team: any) => {
     setSelectedTeam(team);
-    setOpenModal('edit-team');
+    setOpenModal("edit-team");
   };
 
   const handleViewUser = (user: any) => {
     setSelectedUser(user);
-    setOpenModal('view-user');
+    setOpenModal("view-user");
   };
 
   const handleEditUser = (user: any) => {
     setSelectedUser(user);
-    setOpenModal('edit-user');
+    setOpenModal("edit-user");
   };
 
   const handleCloseModal = () => {
@@ -306,10 +426,11 @@ export default function ManageUsersPage() {
         <div className="flex items-start justify-between mb-8">
           <div>
             <h1 className="text-[28px] font-semibold text-gray-900 mb-2">
-              {activeTab === 'users' ? 'User Management' : 'Team Management'}
+              {activeTab === "users" ? "User Management" : "Team Management"}
             </h1>
             <p className="text-[16px] text-gray-500 leading-relaxed">
-              Manage your user base, teams and access all the details of each user.
+              Manage your user base, teams and access all the details of each
+              user.
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -325,12 +446,14 @@ export default function ManageUsersPage() {
               />
             </div>
             {/* Create Button - RIGHT SIDE as per Figma */}
-            <Button 
-              onClick={() => setOpenModal(activeTab === 'users' ? 'add-user' : 'add-team')}
+            <Button
+              onClick={() =>
+                setOpenModal(activeTab === "users" ? "add-user" : "add-team")
+              }
               className="bg-[#4F46E5] hover:bg-[#4338CA] text-white px-6 py-3 h-[44px] rounded-lg font-medium text-[14px] flex items-center gap-2 transition-all shadow-sm"
             >
               <Plus className="h-4 w-4" />
-              {activeTab === 'users' ? 'Create User' : 'Create Team'}
+              {activeTab === "users" ? "Create User" : "Create Team"}
             </Button>
           </div>
         </div>
@@ -339,11 +462,11 @@ export default function ManageUsersPage() {
         <div className="border-b border-gray-200">
           <nav className="flex space-x-12 -mb-px">
             <button
-              onClick={() => handleTabChange('users')}
+              onClick={() => handleTabChange("users")}
               className={`pb-4 px-1 text-[16px] font-medium transition-all relative ${
-                activeTab === 'users'
-                  ? 'text-[#4F46E5] border-b-2 border-[#4F46E5]'
-                  : 'text-gray-500 hover:text-gray-700'
+                activeTab === "users"
+                  ? "text-[#4F46E5] border-b-2 border-[#4F46E5]"
+                  : "text-gray-500 hover:text-gray-700"
               }`}
             >
               <span className="flex items-center gap-2">
@@ -352,11 +475,11 @@ export default function ManageUsersPage() {
               </span>
             </button>
             <button
-              onClick={() => handleTabChange('team')}
+              onClick={() => handleTabChange("team")}
               className={`pb-4 px-1 text-[16px] font-medium transition-all relative ${
-                activeTab === 'team'
-                  ? 'text-[#4F46E5] border-b-2 border-[#4F46E5]'
-                  : 'text-gray-500 hover:text-gray-700'
+                activeTab === "team"
+                  ? "text-[#4F46E5] border-b-2 border-[#4F46E5]"
+                  : "text-gray-500 hover:text-gray-700"
               }`}
             >
               <span className="flex items-center gap-2">
@@ -373,12 +496,28 @@ export default function ManageUsersPage() {
         {/* Search Results Indicator */}
         {searchTerm.trim() && (
           <div className="mb-4 text-sm text-gray-600">
-            {activeTab === 'users' 
+            {activeTab === "users"
               ? `Found ${filteredUsers.length} user(s) matching "${searchTerm}"`
-              : `Found ${filteredTeams.length} team(s) matching "${searchTerm}"`
-            }
+              : `Found ${filteredTeams.length} team(s) matching "${searchTerm}"`}
           </div>
         )}
+<<<<<<< HEAD
+
+        {activeTab === "users" ? (
+          <UserTable
+            data={filteredUsers}
+            onView={handleViewUser}
+            onEdit={handleEditUser}
+            onDelete={(user) => console.log("Delete user:", user)}
+          />
+        ) : (
+          <TeamsTable
+            data={filteredTeams}
+            onView={handleViewTeam}
+            onEdit={handleEditTeam}
+            onDelete={(team) => console.log("Delete team:", team)}
+          />
+=======
         
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -427,52 +566,100 @@ export default function ManageUsersPage() {
               onDelete={(team) => console.log('Delete team:', team)}
             />
           )
+>>>>>>> 88d5680dfbe26cde199938a510b8c65c45e12f46
         )}
       </div>
 
       {/* Modal Overlay - Rendered at document.body level using Portal */}
-      {openModal && typeof window !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }}>
-          {/* Full Screen Backdrop */}
-          <div 
-            className="absolute inset-0 w-full h-full bg-black/50" 
-            onClick={handleCloseModal}
-            style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
-          />
-          
-          {/* Modal Content */}
-          {(openModal === 'view-team' || openModal === 'view-user') ? (
-            /* Centered Card Modals */
-            <div className="relative z-[100000] flex items-center justify-center w-full h-full p-4 pointer-events-none">
-              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all pointer-events-auto" style={{ zIndex: 100000 }}>
-                {openModal === 'view-team' && selectedTeam && (
-                  <TeamDetailView team={selectedTeam} onClose={handleCloseModal} />
+      {openModal &&
+        typeof window !== "undefined" &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[99999] flex items-center justify-center"
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0, 
+              bottom: 0,
+              zIndex: 99999,
+            }}
+          >
+            {/* Full Screen Backdrop */}
+            <div
+              className="absolute inset-0 w-full h-full bg-black animate-fadeInCenter"
+              onClick={handleCloseModal}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: "rgba(0, 0, 0, 0.5)",
+              }}
+            />
+
+            {/* Modal Content */}
+            {openModal === "view-team" || openModal === "view-user" ? (
+              /* Centered Card Modals */
+              <div className="relative z-[100000] flex items-center justify-center w-full h-full p-4 pointer-events-none">
+                <div
+                  className="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all pointer-events-auto"
+                  style={{ zIndex: 100000 }}
+                >
+                  {openModal === "view-team" && selectedTeam && (
+                    <TeamDetailView
+                      team={selectedTeam}
+                      onClose={handleCloseModal}
+                    />
+                  )}
+                  {openModal === "view-user" && selectedUser && (
+                    <UserDetailView
+                      user={selectedUser}
+                      onClose={handleCloseModal}
+                    />
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* Right Side Form Modals */
+              <div
+                className={`${
+                  openModal === "add-user"
+                    ? "animate-fadeInSide "
+                    : "animate-fadeInSide"
+                } fixed top-0 right-0 h-full w-[384px] bg-white shadow-2xl z-[100000] `}
+                style={{
+                  position: "fixed",
+                  top: 0,
+                  right: 0,
+                  height: "100vh",
+                  zIndex: 100000,
+                }}
+              >
+                {openModal === "add-user" && (
+                  <AddNewUserForm onClose={handleCloseModal} />
                 )}
-                {openModal === 'view-user' && selectedUser && (
-                  <UserDetailView user={selectedUser} onClose={handleCloseModal} />
+                {openModal === "add-team" && (
+                  <AddNewTeamForm onClose={handleCloseModal} />
+                )}
+                {openModal === "edit-team" && selectedTeam && (
+                  <EditTeamForm
+                    team={selectedTeam}
+                    onClose={handleCloseModal}
+                  />
+                )}
+                {openModal === "edit-user" && selectedUser && (
+                  <EditUserForm
+                    user={selectedUser}
+                    onClose={handleCloseModal}
+                  />
                 )}
               </div>
-            </div>
-          ) : (
-            /* Right Side Form Modals */
-            <div className="fixed top-0 right-0 h-full w-[384px] bg-white shadow-2xl z-[100000]" style={{ position: 'fixed', top: 0, right: 0, height: '100vh', zIndex: 100000 }}>
-              {openModal === 'add-user' && (
-                <AddNewUserForm onClose={handleCloseModal} />
-              )}
-              {openModal === 'add-team' && (
-                <AddNewTeamForm onClose={handleCloseModal} />
-              )}
-              {openModal === 'edit-team' && selectedTeam && (
-                <EditTeamForm team={selectedTeam} onClose={handleCloseModal} />
-              )}
-              {openModal === 'edit-user' && selectedUser && (
-                <EditUserForm user={selectedUser} onClose={handleCloseModal} />
-              )}
-            </div>
-          )}
-        </div>,
-        document.body
-      )}
+            )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
@@ -484,19 +671,21 @@ function UserDetailView({ user, onClose }: { user: any; onClose: () => void }) {
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-100">
         <div className="flex items-center justify-between">
-          <h2 className="text-[20px] font-semibold text-[#4F46E5]">{user.fullName}</h2>
-          <button 
-            onClick={onClose} 
+          <h2 className="text-[20px] font-semibold text-[#4F46E5]">
+            {user.fullName}
+          </h2>
+          <button
+            onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
         <div className="flex items-center gap-2 mt-2">
-          <Badge 
+          <Badge
             className={
-              user.status === "Active" 
-                ? "bg-green-100 text-green-800 px-2 py-1 text-[12px] rounded-full border-0" 
+              user.status === "Active"
+                ? "bg-green-100 text-green-800 px-2 py-1 text-[12px] rounded-full border-0"
                 : "bg-red-100 text-red-800 px-2 py-1 text-[12px] rounded-full border-0"
             }
           >
@@ -504,26 +693,33 @@ function UserDetailView({ user, onClose }: { user: any; onClose: () => void }) {
           </Badge>
         </div>
       </div>
-      
+
       {/* Content */}
       <div className="px-6 py-4 space-y-4">
         <div className="space-y-3">
           <div className="bg-gray-50 rounded-lg p-3">
-            <h3 className="text-[14px] font-medium text-gray-900 mb-2">Contact Information</h3>
+            <h3 className="text-[14px] font-medium text-gray-900 mb-2">
+              Contact Information
+            </h3>
             <div className="space-y-1">
               <p className="text-[14px] text-gray-600">
-                <span className="font-medium text-gray-900">Email:</span> {user.email}
+                <span className="font-medium text-gray-900">Email:</span>{" "}
+                {user.email}
               </p>
               <p className="text-[14px] text-gray-600">
-                <span className="font-medium text-gray-900">Phone:</span> {user.phoneNumber}
+                <span className="font-medium text-gray-900">Phone:</span>{" "}
+                {user.phoneNumber}
               </p>
             </div>
           </div>
 
           <div className="bg-gray-50 rounded-lg p-3">
-            <h3 className="text-[14px] font-medium text-gray-900 mb-2">Team Assignment</h3>
+            <h3 className="text-[14px] font-medium text-gray-900 mb-2">
+              Team Assignment
+            </h3>
             <p className="text-[14px] text-gray-600">
-              <span className="font-medium text-gray-900">Team:</span> {user.assignedTeam}
+              <span className="font-medium text-gray-900">Team:</span>{" "}
+              {user.assignedTeam}
             </p>
           </div>
         </div>
@@ -534,15 +730,15 @@ function UserDetailView({ user, onClose }: { user: any; onClose: () => void }) {
 
 // Edit User Form Component - Standalone (Not Nested)
 function EditUserForm({ user, onClose }: { user: any; onClose: () => void }) {
-  return (
-    <AddNewUserForm onClose={onClose} initialData={user} isEdit={true} />
-  );
+  return <AddNewUserForm onClose={onClose} initialData={user} isEdit={true} />;
 }
 
 // Team Detail View Component - Exact Figma Card Design
 function TeamDetailView({ team, onClose }: { team: any; onClose: () => void }) {
   const [showAllMembers, setShowAllMembers] = React.useState(false);
-  const displayMembers = showAllMembers ? team.teamMembers : team.teamMembers.slice(0, 3);
+  const displayMembers = showAllMembers
+    ? team.teamMembers
+    : team.teamMembers.slice(0, 3);
   const hasMoreMembers = team.teamMembers.length > 3;
 
   return (
@@ -550,42 +746,57 @@ function TeamDetailView({ team, onClose }: { team: any; onClose: () => void }) {
       {/* Header */}
       <div className="px-6 py-4 border-b border-gray-100">
         <div className="flex items-center justify-between">
-          <h2 className="text-[20px] font-semibold text-[#4F46E5]">{team.teamName}</h2>
-          <button 
-            onClick={onClose} 
+          <h2 className="text-[20px] font-semibold text-[#4F46E5]">
+            {team.teamName}
+          </h2>
+          <button
+            onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-full hover:bg-gray-100"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
       </div>
-      
+
       {/* Content */}
       <div className="px-6 py-4 space-y-4">
         <div className="space-y-2">
           <p className="text-[14px] text-gray-600">
-            <span className="font-medium text-gray-900">Number of members:</span> {team.teamMembers.length}
+            <span className="font-medium text-gray-900">
+              Number of members:
+            </span>{" "}
+            {team.teamMembers.length}
           </p>
           <p className="text-[14px] text-gray-600">
-            <span className="font-medium text-gray-900">Team Lead:</span> {team.teamLead}
+            <span className="font-medium text-gray-900">Team Lead:</span>{" "}
+            {team.teamLead}
           </p>
           <p className="text-[14px] text-gray-600">
-            <span className="font-medium text-gray-900">Contact No:</span> {team.contactNumber.replace(' - ', '')}
+            <span className="font-medium text-gray-900">Contact No:</span>{" "}
+            {team.contactNumber.replace(" - ", "")}
           </p>
         </div>
 
         <div>
-          <h3 className="text-[16px] font-medium text-gray-900 mb-3">Team Members</h3>
+          <h3 className="text-[16px] font-medium text-gray-900 mb-3">
+            Team Members
+          </h3>
           <div className="space-y-2">
             {displayMembers.map((member: any) => (
-              <div key={member.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+              <div
+                key={member.id}
+                className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg"
+              >
                 <div className="h-7 w-7 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-[11px] font-medium">
-                  {member.name.split(' ').map((n: string) => n[0]).join('')}
+                  {member.name
+                    .split(" ")
+                    .map((n: string) => n[0])
+                    .join("")}
                 </div>
                 <span className="text-[14px] text-gray-700">{member.name}</span>
               </div>
             ))}
-            
+
             {/* Expand/Collapse Button */}
             {hasMoreMembers && (
               <button
@@ -614,7 +825,5 @@ function TeamDetailView({ team, onClose }: { team: any; onClose: () => void }) {
 
 // Edit Team Form Component - Standalone (Not Nested)
 function EditTeamForm({ team, onClose }: { team: any; onClose: () => void }) {
-  return (
-    <AddNewTeamForm onClose={onClose} initialData={team} isEdit={true} />
-  );
+  return <AddNewTeamForm onClose={onClose} initialData={team} isEdit={true} />;
 }
