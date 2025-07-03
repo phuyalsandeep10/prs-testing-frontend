@@ -12,33 +12,22 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// Sample data - should ideally come from props or API
-const teamLeads = [
-  { id: "1", name: "Sales Leader Name", role: "Sales Lead" },
-  { id: "2", name: "Design Leader Name", role: "Design Lead" },
-  { id: "3", name: "Dev Leader Name", role: "Dev Lead" },
-];
+// Interface for user data
+interface UserOption {
+  id: number;
+  name: string;
+  email: string;
+  role?: string;
+}
 
-const teamMembers = [
-  { id: "1", name: "Abinash Babu Tiwari", email: "abinash@example.com", avatar: "/avatars/abinash.jpg" },
-  { id: "2", name: "John Doe", email: "john@example.com", avatar: "/avatars/john.jpg" },
-  { id: "3", name: "Jane Smith", email: "jane@example.com", avatar: "/avatars/jane.jpg" },
-];
-
-const projects = [
-  "Cotillo, Leedheed CRM",
-  "E-commerce Platform",
-  "Mobile App Development", 
-  "Website Redesign",
-  "Payment System Integration",
-];
+// Projects will be loaded from API
 
 const formSchema = z.object({
   teamName: z.string().min(1, "Team name is required"),
   teamLead: z.string().min(1, "Team lead is required"),
   teamMember: z.string().min(1, "Team member is required"),
-  assignedProject: z.string().min(1, "Assigned project is required"),
-  contactNumber: z.string().min(10, "Contact number must be at least 10 digits"),
+  assignedProject: z.string().optional(),
+  contactNumber: z.string().optional(),
 });
 
 interface AddNewTeamFormProps {
@@ -50,6 +39,32 @@ interface AddNewTeamFormProps {
 
 export function AddNewTeamForm({ onClose, onFormSubmit, initialData, isEdit = false }: AddNewTeamFormProps) {
   const [isLoading, setIsLoading] = React.useState(false);
+  const [users, setUsers] = React.useState<UserOption[]>([]);
+  const [usersLoading, setUsersLoading] = React.useState(true);
+  const [projects, setProjects] = React.useState<{ id: number, name: string }[]>([]);
+  const [projectsLoading, setProjectsLoading] = React.useState(true);
+
+  // Filter users based on their roles
+  const teamLeads = users.filter(user => 
+    user.role === 'Supervisor/Team Lead' || 
+    user.role === 'Org Admin' ||
+    user.role === 'Super Admin'
+  );
+  const teamMembers = users.filter(user => 
+    user.role && !['Super Admin', 'Org Admin'].includes(user.role)
+  );
+
+  // Debug logs (can be removed in production)
+  React.useEffect(() => {
+    console.log('=== DROPDOWN DEBUG INFO ===');
+    console.log('Users state:', users);
+    console.log('Team leads filtered:', teamLeads);
+    console.log('Team members filtered:', teamMembers);
+    console.log('Projects state:', projects);
+    console.log('Users loading:', usersLoading);
+    console.log('Projects loading:', projectsLoading);
+    console.log('Auth token exists:', !!localStorage.getItem('authToken'));
+  }, [users, teamLeads, teamMembers, projects, usersLoading, projectsLoading]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -62,21 +77,169 @@ export function AddNewTeamForm({ onClose, onFormSubmit, initialData, isEdit = fa
     },
   });
 
+  // Load users from API
+  React.useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+          setUsersLoading(false);
+          return;
+        }
+
+        const response = await fetch('http://localhost:8000/api/v1/auth/users/', {
+          headers: {
+            'Authorization': `Token ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const usersList = Array.isArray(data) ? data : data.results || [];
+          
+          const mappedUsers = usersList.map((user: any) => ({
+            id: user.id,
+            name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username,
+            email: user.email,
+            role: user.role?.name || 'User'
+          }));
+          
+          const uniqueUsers = mappedUsers.filter((user, index, self) => 
+            index === self.findIndex(u => u.id === user.id)
+          );
+          
+          setUsers(uniqueUsers);
+          console.log('Loaded users:', uniqueUsers); // Debug log
+        } else {
+          console.error('Failed to load users:', response.status);
+        }
+      } catch (error) {
+        console.error('Error loading users:', error);
+      } finally {
+        setUsersLoading(false);
+      }
+    };
+
+    const loadProjects = async () => {
+      try {
+        const token = localStorage.getItem('authToken');
+        if (!token) {
+          setProjectsLoading(false);
+          return;
+        }
+
+        const response = await fetch('http://localhost:8000/api/v1/projects/', {
+          headers: {
+            'Authorization': `Token ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const projectsList = Array.isArray(data) ? data : data.results || [];
+          const projectOptions = projectsList.map((project: any) => ({ id: project.id, name: project.name }));
+          setProjects(projectOptions);
+          console.log('Loaded projects:', projectOptions); // Debug log
+        } else {
+          console.error('Failed to load projects:', response.status);
+        }
+      } catch (error) {
+        console.error('Error loading projects:', error);
+      } finally {
+        setProjectsLoading(false);
+      }
+    };
+
+    loadUsers();
+    loadProjects();
+  }, []);
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      console.log("Form values:", values);
-      toast.success(`Team ${isEdit ? 'updated' : 'created'} successfully!`);
-      form.reset();
-      if (onFormSubmit) {
-        onFormSubmit();
+      const token = localStorage.getItem('authToken');
+      const userString = localStorage.getItem('user');
+
+      if (!token || !userString) {
+        toast.error('Authentication details not found. Please login again.');
+        setIsLoading(false);
+        return;
       }
-      onClose();
+
+      const currentUser = JSON.parse(userString);
+      const organizationId = currentUser?.organization?.id;
+
+      if (!organizationId) {
+        toast.error('Could not determine your organization. Please login again.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Extract IDs from form values
+      const teamLeadId = parseInt(values.teamLead.split('-')[0], 10);
+      const teamMemberIds = [parseInt(values.teamMember.split('-')[0], 10)];
+      const projectIds = values.assignedProject ? [parseInt(values.assignedProject, 10)] : [];
+
+      // Prepare team data in the format the backend expects
+      const teamData: any = {
+        name: values.teamName,
+        organization: organizationId,
+        contact_number: values.contactNumber,
+        team_lead: teamLeadId,
+        members: teamMemberIds,
+      };
+
+      if (projectIds.length > 0) {
+        teamData.projects = projectIds;
+      }
+
+      console.log('Sending team data:', teamData);
+
+      const url = isEdit 
+        ? `http://localhost:8000/api/v1/teams/${initialData?.id}/`
+        : 'http://localhost:8000/api/v1/teams/';
+        
+      const method = isEdit ? 'PUT' : 'POST';
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Authorization': `Token ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(teamData),
+      });
+
+      const responseData = await response.json();
+      console.log('API Response:', responseData);
+
+      if (response.ok) {
+        toast.success(`Team ${isEdit ? 'updated' : 'created'} successfully!`);
+        
+        // Trigger refresh events
+        const event = new CustomEvent(isEdit ? 'teamUpdated' : 'teamCreated', {
+          detail: responseData
+        });
+        window.dispatchEvent(event);
+        
+        form.reset();
+        if (onFormSubmit) {
+          onFormSubmit();
+        }
+        onClose();
+      } else {
+        const errorMessage = responseData.detail || 
+                           responseData.message || 
+                           Object.values(responseData).flat().join(', ') ||
+                           `Failed to ${isEdit ? 'update' : 'create'} team`;
+        console.error('API Error:', errorMessage);
+        toast.error(errorMessage);
+      }
     } catch (error) {
-      console.error(`Failed to ${isEdit ? 'update' : 'create'} team:`, error);
-      toast.error(`Failed to ${isEdit ? 'update' : 'create'} team. Please try again.`);
+      console.error(`Network error ${isEdit ? 'updating' : 'creating'} team:`, error);
+      toast.error(`Network error. Please check your connection and try again.`);
     } finally {
       setIsLoading(false);
     }
@@ -89,7 +252,7 @@ export function AddNewTeamForm({ onClose, onFormSubmit, initialData, isEdit = fa
     }
   };
 
-  const selectedMember = teamMembers.find(member => member.name === form.watch("teamMember"));
+  const selectedMember = users.find(user => `${user.id}-${user.name}` === form.watch("teamMember"));
 
   return (
     <div className="h-full flex flex-col bg-white">
@@ -146,18 +309,24 @@ export function AddNewTeamForm({ onClose, onFormSubmit, initialData, isEdit = fa
                   <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
                     Team Lead<span className="text-red-500 ml-1">*</span>
                   </FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading || usersLoading}>
                     <FormControl>
                       <SelectTrigger className="w-full h-[48px] border-gray-300 focus:border-[#4F46E5] text-[16px] rounded-lg">
-                        <SelectValue placeholder="Sales Leader Name" />
+                        <SelectValue placeholder={usersLoading ? "Loading users..." : "Select team lead"} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {teamLeads.map((lead) => (
-                        <SelectItem key={lead.id} value={lead.name}>
-                          {lead.name}
-                        </SelectItem>
-                      ))}
+                      {usersLoading ? (
+                        <div className="px-2 py-1 text-sm text-gray-500">Loading users...</div>
+                      ) : teamLeads.length > 0 ? (
+                        teamLeads.map((lead) => (
+                          <SelectItem key={lead.id} value={`${lead.id}-${lead.name}`}>
+                            {lead.name} ({lead.role})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-1 text-sm text-gray-500">No team leads available</div>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage className="text-[12px] text-red-500 mt-1" />
@@ -174,10 +343,10 @@ export function AddNewTeamForm({ onClose, onFormSubmit, initialData, isEdit = fa
                   <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
                     Team Member<span className="text-red-500 ml-1">*</span>
                   </FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading || usersLoading}>
                     <FormControl>
                       <SelectTrigger className="w-full h-[48px] border-gray-300 focus:border-[#4F46E5] text-[16px] rounded-lg">
-                        <SelectValue placeholder="Select team member">
+                        <SelectValue placeholder={usersLoading ? "Loading users..." : "Select team member"}>
                           {selectedMember && (
                             <div className="flex items-center gap-3">
                               <div className="h-6 w-6 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-[12px] font-medium">
@@ -190,16 +359,22 @@ export function AddNewTeamForm({ onClose, onFormSubmit, initialData, isEdit = fa
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {teamMembers.map((member) => (
-                        <SelectItem key={member.id} value={member.name}>
-                          <div className="flex items-center gap-3">
-                            <div className="h-6 w-6 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-[12px] font-medium">
-                              {member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                      {usersLoading ? (
+                        <div className="px-2 py-1 text-sm text-gray-500">Loading users...</div>
+                      ) : teamMembers.length > 0 ? (
+                        teamMembers.map((member) => (
+                          <SelectItem key={member.id} value={`${member.id}-${member.name}`}>
+                            <div className="flex items-center gap-3">
+                              <div className="h-6 w-6 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-[12px] font-medium">
+                                {member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                              </div>
+                              <span>{member.name} ({member.role})</span>
                             </div>
-                            <span>{member.name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-1 text-sm text-gray-500">No team members available</div>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage className="text-[12px] text-red-500 mt-1" />
@@ -214,20 +389,26 @@ export function AddNewTeamForm({ onClose, onFormSubmit, initialData, isEdit = fa
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
-                    Assigned Project<span className="text-red-500 ml-1">*</span>
+                    Assigned Project <span className="text-gray-400 text-[12px]">(Optional)</span>
                   </FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
+                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading || projectsLoading}>
                     <FormControl>
                       <SelectTrigger className="w-full h-[48px] border-gray-300 focus:border-[#4F46E5] text-[16px] rounded-lg">
-                        <SelectValue placeholder="Cotillo, Leedheed CRM, ..." />
+                        <SelectValue placeholder={projectsLoading ? "Loading projects..." : "Select a project (optional)"} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {projects.map((project) => (
-                        <SelectItem key={project} value={project}>
-                          {project}
-                        </SelectItem>
-                      ))}
+                      {projects.length > 0 ? (
+                        projects.map((project) => (
+                          <SelectItem key={project.id} value={String(project.id)}>
+                            {project.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="px-2 py-1 text-sm text-gray-500">
+                          {projectsLoading ? "Loading..." : "No projects available"}
+                        </div>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage className="text-[12px] text-red-500 mt-1" />
@@ -241,29 +422,16 @@ export function AddNewTeamForm({ onClose, onFormSubmit, initialData, isEdit = fa
               name="contactNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
-                    Contact Number<span className="text-red-500 ml-1">*</span>
-                  </FormLabel>
-                  <div className="flex items-center gap-0">
-                    <Select defaultValue="+977" disabled={isLoading}>
-                      <SelectTrigger className="w-[100px] h-[48px] border-gray-300 focus:border-[#4F46E5] rounded-r-none rounded-l-lg">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="+977">+977</SelectItem>
-                        <SelectItem value="+1">+1</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormControl>
-                      <Input 
-                        placeholder="9807057526" 
-                        {...field} 
-                        className="h-[48px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-l-none rounded-r-lg border-l-0" 
-                        disabled={isLoading} 
-                      />
-                    </FormControl>
-                  </div>
-                  <FormMessage className="text-[12px] text-red-500 mt-1" />
+                  <FormLabel>Contact Number (Optional)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="e.g. +1 234 567 890" 
+                      {...field}
+                      value={field.value || ""}
+                      className="transition-colors duration-300 ease-in-out focus:border-purple-500 focus:ring-purple-500"
+                    />
+                  </FormControl>
+                  <FormMessage />
                 </FormItem>
               )}
             />

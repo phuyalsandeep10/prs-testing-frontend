@@ -43,8 +43,6 @@ const getInitials = (name: string): string =>
 const TopClientCard: React.FC<TopClientCardProps> = ({ data, title }) => {
   const chartRef = useRef<any>(null);
 
-  // ✅ REMOVED problematic useEffect and gradient state
-
   const chartData = {
     labels: data.map((client) => getInitials(client.name)),
     datasets: [
@@ -54,8 +52,7 @@ const TopClientCard: React.FC<TopClientCardProps> = ({ data, title }) => {
         backgroundColor: (context: any) => {
           const chart = context.chart;
           const { ctx, chartArea } = chart;
-
-          if (!chartArea) return "#465FFF"; // fallback for initial load
+          if (!chartArea) return "#465FFF";
 
           const gradient = ctx.createLinearGradient(
             0,
@@ -76,10 +73,11 @@ const TopClientCard: React.FC<TopClientCardProps> = ({ data, title }) => {
 
   const options: ChartOptions<"bar"> = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: { display: false },
       title: {
-        display: true,
+        display: !!title,
         text: title,
         font: { size: 16 },
         padding: { bottom: 20 },
@@ -92,25 +90,18 @@ const TopClientCard: React.FC<TopClientCardProps> = ({ data, title }) => {
     },
     scales: {
       x: {
-        grid: {
-          display: false,
-        },
+        grid: { display: false },
       },
       y: {
         beginAtZero: true,
-        grid: {
-          display: true,
-          color: "#E5E5E5",
-        },
-        ticks: {
-          precision: 0,
-        },
+        grid: { display: true, color: "#E5E5E5" },
+        ticks: { precision: 0 },
       },
     },
   };
 
   return (
-    <div className="w-full h-[235px]">
+    <div className="w-full h-[200px] sm:h-[250px] md:h-[280px] lg:h-[215px]">
       <Bar ref={chartRef} data={chartData} options={options} />
     </div>
   );

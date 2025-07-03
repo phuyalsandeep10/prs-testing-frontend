@@ -1,10 +1,8 @@
 "use client";
 
 import React, { useState, useMemo, useCallback } from "react";
-import { ColumnDef } from "@tanstack/react-table";
 import { UnifiedTable } from "@/components/core";
-import { getClients } from "@/data/clients";
-import type { Client } from "@/types";
+import type { Client as ApiClient } from "@/lib/types/roles";
 import { createPortal } from "react-dom";
 import { ClientDetailCard } from "../../client/ClientDetailCard";
 import EditClientForm from "../../client/EditClientForm";
@@ -12,6 +10,8 @@ import Eye from "@/assets/icons/Eye.svg";
 import edit from "@/assets/icons/edit.svg";
 import cancel from "@/assets/icons/Cancel.svg";
 import Image from "next/image";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api";
 
 // Helper for status and satisfaction badge styles (same as before)
 const getStatusColor = (status: string) => {
@@ -43,19 +43,25 @@ const getSatisfactionColor = (satisfaction: string) => {
 const ClientDetailsSection: React.FC = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [selectedClient, setSelectedClient] = useState<ApiClient | null>(null);
 
   // Track selected clients by id
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  const clients = useMemo(() => getClients(), []);
+  const { data: clients = [], isLoading } = useQuery<ApiClient[]>({
+    queryKey: ["clients", "commission-page"],
+    queryFn: async () => {
+      const response = await apiClient.get<ApiClient[]>("/clients/");
+      return response.data || [];
+    },
+  });
 
-  const handleView = useCallback((client: Client) => {
+  const handleView = useCallback((client: ApiClient) => {
     setSelectedClient(client);
     setShowViewModal(true);
   }, []);
 
-  const handleEdit = useCallback((client: Client) => {
+  const handleEdit = useCallback((client: ApiClient) => {
     setSelectedClient(client);
     setShowEditModal(true);
   }, []);
@@ -83,14 +89,14 @@ const ClientDetailsSection: React.FC = () => {
     if (selectedIds.size === clients.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(clients.map((c) => c.id)));
+      setSelectedIds(new Set(clients.map((c) => c.id.toString())));
     }
   };
 
-  const columns = useMemo(
+  const columns: any = useMemo(
     () => [
       {
-        accessorFn: (row: Client) => row.name,
+        accessorFn: (row: ApiClient) => row.client_name,
         id: "name",
         header: "Client Name",
         cell: ({ row }) => (
@@ -101,7 +107,7 @@ const ClientDetailsSection: React.FC = () => {
       },
       // Replace Active Date with Total Sales
       {
-        accessorFn: (row: Client) => row.totalSales ?? 0,
+        accessorFn: (row: ApiClient) => (row as any).total_sales ?? 0,
         id: "totalSales",
         header: "Total Sales",
         cell: ({ row }) => (
@@ -111,7 +117,7 @@ const ClientDetailsSection: React.FC = () => {
         ),
       },
       {
-        accessorFn: (row: Client) => row.status,
+        accessorFn: (row: ApiClient) => row.status ?? "pending",
         id: "status",
         header: "Status",
         cell: ({ row }) => {
@@ -120,7 +126,7 @@ const ClientDetailsSection: React.FC = () => {
         },
       },
       {
-        accessorFn: (row: Client) => row.satisfaction,
+        accessorFn: (row: ApiClient) => row.satisfaction ?? "neutral",
         id: "satisfaction",
         header: "Satisfaction",
         cell: ({ row }) => {
@@ -133,7 +139,7 @@ const ClientDetailsSection: React.FC = () => {
         },
       },
       {
-        accessorFn: (row: Client) => row.projects,
+        accessorFn: (row: ApiClient) => (row as any).projects_count ?? 0,
         id: "projects",
         header: "Projects",
         cell: ({ row }) => (
@@ -143,7 +149,7 @@ const ClientDetailsSection: React.FC = () => {
         ),
       },
       {
-        accessorFn: (row: Client) => row.remarks,
+        accessorFn: (row: ApiClient) => row.remarks ?? "-",
         id: "remarks",
         header: "Remarks",
         cell: ({ row }) => (
@@ -156,7 +162,7 @@ const ClientDetailsSection: React.FC = () => {
         id: "actions",
         header: "Actions",
         cell: ({ row }) => {
-          const client = row.original as Client;
+          const client = row.original as ApiClient;
           return (
             <div className="flex items-center justify-center gap-2">
               <button
@@ -174,7 +180,7 @@ const ClientDetailsSection: React.FC = () => {
                 <Image src={edit} alt="View" className="w-5 h-5" />
               </button>
               <button
-                onClick={() => handleDelete(client.id)}
+                onClick={() => handleDelete(client.id.toString())}
                 className=" text-white flex items-center justify-center"
                 title="Delete"
               >
@@ -191,29 +197,35 @@ const ClientDetailsSection: React.FC = () => {
   return (
     <>
       <div className="pr-6 py-4">
-        <UnifiedTable
-          data={clients}
-          columns={columns}
-          config={{
-            features: {
-              pagination: true,
-              sorting: true,
-              globalSearch: false,
-              columnVisibility: false,
-            },
-            styling: {
-              variant: "figma",
-              size: "md",
-              hover: true,
-              bordered: true,
-            },
-            pagination: { pageSize: 10 },
-            messages: {
-              empty: "No clients found",
-              loading: "Loading clients...",
-            },
-          }}
-        />
+        {isLoading ? (
+          <p className="text-center text-sm text-gray-500">
+            Loading clients...
+          </p>
+        ) : (
+          <UnifiedTable
+            data={clients}
+            columns={columns}
+            config={{
+              features: {
+                pagination: true,
+                sorting: true,
+                globalSearch: false,
+                columnVisibility: false,
+              },
+              styling: {
+                variant: "figma",
+                size: "md",
+                hover: true,
+                bordered: true,
+              },
+              pagination: { pageSize: 10 },
+              messages: {
+                empty: "No clients found",
+                loading: "Loading clients...",
+              },
+            }}
+          />
+        )}
       </div>
 
       {/* View Client Modal */}
@@ -236,7 +248,7 @@ const ClientDetailsSection: React.FC = () => {
           <EditClientForm
             client={selectedClient}
             onClose={() => setShowEditModal(false)}
-            onFormSubmit={() => setShowEditModal(false)}
+            onClientUpdated={() => setShowEditModal(false)}
           />,
           document.body
         )}

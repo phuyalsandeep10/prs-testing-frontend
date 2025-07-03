@@ -10,35 +10,29 @@ interface ClientData {
   value: number;
 }
 
-const fetchDailyTopClients = async (): Promise<ClientData[]> => {
-  return [
-    { name: "Alice Johnson", value: 25000 },
-    { name: "Bob Brown", value: 20000 },
-    { name: "John Doe", value: 15000 },
-    { name: "Jane Smith", value: 10000 },
-    { name: "Emma Davis", value: 5000 },
-  ];
-};
+const fetchDailyTopClients = async (): Promise<ClientData[]> => [
+  { name: "Alice Johnson", value: 25000 },
+  { name: "Bob Brown", value: 20000 },
+  { name: "John Doe", value: 15000 },
+  { name: "Jane Smith", value: 10000 },
+  { name: "Emma Davis", value: 5000 },
+];
 
-const fetchMonthlyTopClients = async (): Promise<ClientData[]> => {
-  return [
-    { name: "John Doe", value: 25000 },
-    { name: "Jane Smith", value: 5000 },
-    { name: "Alice Johnson", value: 20000 },
-    { name: "Bob Brown", value: 10000 },
-    { name: "Emma Davis", value: 5000 },
-  ];
-};
+const fetchMonthlyTopClients = async (): Promise<ClientData[]> => [
+  { name: "John Doe", value: 25000 },
+  { name: "Jane Smith", value: 5000 },
+  { name: "Alice Johnson", value: 20000 },
+  { name: "Bob Brown", value: 10000 },
+  { name: "Emma Davis", value: 5000 },
+];
 
-const fetchWeeklyTopClients = async (): Promise<ClientData[]> => {
-  return [
-    { name: "Jane Smith", value: 25000 },
-    { name: "John Doe", value: 20000 },
-    { name: "Emma Davis", value: 15000 },
-    { name: "Bob Brown", value: 10000 },
-    { name: "Alice Johnson", value: 5000 },
-  ];
-};
+const fetchWeeklyTopClients = async (): Promise<ClientData[]> => [
+  { name: "Jane Smith", value: 25000 },
+  { name: "John Doe", value: 20000 },
+  { name: "Emma Davis", value: 15000 },
+  { name: "Bob Brown", value: 10000 },
+  { name: "Alice Johnson", value: 5000 },
+];
 
 const TopClientSection: React.FC = () => {
   const [view, setView] = useState<"daily" | "monthly" | "weekly">("daily");
@@ -83,23 +77,23 @@ const TopClientSection: React.FC = () => {
   }
 
   return (
-    <div className="w-full mx-auto border border-[#D1D1D1] p-6 rounded-md">
-      <div className="flex justify-start items-start gap-x-52">
+    <div className="w-full mx-auto border border-[#D1D1D1] p-4 rounded-md">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-10 mb-4">
         <div>
-          <h1 className="text-[20px] font-semibold mb-1">My top Clients</h1>
-          <p className="text-[12px] text-normal text-[#7E7E7E] whitespace-nowrap overflow-hidden text-ellipsis">
+          <h1 className="text-[18px] font-semibold mb-1">My top Clients</h1>
+          <p className="text-[12px] text-[#7E7E7E] truncate">
             {getSubheading()}
           </p>
         </div>
 
-        <div className="max-w-sm text-[#A9A9A9]">
+        <div className="w-30">
           <select
             id="viewSelect"
             value={view}
             onChange={(e) =>
               setView(e.target.value as "daily" | "monthly" | "weekly")
             }
-            className="block w-full p-2 py-1 border-2 border-[#C3C3CB] rounded-[6px] shadow-sm focus:outline-none"
+            className="w-full px-3 py-1.5 border border-[#C3C3CB] rounded-md text-sm text-[#4B5563] shadow-sm focus:outline-none"
           >
             <option value="daily">Daily</option>
             <option value="monthly">Monthly</option>
@@ -108,7 +102,7 @@ const TopClientSection: React.FC = () => {
         </div>
       </div>
 
-      {error && <p className="text-red-500">Error: {error.message}</p>}
+      {error && <p className="text-red-500 text-sm">Error: {error.message}</p>}
       {data && <TopClientCard data={data} />}
     </div>
   );

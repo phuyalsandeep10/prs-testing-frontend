@@ -12,25 +12,25 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { type Client } from "@/data/clients";
+import { type Client } from "@/lib/types/roles";
 
 const formSchema = z.object({
-  clientName: z.string().min(1, "Client name is required"),
+  client_name: z.string().min(1, "Client name is required"),
   email: z.string().email("Invalid email address"),
-  contactNumber: z.string().min(10, "Contact number must be at least 10 digits"),
+  phone_number: z.string().min(10, "Contact number must be at least 10 digits"),
   nationality: z.string().min(1, "Nationality is required"),
-  status: z.string().min(1, "Status is required"),
-  satisfaction: z.string().min(1, "Satisfaction level is required"),
+  status: z.enum(["clear", "pending", "bad_debt"]),
+  satisfaction: z.enum(["excellent", "good", "average", "poor"]),
   remarks: z.string().optional(),
 });
 
 interface EditClientFormProps {
   client: Client;
   onClose: () => void;
-  onFormSubmit?: () => void;
+  onClientUpdated: (updatedClient: Client) => void;
 }
 
-export default function EditClientForm({ client, onClose, onFormSubmit }: EditClientFormProps) {
+export default function EditClientForm({ client, onClose, onClientUpdated }: EditClientFormProps) {
   const [isLoading, setIsLoading] = React.useState(false);
   const [isVisible, setIsVisible] = React.useState(false);
 
@@ -43,12 +43,12 @@ export default function EditClientForm({ client, onClose, onFormSubmit }: EditCl
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      clientName: client.name || "",
+      client_name: client.client_name || "",
       email: client.email || "",
-      contactNumber: client.primaryContactPhone?.replace(/^\+977\s?-?\s?/, '') || "",
-      nationality: "Nepalese", // Default value as not in client data
-      status: client.status || "",
-      satisfaction: client.satisfaction || "",
+      phone_number: client.phone_number || "",
+      nationality: client.nationality || "",
+      status: client.status || "clear",
+      satisfaction: client.satisfaction || "good",
       remarks: client.remarks || "",
     },
   });
@@ -56,17 +56,17 @@ export default function EditClientForm({ client, onClose, onFormSubmit }: EditCl
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      console.log("Form values:", values);
-      toast.success("Client updated successfully!");
-      if (onFormSubmit) {
-        onFormSubmit();
+      const response = await apiClient.updateClient(client.id, values);
+      if (response.success && response.data) {
+        toast.success("Client updated successfully!");
+        onClientUpdated(response.data);
+        handleClose();
+      } else {
+        toast.error(response.message || "Failed to update client.");
       }
-      handleClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to update client:", error);
-      toast.error("Failed to update client. Please try again.");
+      toast.error(error.message || "Failed to update client. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -146,7 +146,7 @@ export default function EditClientForm({ client, onClose, onFormSubmit }: EditCl
               {/* Client Name */}
               <FormField
                 control={form.control}
-                name="clientName"
+                name="client_name"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
@@ -192,7 +192,7 @@ export default function EditClientForm({ client, onClose, onFormSubmit }: EditCl
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="contactNumber"
+                  name="phone_number"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
@@ -299,8 +299,8 @@ export default function EditClientForm({ client, onClose, onFormSubmit }: EditCl
                           <SelectItem value="pending" className="text-orange-600 font-medium">
                             Pending
                           </SelectItem>
-                          <SelectItem value="bad-depth" className="text-red-600 font-medium">
-                            Bad Depth
+                          <SelectItem value="bad_debt" className="text-red-600 font-medium">
+                            Bad Debt
                           </SelectItem>
                         </SelectContent>
                       </Select>
@@ -324,14 +324,17 @@ export default function EditClientForm({ client, onClose, onFormSubmit }: EditCl
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="positive" className="text-green-600 font-medium">
-                            Positive
+                          <SelectItem value="excellent" className="text-green-600 font-medium">
+                            Excellent
                           </SelectItem>
-                          <SelectItem value="neutral" className="text-orange-600 font-medium">
-                            Neutral
+                          <SelectItem value="good" className="text-orange-600 font-medium">
+                            Good
                           </SelectItem>
-                          <SelectItem value="negative" className="text-red-600 font-medium">
-                            Negative
+                          <SelectItem value="average" className="text-orange-600 font-medium">
+                            Average
+                          </SelectItem>
+                          <SelectItem value="poor" className="text-red-600 font-medium">
+                            Poor
                           </SelectItem>
                         </SelectContent>
                       </Select>

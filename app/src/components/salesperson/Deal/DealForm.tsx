@@ -1,22 +1,70 @@
 "use client";
 
-import React, { forwardRef, useImperativeHandle, Ref } from "react";
+import React, { useImperativeHandle, forwardRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, usePathname } from "next/navigation";
 import { DealSchema } from "./DealSchema";
 import InputField from "@/components/ui/clientForm/InputField";
 import SelectField from "@/components/ui/clientForm/SelectField";
 import TextAreaField from "@/components/ui/clientForm/TextAreaField";
 import Button from "@/components/ui/clientForm/Button";
+import { apiClient } from "@/lib/api";
+import { Client } from "@/types/deals";
 
 type DealFormData = z.infer<typeof DealSchema>;
 
+const toSnakeCase = (str: string) => {
+    return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+  };
+  
+const transformDataForApi = (data: DealFormData) => {
+    const formData = new FormData();
+    const paymentData: { [key: string]: any } = {};
+    
+    // Handle file upload separately
+    if (data.uploadReceipt && data.uploadReceipt.length > 0) {
+        formData.append('payments[0]receipt_file', data.uploadReceipt[0]);
+    }
+    
+    const dealKeys = ['clientName', 'dealName', 'payStatus', 'sourceType', 'dealValue', 'dealDate', 'dueDate', 'dealRemarks'];
+    const paymentKeys = ['paymentDate', 'receivedAmount', 'chequeNumber', 'payMethod', 'paymentRemarks'];
+
+    for (const key in data) {
+        if (Object.prototype.hasOwnProperty.call(data, key) && key !== 'uploadReceipt') {
+            const value = (data as any)[key];
+            if (value !== undefined && value !== null && value !== '') {
+                if (dealKeys.includes(key)) {
+                    const snakeKey = toSnakeCase(key);
+                    const apiValue = key === 'payStatus' ? (value === 'Full Pay' ? 'full_payment' : 'partial_payment') : value;
+                    formData.append(snakeKey, apiValue);
+                } else if (paymentKeys.includes(key)) {
+                    const snakeKey = key === 'payMethod' ? 'payment_method' : toSnakeCase(key);
+                    paymentData[snakeKey] = value;
+                }
+            }
+        }
+    }
+
+    // Append nested payment data
+    for (const key in paymentData) {
+        formData.append(`payments[0]${key}`, paymentData[key]);
+    }
+
+    return formData;
+};
+
+const fetchClients = async (): Promise<Client[]> => {
+    const response = await apiClient.get<Client[]>("/clients/");
+    return response.data || [];
+};
+
 const submitDealData = async (data: DealFormData) => {
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  return { success: true, message: "Deal data submitted successfully" };
+  const formData = transformDataForApi(data);
+  const response = await apiClient.postMultipart('/deals/', formData);
+  return response.data;
 };
 
 interface DealFormProps {
@@ -29,89 +77,341 @@ export interface DealFormHandle {
   resetForm: () => void;
 }
 
-const DealForm = forwardRef<DealFormHandle, DealFormProps>(
-  ({ onSave, onCancel, mode = "add" }, ref: Ref<DealFormHandle>) => {
-    const router = useRouter();
-    const pathname = usePathname();
-    const isStandalonePage =
-      pathname?.includes("/add") || pathname?.includes("/edit");
+const DealForm = forwardRef<DealFormHandle, DealFormProps>(({ onSave, onCancel, mode = "add" }, ref) => {
+  const router = useRouter();
+  const pathname = usePathname();
+  const queryClient = useQueryClient();
+  const isStandalonePage =
+    pathname?.includes("/add") || pathname?.includes("/edit");
 
-    const {
-      register,
-      handleSubmit,
-      formState: { errors, isSubmitting },
-      reset,
-      watch,
-    } = useForm<DealFormData>({
-      resolver: zodResolver(DealSchema),
-    });
+  const { data: clients, isLoading: isLoadingClients } = useQuery<Client[]>({
+    queryKey: ["clients"],
+    queryFn: fetchClients,
+  });
+  
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+    setValue,
+    watch,
+  } = useForm<DealFormData>({
+    resolver: zodResolver(DealSchema),
+  });
 
-    const mutation = useMutation({
-      mutationFn: submitDealData,
-      onSuccess: (response) => {
-        console.log(response.message);
-        reset();
-        if (onSave) {
-          onSave(mutation.variables as DealFormData);
-        } else if (isStandalonePage) {
-          router.push("/salesperson/deal");
-        }
-      },
-      onError: (error) => {
-        console.error("Submission failed:", error);
-      },
-    });
+  useImperativeHandle(ref, () => ({
+    resetForm: () => reset(),
+  }));
 
-    const onSubmit = async (data: DealFormData) => {
-      mutation.mutate(data);
-    };
-
-    const handleClear = () => {
+  const mutation = useMutation({
+    mutationFn: submitDealData,
+    onSuccess: (data) => {
+      console.log("Deal created successfully", data);
       reset();
-      if (onCancel) {
-        onCancel();
+      queryClient.invalidateQueries({ queryKey: ["deals"] });
+      if (onSave) {
+        onSave(data as DealFormData);
       } else if (isStandalonePage) {
         router.push("/salesperson/deal");
       }
-    };
+    },
+    onError: (error: any) => {
+      console.error("Failed to create deal:", error);
+    },
+  });
 
-    useImperativeHandle(ref, () => ({
-      resetForm: () => {
-        reset();
-      },
-    }));
+  const onSubmit = (data: DealFormData) => {
+    mutation.mutate(data);
+  };
 
-    const dealLabelClass =
-      "block text-[13px] font-semibold whitespace-nowrap text-black";
-    const dealInputClass =
-      "border border-[#C3C3CB] shadow-none focus:outline-none focus:border-[#C3C3CB] focus:ring-0";
-    const dealWrapperClass = "mb-4";
+  const dealLabelClass =
+    "block text-[13px] font-semibold whitespace-nowrap text-black";
+  const dealInputClass =
+    "border border-[#C3C3CB] shadow-none focus:outline-none focus:border-[#C3C3CB] focus:ring-0";
+  const dealWrapperClass = "mb-4";
 
-    return (
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="h-full w-full flex flex-col overflow-hidden"
-      >
-        <div className="flex-1 p-6 pb-4 overflow-auto">
-          <div className="flex flex-col gap-6 lg:gap-1 lg:flex-row">
-            {/* Left section */}
-            <div className="div1 space-y-3 w-full flex-1">
-              <div className="flex flex-col sm:flex-row gap-4 lg:flex-row lg:gap-5 mb-2">
-                <div className="w-full lg:w-[133px]">
-                  <InputField
-                    id="dealId"
-                    label="Deal ID"
-                    required
-                    registration={register("dealId")}
-                    error={errors.dealId}
-                    placeholder="DLID3421"
-                    width="w-full"
-                    height="h-[48px]"
-                    labelClassName={dealLabelClass}
-                    inputClassName={dealInputClass}
-                    wrapperClassName={dealWrapperClass}
-                  />
-                </div>
+  return (
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="h-full w-full flex flex-col overflow-hidden"
+    >
+      <div className="flex-1 p-6 pb-4 overflow-auto">
+        <div className="flex flex-col gap-6 lg:gap-1 lg:flex-row">
+          {/* Left section */}
+          <div className="div1 space-y-3 w-full flex-1">
+            <div className="flex flex-col sm:flex-row gap-4 lg:flex-row lg:gap-5 mb-2">
+              <div className="w-full lg:w-[133px]">
+                <InputField
+                  id="dealId"
+                  label="Deal ID"
+                  registration={register("dealId")}
+                  error={errors.dealId}
+                  placeholder="Auto-generated"
+                  width="w-full"
+                  height="h-[48px]"
+                  labelClassName={dealLabelClass}
+                  inputClassName={dealInputClass}
+                  wrapperClassName={dealWrapperClass}
+                  disabled
+                />
+              </div>
+
+              <div className="w-full lg:w-[240px]">
+                <SelectField
+                  id="clientName"
+                  label="Client Name"
+                  required
+                  registration={register("clientName")}
+                  error={errors.clientName}
+                  placeholder="Select Client"
+                  width="w-full"
+                  height="h-[48px]"
+                  labelClassName={dealLabelClass}
+                  selectClassName={dealInputClass}
+                  wrapperClassName={dealWrapperClass}
+                  disabled={isLoadingClients}
+                  options={
+                    clients?.map((c) => ({
+                      value: c.client_name,
+                      label: c.client_name,
+                    })) || []
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4 lg:flex-row lg:gap-5 pb-1">
+              <div className="w-full lg:w-[133px]">
+                <SelectField
+                  id="payStatus"
+                  label="Pay Status"
+                  required
+                  registration={register("payStatus")}
+                  error={errors.payStatus}
+                  placeholder="Select status"
+                  width="w-full"
+                  height="h-[48px]"
+                  labelClassName={dealLabelClass}
+                  selectClassName={dealInputClass}
+                  wrapperClassName={dealWrapperClass}
+                  options={[
+                    { value: "Full Pay", label: "Full Pay" },
+                    { value: "Partial Pay", label: "Partial Pay" },
+                  ]}
+                />
+              </div>
+
+              <div className="w-full lg:w-[240px]">
+                <SelectField
+                  id="sourceType"
+                  label="Source Type"
+                  required
+                  registration={register("sourceType")}
+                  error={errors.sourceType}
+                  placeholder="Select source"
+                  width="w-full"
+                  height="h-[48px]"
+                  labelClassName={dealLabelClass}
+                  selectClassName={dealInputClass}
+                  wrapperClassName={dealWrapperClass}
+                  options={[
+                    { value: "linkedin", label: "LinkedIn" },
+                    { value: "instagram", label: "Instagram" },
+                    { value: "google", label: "Google" },
+                    { value: "referral", label: "Referral" },
+                    { value: "others", label: "Others" },
+                  ]}
+                />
+              </div>
+            </div>
+
+            {/* Third row grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-x-52 lg:gap-0">
+              <div>
+                <InputField
+                  id="dealDate"
+                  label="Deal Date"
+                  required
+                  registration={register("dealDate")}
+                  error={errors.dealDate}
+                  type="date"
+                  width="w-full lg:w-[186px]"
+                  height="h-[48px]"
+                  labelClassName={dealLabelClass}
+                  inputClassName={dealInputClass}
+                  wrapperClassName={dealWrapperClass}
+                />
+              </div>
+
+              <div>
+                <InputField
+                  id="dueDate"
+                  label="Due Date"
+                  required
+                  registration={register("dueDate")}
+                  error={errors.dueDate}
+                  type="date"
+                  width="w-full lg:w-[186px]"
+                  height="h-[48px]"
+                  labelClassName={dealLabelClass}
+                  inputClassName={dealInputClass}
+                  wrapperClassName={dealWrapperClass}
+                />
+              </div>
+
+              <div className="col-span-1 sm:col-span-2 lg:col-span-2 row-span-1 pb-2 pt-2">
+                <SelectField
+                  id="payMethod"
+                  label="Payment Method"
+                  required
+                  registration={register("payMethod")}
+                  error={errors.payMethod}
+                  placeholder="Select payment method"
+                  width="w-full lg:w-[392px]"
+                  height="h-[48px]"
+                  labelClassName={dealLabelClass}
+                  selectClassName={dealInputClass}
+                  wrapperClassName={dealWrapperClass}
+                  options={[
+                    { value: "wallet", label: "Mobile Wallet" },
+                    { value: "cash", label: "Cash" },
+                    { value: "cheque", label: "Cheque" },
+                    { value: "bank", label: "Bank Transfer" },
+                  ]}
+                />
+              </div>
+
+              <div className="col-span-1 sm:col-span-2 lg:col-span-2 row-span-1">
+                <TextAreaField
+                  id="dealRemarks"
+                  label="Deal Remarks"
+                  registration={register("dealRemarks")}
+                  error={errors.dealRemarks}
+                  width="w-full lg:w-[392px]"
+                  height="h-[70px]"
+                  labelClassName={dealLabelClass}
+                  textareaClassName={dealInputClass}
+                  wrapperClassName={dealWrapperClass}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Middle section*/}
+          <div className="div2 flex-1 flex-col gap-4 pb-1 pr-6 w-full">
+            <InputField
+              id="dealName"
+              label="Deal Name"
+              required
+              registration={register("dealName")}
+              error={errors.dealName}
+              placeholder="Chat BoQ Project"
+              width="w-full"
+              height="h-[48px]"
+              labelClassName={dealLabelClass}
+              inputClassName={dealInputClass}
+              wrapperClassName={dealWrapperClass}
+            />
+
+            <InputField
+              id="dealValue"
+              label="Deal Value"
+              required
+              registration={register("dealValue")}
+              error={errors.dealValue}
+              placeholder="Nrs. 250,000"
+              width="w-full"
+              height="h-[48px]"
+              labelClassName={dealLabelClass}
+              inputClassName={dealInputClass}
+              wrapperClassName={dealWrapperClass}
+            />
+
+            <div>
+              <label className="block text-[13px] font-semibold mb-2">
+                Recent Activities
+              </label>
+              <div className="relative p-2 pt-5 border w-full h-[150px] lg:h-[285px] rounded-[6px] border-[#C3C3CB] text-[12px] text-gray-600 overflow-auto">
+                {mode === "edit" && (
+                  <div className="flex border border-[#EDEEEFEF]">
+                    <div className="w-1 bg-[#465FFF] mr-2"></div>
+                    <div>
+                      <p className="text-[12px] text-black">
+                        Changes done due date in DLID3421.
+                      </p>
+                      <p className="text-[12px] text-[#7E7E7E]">Jan 02, 2020</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right section */}
+          <div className="div3 w-full flex-1 md:w-3/4 lg:w-64 h-auto lg:h-[264px] flex flex-col">
+            <div
+              className="bg-[#DCFCE7] p-4 rounded-lg space-y-4 relative flex-grow"
+              style={{
+                clipPath:
+                  "polygon(0 0, calc(100% - 3rem) 0, 100% 3rem, 100% 100%, 0 100%)",
+              }}
+            >
+              <h2 className="text-[#009959] font-medium text-[16px] mb-8">
+                First Payment
+              </h2>
+              <div className="flex-grow overflow-auto space-y-6">
+                <InputField
+                  id="paymentDate"
+                  label="Payment Date"
+                  required
+                  registration={register("paymentDate")}
+                  error={errors.paymentDate}
+                  type="date"
+                  width="w-full"
+                  height="h-[33px]"
+                  labelClassName={dealLabelClass}
+                  inputClassName={dealInputClass}
+                  wrapperClassName={dealWrapperClass}
+                />
+                <InputField
+                  id="receivedAmount"
+                  label="Received Amount"
+                  required
+                  registration={register("receivedAmount")}
+                  error={errors.receivedAmount}
+                  placeholder="Enter Amount"
+                  width="w-full"
+                  height="h-[33px]"
+                  labelClassName={dealLabelClass}
+                  inputClassName={dealInputClass}
+                  wrapperClassName={dealWrapperClass}
+                />
+                <InputField
+                  id="chequeNumber"
+                  label="Cheque Number"
+                  required
+                  registration={register("chequeNumber")}
+                  error={errors.chequeNumber}
+                  placeholder="1234567"
+                  width="w-full"
+                  height="h-[33px]"
+                  labelClassName={dealLabelClass}
+                  inputClassName={dealInputClass}
+                  wrapperClassName={dealWrapperClass}
+                />
+              
+                <InputField
+                  id="uploadReceipt"
+                  label="Receipt"
+                  type="file"
+                  registration={register("uploadReceipt")}
+                  width="full"
+                  height="auto"
+                  labelClassName="font-semibold"
+                  inputClassName="border rounded"
+                  wrapperClassName="mb-4"
+                />
 
                 <div className="w-full lg:w-[240px]">
                   <InputField
@@ -424,7 +724,6 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
           )}
           <Button
             type="button"
-            onClick={handleClear}
             className="bg-[#F61818] text-white w-[83px] p-2 h-[40px] rounded-[6px] text-[14px] font-semibold"
           >
             Clear
@@ -437,11 +736,9 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
             {isSubmitting ? "Submitting..." : "Save Client"}
           </Button>
         </div>
-      </form>
-    );
-  }
-);
-
-DealForm.displayName = "DealForm";
+      </div>
+    </form>
+  );
+});
 
 export default DealForm;

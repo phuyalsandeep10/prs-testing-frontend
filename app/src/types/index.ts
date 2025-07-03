@@ -26,37 +26,10 @@ export interface AuthState {
   isLoading: boolean;
 }
 
-// ==================== CLIENT TYPES ====================
-export type ClientCategory = 'loyal' | 'inconsistent' | 'occasional';
-export type ClientStatus = 'clear' | 'pending' | 'bad-depth';
-export type ClientSatisfaction = 'positive' | 'neutral' | 'negative';
-
 export interface Activity {
   timestamp: string;
   description: string;
   type?: 'meeting' | 'call' | 'email' | 'note';
-}
-
-export interface Client extends BaseEntity {
-  name: string;
-  email: string;
-  category: ClientCategory;
-  salesperson: string;
-  lastContact: string;
-  expectedClose: string;
-  value: number;
-  totalSales?: number;
-  status: ClientStatus;
-  projects: number;
-  satisfaction: ClientSatisfaction;
-  remarks: string;
-  primaryContactName: string;
-  primaryContactPhone: string;
-  address: string;
-  activeDate: string;
-  activities: Activity[];
-  avatarUrl?: string;
-  salesLeadsAvatars: string[];
 }
 
 // ==================== TEAM TYPES ====================
@@ -232,3 +205,6 @@ export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 export type WithoutId<T> = Omit<T, 'id'>;
 export type CreateInput<T> = Omit<T, 'id' | 'createdAt' | 'updatedAt'>;
 export type UpdateInput<T> = Partial<Omit<T, 'createdAt' | 'updatedAt'>> & { id: string };
+
+// Re-exporting from other type files
+export * from './deals';

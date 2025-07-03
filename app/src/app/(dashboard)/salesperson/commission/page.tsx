@@ -1,4 +1,3 @@
-
 "use client";
 
 import React from "react";
@@ -9,8 +8,10 @@ import CommissionSection from "./_components/CommisionSection";
 
 const CommissionPage = () => {
   return (
-    <div className="min-h-screen min-w-8xl bg-gray-50">
-      <div className="min-w-8xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="min-h-screen bg-gray-50">
+      {/* Limit content width to 7xl and center it */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Header section with title and search */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
           <div className="space-y-1">
             <h1 className="text-[20px] font-semibold">Commission</h1>
@@ -41,21 +42,23 @@ const CommissionPage = () => {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-4">
-          <section className="flex-1 min-w-[320px] max-w-[480px]">
+        {/* Main sections grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <section>
             <CommissionSection />
           </section>
 
-          <section className="flex-[1] lg:min-w-[400px] min-w-[320px] lg:-ml-8">
+          <section>
             <TopClientSection />
           </section>
 
-          <section className="flex-[1] min-w-[320px]">
+          <section className="-ml-5">
             <RegularClientSection />
           </section>
         </div>
 
-        <div>
+        {/* Bottom full-width section */}
+        <div className="mt-6">
           <ClientDetailsSection />
         </div>
       </div>
