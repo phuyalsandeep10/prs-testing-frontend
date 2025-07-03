@@ -11,6 +11,10 @@ const nextConfig = {
   // Additional performance optimizations
   poweredByHeader: false,
   compress: true,
+  // Image optimization settings
+  images: {
+    unoptimized: true,
+  },
   // Reduce resource hints that might cause preloading warnings
   async headers() {
     return [

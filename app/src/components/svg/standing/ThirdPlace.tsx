@@ -1,0 +1,122 @@
+"use client";
+import React, { useEffect, useRef } from "react";
+import { gsap } from "gsap";
+import Image from "next/image";
+import Crown from "./Crown";
+
+const ThirdPlace = ({ image, alt }) => {
+  const svgRef = useRef(null);
+  const imgRef = useRef(null);
+  const containerRef = useRef(null);
+  const crownRef = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          const tl = gsap.timeline({ delay: 1 });
+
+          // Animate Image
+          tl.fromTo(
+            imgRef.current,
+            { y: 190, opacity: 0 },
+            { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" }
+          );
+
+          // Animate SVG
+          tl.fromTo(
+            svgRef.current,
+            { scaleY: 0, opacity: 0, transformOrigin: "bottom center" },
+            { scaleY: 1, opacity: 1, duration: 1.5, ease: "power2.out" },
+            "-=1.5" // sync with image
+          );
+
+          // Animate Crown from bottom as well
+          tl.fromTo(
+            crownRef.current,
+            { y: 190, opacity: 0 },
+            { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" },
+            "-=1.5" // sync with image
+          );
+
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.4 }
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative"
+      style={{
+        height: "250px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "flex-end",
+      }}
+    >
+      {/* Crown rising from bottom (centered) */}
+      <div
+        ref={crownRef}
+        className="absolute -top-[50px] left-[62%] transform -translate-x-1/2 z-10"
+      >
+        <Crown />
+      </div>
+
+      {/* Image rising from bottom */}
+      <div ref={imgRef}>
+        <Image
+          src={image}
+          alt={alt}
+          width={60}
+          height={60}
+          className="w-[60px] h-[60px] object-cover rounded-full border-4 border-[#FFA424]"
+        />
+      </div>
+
+      {/* SVG pillar animation */}
+      <svg
+        ref={svgRef}
+        width="122"
+        height="210"
+        viewBox="0 0 122 210"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M7.83984 23.3151L121.84 0V222H7.83984V23.3151Z"
+          fill="#B5BFFF"
+        />
+        <path d="M0.839844 23H89.8398V222H0.839844V23Z" fill="#DADFFF" />
+        <path
+          d="M39.1893 0H121.678L90.1083 23.4227H1L39.1893 0Z"
+          fill="url(#paint0_linear_2055_999)"
+        />
+        <defs>
+          <linearGradient
+            id="paint0_linear_2055_999"
+            x1="61.339"
+            y1="0"
+            x2="61.339"
+            y2="23.4228"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop stopColor="#465FFF" />
+            <stop offset="1" stopColor="#6F60E0" />
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+  );
+};
+
+export default ThirdPlace;
