@@ -249,9 +249,9 @@ export default function LoginForm() {
     // Use the login function from AuthContext
     login(data.token, data.user);
 
-    // Get role and permissions for auth context
-    const rawRole = data.user?.role?.name || 'unknown';
-    const userRole = rawRole.toLowerCase().replace(/\s+/g, '-') as UserRole;
+    // Get role and permissions for auth context - ensure rawRole is always a string
+    const rawRole = data.user?.role?.name || data.user?.role || 'unknown';
+    const userRole = (typeof rawRole === 'string' ? rawRole : 'unknown').toLowerCase().replace(/\s+/g, '-') as UserRole;
     
     console.log('User role identified as:', userRole);
 

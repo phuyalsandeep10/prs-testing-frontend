@@ -24,7 +24,7 @@ const DealPaymentForm: React.FC<DealPaymentFormProps> = () => {
       .refine((files) => files?.length === 1, {
         message: "Upload Receipt is required",
       })
-      .refine((files) => files?.[0]?.name.toLowerCase().endsWith(".png"), {
+      .refine((files) => files?.[0]?.name?.toLowerCase().endsWith(".png"), {
         message: "Only png files are allowed",
       }),
   });

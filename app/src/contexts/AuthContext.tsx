@@ -9,7 +9,7 @@ interface UserData {
   email: string;
   role: {
     name: UserRole;
-    permissions: { codename: Permission }[];
+    permissions?: { codename: Permission }[];
   };
   organization: string;
   // Add other user properties as needed
@@ -30,8 +30,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isAuthInitialized, setIsAuthInitialized] = useState(false);
 
   const setupAuth = useCallback((token: string, userData: UserData) => {
-    const userRole = userData.role.name.toLowerCase().replace(/\s+/g, '-') as UserRole;
-    const permissions = userData.role.permissions.map(p => p.codename);
+    const userRole = (userData.role?.name || 'unknown').toLowerCase().replace(/\s+/g, '-') as UserRole;
+    const permissions = userData.role?.permissions?.map(p => p.codename) || [];
     const userScope = { userId: userData.id, organizationId: userData.organization };
 
     apiClient.setAuth(token, userRole, permissions, userData.organization, userScope);
