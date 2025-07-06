@@ -1,10 +1,17 @@
 "use client";
-import React from "react";
+import React, { useEffect } from "react";
+import { useDashboardStore } from "@/store/apiCall/Achieve";
 
 const PaymentVerificationStatus = () => {
-  const cleared = 2000;
-  const notVerified = 2000;
-  const rejected = 1000;
+  const { data, sendRequest } = useDashboardStore();
+
+  useEffect(() => {
+    sendRequest("GET", `${process.env.NEXT_PUBLIC_API_URL}/dashboard/`);
+  }, [sendRequest]);
+
+  const cleared = data?.verification_status?.verified?.total || 0;
+  const notVerified = data?.verification_status?.pending?.total || 0;
+  const rejected = data?.verification_status?.rejected?.total || 0;
   const total = cleared + notVerified + rejected;
 
   const clearedPercent = (cleared / total) * 100;

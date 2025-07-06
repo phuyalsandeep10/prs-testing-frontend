@@ -13,52 +13,123 @@ import box35 from "@/assets/photo/box35.png";
 import box55 from "@/assets/photo/box55.png";
 import box75 from "@/assets/photo/box75.png";
 import box100 from "@/assets/photo/box100.png";
+import { useEffect, useMemo } from "react";
+import { useDashboardStore } from "@/store/apiCall/Achieve";
 
 const Acheve = () => {
-  const currentAmount = 3000;
-  const targetAmount = 15000;
-  const percentage = (currentAmount / targetAmount) * 100;
+  const { data, loading, error, sendRequest, cancel } = useDashboardStore();
+  const endpoint = `${process.env.NEXT_PUBLIC_API_URL}/dashboard/`;
 
-  let avatarImage = img;
-  let boxImage = box;
-  let message = "Just getting started! You can do it!";
-  let bgColor = "#E0F2F7";
-  let textColor = "#31323A";
-  let leftAvatarRotation = "rotate-12";
+  useEffect(() => {
+    if (!process.env.NEXT_PUBLIC_API_URL) {
+      console.error(
+        "NEXT_PUBLIC_API_URL is not defined in environment variables"
+      );
+      return;
+    }
 
-  if (percentage == 100) {
-    avatarImage = avatar100;
-    boxImage = box100;
-    message = "Well done!";
-    bgColor = "#2A9ACD";
-    textColor = "#FFFFFF";
-    leftAvatarRotation = "rotate-12";
-  } else if (percentage >= 75) {
-    avatarImage = avatar75;
-    boxImage = box75;
-    message = "Almost complete! So close!";
-    bgColor = "#57B9D6";
-    textColor = "#31323A";
-    leftAvatarRotation = "rotate-[-25deg]";
-  } else if (percentage >= 55) {
-    avatarImage = avatar55;
-    boxImage = box55;
-    message = "Halfway there! You're doing great!";
-    bgColor = "#85CCE0";
-    textColor = "#31323A";
-    leftAvatarRotation = "rotate-12";
-  } else if (percentage >= 35) {
-    avatarImage = avatar35;
-    boxImage = box35;
-    message = "Making progress! Keep going!";
-    bgColor = "#B3E0ED";
-    textColor = "#31323A";
-    leftAvatarRotation = "rotate-12";
+    sendRequest("GET", endpoint);
+    return () => cancel(endpoint); // Cancel request on unmount
+  }, [sendRequest, cancel, endpoint]);
+
+  // Memoize derived data to avoid recalculating on every render
+  const { currentAmount, targetAmount, percentage } = useMemo(() => {
+    const current = parseFloat(data?.sales_progress?.current_sales || "0");
+    const target = parseFloat(data?.sales_progress?.target || "1");
+    const percent = (current / target) * 100;
+    return {
+      currentAmount: current,
+      targetAmount: target,
+      percentage: percent,
+    };
+  }, [data?.sales_progress]);
+
+  // Determine UI elements based on percentage
+  const {
+    avatarImage,
+    boxImage,
+    message,
+    bgColor,
+    textColor,
+    leftAvatarRotation,
+  } = useMemo(() => {
+    let avatar = img;
+    let boxImg = box;
+    let msg = "Just getting started! You can do it!";
+    let bg = "#E0F2F7";
+    let text = "#31323A";
+    let rotation = "rotate-12";
+
+    if (percentage >= 100) {
+      avatar = avatar100;
+      boxImg = box100;
+      msg = "Well done!";
+      bg = "#2A9ACD";
+      text = "#FFFFFF";
+      rotation = "rotate-12";
+    } else if (percentage >= 75) {
+      avatar = avatar75;
+      boxImg = box75;
+      msg = "Almost complete! So close!";
+      bg = "#57B9D6";
+      text = "#31323A";
+      rotation = "rotate-[-25deg]";
+    } else if (percentage >= 55) {
+      avatar = avatar55;
+      boxImg = box55;
+      msg = "Halfway there! You're doing great!";
+      bg = "#85CCE0";
+      text = "#31323A";
+      rotation = "rotate-12";
+    } else if (percentage >= 35) {
+      avatar = avatar35;
+      boxImg = box35;
+      msg = "Making progress! Keep going!";
+      bg = "#B3E0ED";
+      text = "#31323A";
+      rotation = "rotate-12";
+    }
+
+    return {
+      avatarImage: avatar,
+      boxImage: boxImg,
+      message: msg,
+      bgColor: bg,
+      textColor: text,
+      leftAvatarRotation: rotation,
+    };
+  }, [percentage]);
+
+  // Debug logging
+  useEffect(() => {
+    console.log("Acheve Component State:", {
+      data,
+      loading: loading[endpoint],
+      error,
+      percentage,
+    });
+  }, [data, loading, error, endpoint, percentage]);
+
+  if (error) {
+    return (
+      <div className="text-red-500 p-4">
+        Error: {error.message} {error.status && `(${error.status})`}
+        {error.details && <pre>{JSON.stringify(error.details, null, 2)}</pre>}
+      </div>
+    );
+  }
+
+  if (loading[endpoint]) {
+    return <div className="p-4">Loading...</div>;
+  }
+
+  if (!data) {
+    return <div className="p-4">No data available</div>;
   }
 
   return (
     <Card
-      className="relative w-full  h-[212px] border rounded-lg pl-8 overflow-hidden shadow-md"
+      className="relative w-full h-[212px] border rounded-lg pl-8 overflow-hidden shadow-md"
       style={{ backgroundColor: bgColor }}
     >
       <div
@@ -73,9 +144,7 @@ const Acheve = () => {
         />
       </div>
 
-      {/* Top right avatar + milestone box */}
       <div className="absolute right-[-39px] top-0 flex flex-col items-end">
-        {/* Avatar */}
         <div className="pt-7 pr-20 z-10">
           <Image
             src={avatarImage}
@@ -84,14 +153,11 @@ const Acheve = () => {
             height={155}
           />
         </div>
-
-        {/* Box image */}
         <div className="mt-[-100px] pr-[-10px]">
           <Image src={boxImage} alt="Treasure Box" width={162} height={162} />
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="flex flex-col justify-start z-10">
         <Button
           variant="outline"
@@ -104,10 +170,10 @@ const Acheve = () => {
           className="text-xl font-outfit font-semibold pb-[31px]"
           style={{ color: textColor }}
         >
-          Welcome Message.
+          Welcome Message
         </h2>
         <div className="pr-32">
-          <div className="bg-white rounded-lg shadow-sm w-full  h-[64px] flex flex-col justify-start">
+          <div className="bg-white rounded-lg shadow-sm w-full h-[64px] flex flex-col justify-start">
             <p className="text-md font-outfit font-medium text-black px-6 pt-3 mb-[6px] leading-tight">
               {message}
               <span className="float-right font-semibold">
@@ -127,11 +193,10 @@ const Acheve = () => {
                   style={{
                     width: `${percentage}%`,
                     background:
-                      "linear-gradient(to right, #A7D9FF,#7ABFFF,#4D9FFF,#2080FF)",
+                      "linear-gradient(to right, #A7D9FF, #7ABFFF, #4D9FFF, #2080FF)",
                   }}
                 ></div>
 
-                {/* Milestone indicators */}
                 <div className="absolute inset-0">
                   {percentage < 45 && (
                     <div

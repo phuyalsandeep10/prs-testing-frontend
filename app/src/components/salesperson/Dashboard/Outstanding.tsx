@@ -1,57 +1,24 @@
 "use client";
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import { User } from "lucide-react";
-import Image from "next/image";
-
-interface Deal {
-  id: string;
-  personName: string;
-  projectName: string;
-  amount: number;
-  avatar?: string;
-  initials?: string;
-}
-
-const sampleDeals: Deal[] = [
-  {
-    id: "1",
-    personName: "Abinash Tiwari",
-    projectName: "Project AB",
-    amount: 20000,
-    initials: "AT",
-  },
-  {
-    id: "2",
-    personName: "Pankaj Gurung",
-    projectName: "Project Web Dev",
-    amount: 30000,
-    initials: "PG",
-  },
-  {
-    id: "3",
-    personName: "Kiran Rai",
-    projectName: "SEO",
-    amount: 22000,
-    initials: "KR",
-  },
-  {
-    id: "4",
-    personName: "Sarah Johnson",
-    projectName: "Mobile App Design",
-    amount: 18000,
-    initials: "SJ",
-  },
-  {
-    id: "5",
-    personName: "Mike Chen",
-    projectName: "E-commerce Platform",
-    amount: 35000,
-    initials: "MC",
-  },
-];
+import { useDashboardStore } from "@/store/apiCall/Achieve";
 
 const Outstanding: React.FC = () => {
-  const deals = sampleDeals;
+  const { data, loading, error, sendRequest, cancel } = useDashboardStore();
+
+  useEffect(() => {
+    const endpoint = `${process.env.NEXT_PUBLIC_API_URL}/dashboard/`;
+    sendRequest("GET", endpoint);
+    return () => cancel(endpoint); // Cancel request on unmount
+  }, [sendRequest, cancel]);
+
+  const deals = useMemo(() => {
+    return data?.outstanding_deals
+      ? [...data.outstanding_deals]
+          .sort((a, b) => b.deal_value - a.deal_value)
+          .slice(0, 5)
+      : [];
+  }, [data?.outstanding_deals]);
 
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -82,6 +49,14 @@ const Outstanding: React.FC = () => {
     return colors[index % colors.length];
   };
 
+  if (error) {
+    return (
+      <div className="text-red-500">
+        Error: {error.message} {error.status && `(${error.status})`}
+      </div>
+    );
+  }
+
   return (
     <div className="w-full min-h-[295px]">
       <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
@@ -90,8 +65,11 @@ const Outstanding: React.FC = () => {
             Deals with Outstanding Payments
           </h2>
         </div>
+        {loading[`${process.env.NEXT_PUBLIC_API_URL}/dashboard/`] && (
+          <div className="text-center py-8">Loading...</div>
+        )}
         <div className="overflow-y-auto max-h-[300px]">
-          {deals.slice(0, 5).map((deal, index) => (
+          {deals.map((deal, index) => (
             <div
               key={deal.id}
               className="px-4 sm:px-5 py-2 hover:bg-gray-50 transition-colors duration-150"
@@ -103,39 +81,28 @@ const Outstanding: React.FC = () => {
                       index
                     )}`}
                   >
-                    {deal.avatar ? (
-                      <Image
-                        height={40}
-                        width={40}
-                        src={deal.avatar}
-                        alt={deal.personName}
-                        className="w-full h-full rounded-full object-cover"
-                      />
-                    ) : (
-                      <span>
-                        {deal.initials || getInitials(deal.personName)}
-                      </span>
-                    )}
+                    <span>{getInitials(deal.client_name)}</span>
                   </div>
                   <div className="flex flex-col min-w-0">
                     <span className="text-sm font-medium text-gray-900 truncate">
-                      {deal.personName}
+                      {deal.client_name}
                     </span>
                   </div>
                 </div>
                 <div className="text-sm font-semibold text-gray-900 flex-shrink-0">
-                  {formatAmount(deal.amount)}
+                  {formatAmount(deal.deal_value)}
                 </div>
               </div>
             </div>
           ))}
         </div>
-        {deals.length === 0 && (
-          <div className="px-4 sm:px-6 py-8 text-center text-gray-500">
-            <User className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-            <p className="text-sm">No outstanding payments found</p>
-          </div>
-        )}
+        {deals.length === 0 &&
+          !loading[`${process.env.NEXT_PUBLIC_API_URL}/dashboard/`] && (
+            <div className="px-4 sm:px-6 py-8 text-center text-gray-500">
+              <User className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+              <p className="text-sm">No outstanding payments found</p>
+            </div>
+          )}
       </div>
     </div>
   );
