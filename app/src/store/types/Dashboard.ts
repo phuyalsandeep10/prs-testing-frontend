@@ -22,11 +22,16 @@ export interface StreakInfo {
   last_updated: string;
 }
 
+export type ClientSatisfaction = "satisfied" | "neutral" | "unsatisfied";
+export type ClientStatus = "clear" | "pending" | "bad_debt";
+
 export interface Deal {
   id: string;
   client_name: string;
   deal_value: number;
   deal_date: string;
+  client_satisfaction: ClientSatisfaction;
+  client_status: ClientStatus;
 }
 
 export interface VerificationStatus {

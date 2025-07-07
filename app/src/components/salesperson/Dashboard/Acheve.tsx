@@ -17,8 +17,9 @@ import { useEffect, useMemo } from "react";
 import { useDashboardStore } from "@/store/apiCall/Achieve";
 
 const Acheve = () => {
-  const { data, loading, error, sendRequest, cancel } = useDashboardStore();
-  const endpoint = `${process.env.NEXT_PUBLIC_API_URL}/dashboard/`;
+  const { data, loading, error, sendRequest, cancel, retry } =
+    useDashboardStore();
+  const endpoint = `${process.env.NEXT_PUBLIC_API_URL}/dashboard/dashboard/`;
 
   useEffect(() => {
     if (!process.env.NEXT_PUBLIC_API_URL) {
@@ -28,14 +29,20 @@ const Acheve = () => {
       return;
     }
 
-    sendRequest("GET", endpoint);
+    // Example query parameters
+    // const queryParams = {
+    //   period: "Q1",
+    //   userId: 123,
+    // };
+
+    sendRequest("GET", endpoint, undefined);
     return () => cancel(endpoint); // Cancel request on unmount
   }, [sendRequest, cancel, endpoint]);
 
   // Memoize derived data to avoid recalculating on every render
   const { currentAmount, targetAmount, percentage } = useMemo(() => {
-    const current = parseFloat(data?.sales_progress?.current_sales || "0");
-    const target = parseFloat(data?.sales_progress?.target || "1");
+    const current = parseFloat(data?.sales_progress?.current_sales || "0") || 0;
+    const target = parseFloat(data?.sales_progress?.target || "1") || 1;
     const percent = (current / target) * 100;
     return {
       currentAmount: current,
@@ -44,7 +51,7 @@ const Acheve = () => {
     };
   }, [data?.sales_progress]);
 
-  // Determine UI elements based on percentage
+  // Memoize UI configuration
   const {
     avatarImage,
     boxImage,
@@ -112,19 +119,37 @@ const Acheve = () => {
 
   if (error) {
     return (
-      <div className="text-red-500 p-4">
-        Error: {error.message} {error.status && `(${error.status})`}
-        {error.details && <pre>{JSON.stringify(error.details, null, 2)}</pre>}
-      </div>
+      <Card className="w-full h-[212px] border rounded-lg p-8 flex flex-col items-center justify-center bg-white shadow-md">
+        <p className="text-md font-outfit font-medium text-red-500 mb-4">
+          {error.displayMessage}
+        </p>
+        <Button
+          variant="outline"
+          className="text-sm font-medium font-outfit text-[#465FFF] hover:text-[#465FFF]"
+          onClick={() => retry()}
+        >
+          Try Again
+        </Button>
+      </Card>
     );
   }
 
   if (loading[endpoint]) {
-    return <div className="p-4">Loading...</div>;
+    return (
+      <Card className="w-full h-[212px] border rounded-lg p-8 flex justify-center items-center bg-white shadow-md">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#465FFF]"></div>
+      </Card>
+    );
   }
 
   if (!data) {
-    return <div className="p-4">No data available</div>;
+    return (
+      <Card className="w-full h-[212px] border rounded-lg p-8 flex justify-center items-center bg-white shadow-md">
+        <p className="text-md font-outfit font-medium text-gray-500">
+          No data available
+        </p>
+      </Card>
+    );
   }
 
   return (
@@ -191,7 +216,7 @@ const Acheve = () => {
                 <div
                   className="h-full"
                   style={{
-                    width: `${percentage}%`,
+                    width: `${Math.min(percentage, 100)}%`,
                     background:
                       "linear-gradient(to right, #A7D9FF, #7ABFFF, #4D9FFF, #2080FF)",
                   }}

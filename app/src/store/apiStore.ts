@@ -1,16 +1,12 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
-import axios, { AxiosRequestConfig as OriginalAxiosRequestConfig, CancelTokenSource } from 'axios';
+import axios, { AxiosRequestConfig, CancelTokenSource } from 'axios';
 import type { Method } from 'axios';
-
-// Extend AxiosRequestConfig to include getAuthToken
-interface AxiosRequestConfig extends OriginalAxiosRequestConfig {
-  getAuthToken?: () => string | null;
-}
 
 // Structure of error object for consistent error handling
 interface ApiError {
-  message: string;
+  message: string; // Technical error message for developers
+  displayMessage: string; // User-friendly message for UI
   status?: number;
   details?: unknown;
 }
@@ -21,7 +17,7 @@ interface RequestParams<T> {
   endpoint: string;
   body?: unknown;
   params?: Record<string, string | number | boolean | undefined>;
-  config?: AxiosRequestConfig;
+  config?: AxiosRequestConfig & { getAuthToken?: () => string | null };
   transformResponse?: (raw: unknown) => T;
   cancelTokenSource: CancelTokenSource;
 }
@@ -83,9 +79,13 @@ export const createApiStore = <T>() =>
         transformResponse
       ) => {
         if (!process.env.NEXT_PUBLIC_API_URL) {
+          console.error('API base URL is not defined', { endpoint });
           set((state) => {
             state.loading[endpoint] = false;
-            state.error = { message: 'API base URL is not defined' };
+            state.error = {
+              message: 'API base URL is not defined',
+              displayMessage: "We're sorry, the service is temporarily unavailable. Please try again later.",
+            };
           });
           return;
         }
@@ -99,6 +99,23 @@ export const createApiStore = <T>() =>
           state.retryCount = 0;
           state.lastRequest = { method, endpoint, body, params, config, transformResponse, cancelTokenSource };
         });
+
+        /**
+         * Maps technical errors to user-friendly messages.
+         * @param error - The raw error object.
+         * @returns User-friendly error message.
+         */
+        const mapErrorToDisplayMessage = (error: any): string => {
+          if (axios.isAxiosError(error)) {
+            if (error.response?.status === 500) {
+              return "We're sorry, the service is temporarily unavailable. Please try again later.";
+            }
+            if (!error.response) {
+              return "Unable to connect to the server. Please check your internet connection.";
+            }
+          }
+          return "An unexpected error occurred. Please try again.";
+        };
 
         /**
          * Fetches all pages of a paginated API response.
@@ -194,16 +211,25 @@ export const createApiStore = <T>() =>
             return;
           }
 
-          const err: ApiError = { message: 'Unknown error occurred' };
+          const err: ApiError = {
+            message: 'Unknown error occurred',
+            displayMessage: "We're sorry, the service is temporarily unavailable. Please try again later.",
+            status: undefined,
+            details: undefined,
+          };
 
           // Handle Axios errors
           if (axios.isAxiosError(error)) {
             err.message = error.message;
             err.status = error.response?.status;
             err.details = error.response?.data;
+            err.displayMessage = mapErrorToDisplayMessage(error);
           } else if (error instanceof Error) {
             err.message = error.message;
+            err.displayMessage = mapErrorToDisplayMessage(error);
           }
+
+          // console.error('API request failed', { endpoint, error: err, params, body });
 
           set((state) => {
             state.error = err;
@@ -228,7 +254,24 @@ export const createApiStore = <T>() =>
           state.error = null;
         });
 
-        const { method, endpoint, body, params, config, transformResponse, cancelTokenSource } = state.lastRequest;
+        const { method, endpoint, body, params, config, transformResponse, cancelTokenSource } = state.lastRequest as RequestParams<T>;
+
+        /**
+         * Maps technical errors to user-friendly messages during retries.
+         * @param error - The raw error object.
+         * @returns User-friendly error message.
+         */
+        const mapErrorToDisplayMessage = (error: any): string => {
+          if (axios.isAxiosError(error)) {
+            if (error.response?.status === 500) {
+              return "We're sorry, the service is temporarily unavailable. Please try again later.";
+            }
+            if (!error.response) {
+              return "Unable to connect to the server. Please check your internet connection.";
+            }
+          }
+          return "An unexpected error occurred. Please try again.";
+        };
 
         try {
           const getAuthToken = config?.getAuthToken ?? (() => localStorage.getItem('authToken'));
@@ -263,15 +306,24 @@ export const createApiStore = <T>() =>
             return;
           }
 
-          const err: ApiError = { message: 'Unknown error occurred' };
+          const err: ApiError = {
+            message: 'Unknown error occurred',
+            displayMessage: "We're sorry, the service is temporarily unavailable. Please try again later.",
+            status: undefined,
+            details: undefined,
+          };
 
           if (axios.isAxiosError(error)) {
             err.message = error.message;
             err.status = error.response?.status;
             err.details = error.response?.data;
+            err.displayMessage = mapErrorToDisplayMessage(error);
           } else if (error instanceof Error) {
             err.message = error.message;
+            err.displayMessage = mapErrorToDisplayMessage(error);
           }
+
+          // console.error('API retry failed', { endpoint, error: err, params, body });
 
           set((state) => {
             state.error = err;

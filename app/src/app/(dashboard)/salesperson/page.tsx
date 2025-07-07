@@ -7,25 +7,40 @@ import Outstanding from "@/components/salesperson/Dashboard/Outstanding";
 import PaymentVerificationStatus from "@/components/salesperson/Dashboard/PaymentVerification";
 import Shortcuts from "@/components/salesperson/Dashboard/Shortcut";
 import Standing from "@/components/salesperson/Dashboard/Standing";
-// import Streaks from "@/components/salesperson/Dashboard/Streaks";
 import PersonalGoal from "@/components/salesperson/Dashboard/PersonalGoal";
-import StreakComponents from "@/components/salesperson/Dashboard/StreakComponents";
+import Streaks from "@/components/salesperson/Dashboard/Streaks";
+import { useDashboardStore } from "@/store/apiCall/Achieve";
 
 export default function SalespersonDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
+  const { data, sendRequest, loading, error } = useDashboardStore();
+  const endpoint = `${process.env.NEXT_PUBLIC_API_URL}/dashboard/dashboard/`;
+
+  const refreshDashboard = () => {
+    sendRequest("GET", endpoint);
+  };
+
   useEffect(() => {
     setMounted(true);
-    setIsModalOpen(true);
-    const html = document.documentElement;
-    html.classList.add("overflow-hidden", "pointer-events-none");
-    return () => {
-      html.classList.remove("overflow-hidden", "pointer-events-none");
-      html.style.removeProperty("pointer-events");
-      document.body.style.removeProperty("pointer-events");
-    };
+    refreshDashboard(); // Fetch dashboard data on mount
   }, []);
+
+  useEffect(() => {
+    if (data) {
+      const currentTarget = parseFloat(data.sales_progress?.target || "0");
+      if (currentTarget === 1) {
+        setIsModalOpen(true);
+        const html = document.documentElement;
+        html.classList.add("overflow-hidden", "pointer-events-none");
+      } else {
+        setIsModalOpen(false);
+        const html = document.documentElement;
+        html.classList.remove("overflow-hidden", "pointer-events-none");
+      }
+    }
+  }, [data]);
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
@@ -48,11 +63,15 @@ export default function SalespersonDashboard() {
               onClick={(e) => e.stopPropagation()}
               className="flex items-center justify-center pointer-events-auto"
             >
-              <PersonalGoal onClose={handleCloseModal} />
+              <PersonalGoal
+                onClose={handleCloseModal}
+                refreshDashboard={refreshDashboard}
+              />
             </div>
           </div>,
           document.body
         )}
+
       <div className={isModalOpen ? "opacity-50" : ""}>
         <div className="flex justify-between mb-5">
           <div>
@@ -61,10 +80,10 @@ export default function SalespersonDashboard() {
             </h1>
             <p className="text-[14px] font-normal font-outfit text-[#7E7E7E]">
               View your overall stats and metrics at one place. Boost your
-              produtividade.
+              productivity.
             </p>
           </div>
-          <StreakComponents />
+          <Streaks />
         </div>
         <div className="grid grid-cols-3 gap-[20px] w-full">
           <div className="col-span-2">

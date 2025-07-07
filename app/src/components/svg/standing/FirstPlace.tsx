@@ -3,48 +3,32 @@ import React, { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import Image from "next/image";
 
-const FirstPlace = ({ image, alt }) => {
-  const svgRef = useRef(null);
-  const imgRef = useRef(null);
-  const containerRef = useRef(null);
+interface FirstPlaceProps {
+  image: string;
+  alt: string;
+}
+
+const FirstPlace: React.FC<FirstPlaceProps> = ({ image, alt }) => {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const imgRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
           const tl = gsap.timeline();
-          // Image animation: rise from bottom
           tl.fromTo(
             imgRef.current,
-            {
-              y: 90,
-              opacity: 0,
-            },
-            {
-              y: 0,
-              opacity: 1,
-              duration: 1.5,
-              ease: "power2.out",
-            }
+            { y: 90, opacity: 0 },
+            { y: 0, opacity: 1, duration: 1.5, ease: "power2.out" }
           );
-
-          // SVG animation: grow from bottom
           tl.fromTo(
             svgRef.current,
-            {
-              scaleY: 0,
-              opacity: 0,
-              transformOrigin: "bottom center",
-            },
-            {
-              scaleY: 1,
-              opacity: 1,
-              duration: 1.5,
-              ease: "power2.out",
-            },
-            "-=1.5" // start at same time as image
+            { scaleY: 0, opacity: 0, transformOrigin: "bottom center" },
+            { scaleY: 1, opacity: 1, duration: 1.5, ease: "power2.out" },
+            "-=1.5"
           );
-
           observer.disconnect();
         }
       },
@@ -54,7 +38,6 @@ const FirstPlace = ({ image, alt }) => {
     if (containerRef.current) {
       observer.observe(containerRef.current);
     }
-
     return () => observer.disconnect();
   }, []);
 
@@ -69,18 +52,22 @@ const FirstPlace = ({ image, alt }) => {
         justifyContent: "flex-end",
       }}
     >
-      {/* Image rising animation */}
       <div ref={imgRef}>
-        <Image
-          src={image}
-          alt={alt}
-          width={60}
-          height={60}
-          className="w-[60px] h-[60px] rounded-full  border-4 border-[#F9A914] object-cover"
-        />
+        {image ? (
+          <Image
+            src={image}
+            alt={alt}
+            width={60}
+            height={60}
+            className="w-[60px] h-[60px] rounded-full border-4 border-[#F9A914] object-cover"
+          />
+        ) : (
+          <div className="w-[60px] h-[60px] rounded-full border-4 border-[#F9A914] bg-gray-200 flex items-center justify-center">
+            {/* Optional fallback: initials, icon, or blank */}
+            <span className="text-gray-500 text-sm">N/A</span>
+          </div>
+        )}
       </div>
-
-      {/* SVG pillar animation */}
       <svg
         ref={svgRef}
         width="70"
