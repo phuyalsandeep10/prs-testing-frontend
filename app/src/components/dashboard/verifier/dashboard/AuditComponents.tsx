@@ -14,7 +14,7 @@ type AuditComponentProps = {
 
 const AuditComponents: React.FC<AuditComponentProps> = ({ data }) => {
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-hidden">
       <table className="min-w-[580px] w-full table-auto border-collapse">
         <thead>
           <tr className="text-left text-[16px] font-medium text-[#31323A] border-b bg-[#DADFFF] border-gray-400">

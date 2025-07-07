@@ -229,59 +229,62 @@ export default function LoginForm() {
     }
   };
 
-  // Handle successful regular login
   const handleSuccessfulLogin = (data: any) => {
-    console.log('🎯 handleSuccessfulLogin called with:', data);
-    console.log('🔍 Full data structure:', JSON.stringify(data, null, 2));
-    
+    console.log("🎯 handleSuccessfulLogin called with:", data);
+    console.log("🔍 Full data structure:", JSON.stringify(data, null, 2));
+
     // Store the token
     if (data.token) {
-      localStorage.setItem('authToken', data.token);
+      localStorage.setItem("authToken", data.token);
     }
+
+    const user = {
+      id: data.user_id,
+      username: data.username,
+      email: data.email,
+      role: {
+        name: (data.role || "unknown") as UserRole,
+        permissions: [], // You can fetch real permissions later if needed
+      },
+      organization: data.organization,
+    };
     
-    // Check if user data exists
-    if (!data.user) {
-      console.error('❌ No user data in response:', data);
-      setError('Login response missing user data. Please try again.');
-      return;
-    }
-    
+
     // Use the login function from AuthContext
-    login(data.token, data.user);
+    login(data.token, user);
 
-    // Get role and permissions for auth context
-    const rawRole = data.user?.role?.name || 'unknown';
-    const userRole = rawRole.toLowerCase().replace(/\s+/g, '-') as UserRole;
-    
-    console.log('User role identified as:', userRole);
+    const userRole = (data.role || "unknown")
+      .toLowerCase()
+      .replace(/\s+/g, "-") as UserRole;
 
-    // Redirect based on role
+    console.log("User role identified as:", userRole);
+
     switch (userRole) {
-      case 'super-admin':
-        router.push('/super-admin');
+      case "super-admin":
+        router.push("/super-admin");
         break;
-      case 'org-admin':
-        router.push('/org-admin');
+      case "org-admin":
+        router.push("/org-admin");
         break;
-      case 'salesperson':
-        router.push('/salesperson');
+      case "salesperson":
+        router.push("/salesperson");
         break;
-      case 'supervisor':
-        router.push('/supervisor/team-lead');
+      case "supervisor":
+        router.push("/supervisor/team-lead");
         break;
-      case 'team-member':
-        router.push('/team-member');
+      case "team-member":
+        router.push("/team-member");
         break;
-      case 'verifier':
-        router.push('/verifier');
+      case "verifier":
+        router.push("/verifier");
         break;
       default:
         setError(`Unknown user role: ${userRole}`);
         console.error(`Unknown user role: ${userRole}`);
-        // Optional: redirect to a generic error page or dashboard
         break;
     }
   };
+  
 
   if (step === 'otp') {
     // OTP Verification Form

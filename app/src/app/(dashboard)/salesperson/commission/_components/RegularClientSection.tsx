@@ -11,14 +11,38 @@ interface ClientItem {
 }
 
 const fetchRegularClients = async (): Promise<ClientItem[]> => {
-  // Replace with actual API call
-  return [
-    { name: "Apple INC.", investedPrice: "$ 20,00,000" },
-    { name: "Yubesh Shrestha", investedPrice: "$ 10,00,000" },
-    { name: "Laxman Singh Dhami", investedPrice: "$ 3,00,000" },
-    { name: "Sagam Ghale", investedPrice: "$ 5,00,000" },
-    { name: "Swastika Pokharel", investedPrice: "$ 20,000" },
-  ];
+  const token = localStorage.getItem("authToken");
+
+  if (!token) {
+    throw new Error("No authentication token found");
+  }
+
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/dashboard/commission/`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Token ${token}`,
+      },
+    }
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("Backend Error:", errorText);
+    throw new Error("Failed to fetch regular clients");
+  }
+
+  const json = await res.json();
+  console.log("Response JSON data:", json);
+
+  const clients = json.regular_clients_all_time ?? [];
+
+  return clients.map((client: any) => ({
+    name: client.client_name,
+    investedPrice: `$ ${Number(client.total_value).toLocaleString()}`,
+  }));
 };
 
 export default function RegularClientSection() {
@@ -29,22 +53,20 @@ export default function RegularClientSection() {
   } = useQuery({
     queryKey: ["regularClients"],
     queryFn: fetchRegularClients,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
   });
 
-  // Smaller responsive height
   const responsiveHeight = "h-[220px] sm:h-[260px] md:h-[280px] lg:h-[300px]";
 
   if (isLoading) {
     return (
       <div className={`p-6 pt-0 max-w-screen-xl mx-auto ${responsiveHeight}`}>
         <div className="space-y-4">
-          {/* Card header skeletons */}
           <div className="space-y-2">
             <Skeleton className="h-7 w-40" />
             <Skeleton className="h-4 w-80" />
           </div>
-
-          {/* Client list skeletons */}
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, index) => (
               <div key={index} className="flex items-center justify-between">
@@ -75,7 +97,7 @@ export default function RegularClientSection() {
     <div className={`p-6 pt-0 max-w-screen-xl mx-auto ${responsiveHeight}`}>
       <RegularClientCard
         title="Regular Clients"
-        subtitle="Here are your top five regular Clients."
+        subtitle="Here are your top clients this period."
         clients={clients}
       />
     </div>
