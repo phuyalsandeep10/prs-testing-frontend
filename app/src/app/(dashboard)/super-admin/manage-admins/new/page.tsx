@@ -17,8 +17,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { X, Loader2 } from 'lucide-react';
-import { createPortal } from 'react-dom';
+import { Loader2 } from 'lucide-react';
+import SlideModal from '@/components/ui/SlideModal';
 
 // Type definitions
 interface Organization {
@@ -53,7 +53,7 @@ type AdminFormData = z.infer<typeof adminSchema>;
 
 export default function NewAdminPage() {
   const router = useRouter();
-  const [isVisible, setIsVisible] = useState(false);
+
   const [isLoading, setIsLoading] = useState(false);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loadingOrganizations, setLoadingOrganizations] = useState(true);
@@ -154,21 +154,9 @@ export default function NewAdminPage() {
     };
   }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), 16);
-    return () => clearTimeout(timer);
-  }, []);
-
   const handleClose = useCallback(() => {
-    setIsVisible(false);
-    setTimeout(() => router.push('/super-admin/manage-admins'), 300);
+    router.push('/super-admin/manage-admins');
   }, [router]);
-
-  const handleBackdropClick = useCallback((e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      handleClose();
-    }
-  }, [handleClose]);
 
   const handleClear = useCallback(() => {
     form.reset({
@@ -343,107 +331,38 @@ export default function NewAdminPage() {
     return () => document.removeEventListener('keydown', handleEscape);
   }, [handleClose]);
 
-  const modal = (
-    <div 
-      onClick={handleBackdropClick}
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex z-[99999]"
-      style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0, 0, 0, 0.5)', zIndex: 99999 }}
+  return (
+    <SlideModal
+      isOpen={true}
+      onClose={handleClose}
+      title="Add New Admin"
+      width="md"
+      showCloseButton={true}
     >
-      <div 
-        className="ml-auto w-full max-w-md bg-white shadow-xl transform transition-transform duration-300 ease-in-out z-[100000] flex flex-col"
-        style={{ 
-          transform: isVisible ? 'translateX(0)' : 'translateX(100%)', 
-          zIndex: 100000,
-          height: '100vh',
-          minHeight: '100vh'
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="px-6 py-6 border-b border-gray-100 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <h2 className="text-[20px] font-semibold text-[#16A34A]">
-              Add New Admin
-            </h2>
-            <button 
-              onClick={handleClose} 
-              className="text-gray-400 hover:text-gray-600 transition-colors p-1"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
+      <div className="px-6 py-6">
+        <Form {...form}>
+          <form id="admin-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Admin Information Section */}
+            <div>
+              <h3 className="text-[16px] font-medium text-gray-900 mb-4">Admin Information</h3>
+              <p className="text-[14px] text-gray-600 mb-6">Create an organization admin. Login credentials will be automatically sent to the provided email address.</p>
+            </div>
 
-        {/* Form Body - Scrollable */}
-        <div className="flex-1 overflow-y-auto overflow-x-visible px-6 py-6">
-          <Form {...form}>
-            <form id="admin-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* Admin Information Section */}
-              <div>
-                <h3 className="text-[16px] font-medium text-gray-900 mb-4">Admin Information</h3>
-                <p className="text-[14px] text-gray-600 mb-6">Create an organization admin. Login credentials will be automatically sent to the provided email address.</p>
-              </div>
-
-              {/* Name Row */}
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="first_name"
-                  render={({ field }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
-                        First Name<span className="text-red-500 ml-1">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field}
-                          className="h-[48px] border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg" 
-                          placeholder="John" 
-                          disabled={isLoading}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="last_name"
-                  render={({ field }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
-                        Last Name<span className="text-red-500 ml-1">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input 
-                          {...field}
-                          className="h-[48px] border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg" 
-                          placeholder="Doe" 
-                          disabled={isLoading}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Admin Email */}
+            {/* Name Row */}
+            <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="email"
+                name="first_name"
                 render={({ field }) => (
                   <FormItem className="space-y-2">
                     <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
-                      Admin Email<span className="text-red-500 ml-1">*</span>
+                      First Name<span className="text-red-500 ml-1">*</span>
                     </FormLabel>
                     <FormControl>
                       <Input 
                         {...field}
-                        type="email"
                         className="h-[48px] border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg" 
-                        placeholder="admin@company.com" 
+                        placeholder="John" 
                         disabled={isLoading}
                       />
                     </FormControl>
@@ -452,76 +371,83 @@ export default function NewAdminPage() {
                 )}
               />
 
-              {/* Admin Organization */}
               <FormField
                 control={form.control}
-                name="organization"
+                name="last_name"
                 render={({ field }) => (
                   <FormItem className="space-y-2">
                     <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
-                      Admin Organization<span className="text-red-500 ml-1">*</span>
+                      Last Name<span className="text-red-500 ml-1">*</span>
                     </FormLabel>
                     <FormControl>
-                      {loadingOrganizations ? (
-                        <div className="h-[48px] border-2 border-[#4F46E5] rounded-lg flex items-center px-3 bg-gray-50">
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          <span className="text-gray-600">Loading organizations...</span>
-                        </div>
-                      ) : organizations.length === 0 ? (
-                        <div className="h-[48px] border-2 border-gray-300 rounded-lg flex items-center px-3 bg-gray-50">
-                          <span className="text-gray-500">No organizations found. Please create one first.</span>
-                        </div>
-                      ) : (
-                        <div className="relative">
-                          <select
-                            {...field}
-                            disabled={isLoading}
-                            className="h-[48px] w-full border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg px-3 bg-white appearance-none cursor-pointer"
-                          >
-                            <option value="">Select organization</option>
-                            {organizations.map((org) => (
-                              <option key={org.id} value={org.id.toString()}>
-                                {org.name} ({org.is_active ? 'Active' : 'Inactive'})
-                              </option>
-                            ))}
-                          </select>
-                          <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
-                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </div>
-                        </div>
-                      )}
+                      <Input 
+                        {...field}
+                        className="h-[48px] border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg" 
+                        placeholder="Doe" 
+                        disabled={isLoading}
+                      />
                     </FormControl>
-                    {organizations.length > 0 && (
-                      <div className="text-xs text-gray-500 mt-1">
-                        Found {organizations.length} organization{organizations.length !== 1 ? 's' : ''}
-                      </div>
-                    )}
                     <FormMessage />
                   </FormItem>
                 )}
               />
+            </div>
 
-              {/* Status */}
-              <FormField
-                control={form.control}
-                name="is_active"
-                render={({ field }) => (
-                  <FormItem className="space-y-2">
-                    <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
-                      Status<span className="text-red-500 ml-1">*</span>
-                    </FormLabel>
-                    <FormControl>
+            {/* Admin Email */}
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
+                    Admin Email<span className="text-red-500 ml-1">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field}
+                      type="email"
+                      className="h-[48px] border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg" 
+                      placeholder="admin@company.com" 
+                      disabled={isLoading}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Admin Organization */}
+            <FormField
+              control={form.control}
+              name="organization"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
+                    Admin Organization<span className="text-red-500 ml-1">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    {loadingOrganizations ? (
+                      <div className="h-[48px] border-2 border-[#4F46E5] rounded-lg flex items-center px-3 bg-gray-50">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        <span className="text-gray-600">Loading organizations...</span>
+                      </div>
+                    ) : organizations.length === 0 ? (
+                      <div className="h-[48px] border-2 border-gray-300 rounded-lg flex items-center px-3 bg-gray-50">
+                        <span className="text-gray-500">No organizations found. Please create one first.</span>
+                      </div>
+                    ) : (
                       <div className="relative">
                         <select
                           {...field}
                           disabled={isLoading}
                           className="h-[48px] w-full border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg px-3 bg-white appearance-none cursor-pointer"
                         >
-                          <option value="">Select status</option>
-                          <option value="true">Active</option>
-                          <option value="false">Inactive</option>
+                          <option value="">Select organization</option>
+                          {organizations.map((org) => (
+                            <option key={org.id} value={org.id.toString()}>
+                              {org.name} ({org.is_active ? 'Active' : 'Inactive'})
+                            </option>
+                          ))}
                         </select>
                         <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
                           <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -529,51 +455,83 @@ export default function NewAdminPage() {
                           </svg>
                         </div>
                       </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-
-            </form>
-          </Form>
-        </div>
-
-        {/* Footer - At Very Bottom */}
-        <div className="px-6 py-6 bg-gradient-to-r from-[#4F46E5] via-[#7C8FE8] to-[#A8B5EB] flex-shrink-0 mt-auto border-t-0">
-          <div className="flex justify-end gap-3">
-            <Button
-              type="button"
-              onClick={handleClear}
-              disabled={isLoading}
-              className="bg-[#EF4444] hover:bg-[#DC2626] text-white px-8 py-2 h-[44px] text-[14px] font-medium rounded-lg"
-            >
-              Clear
-            </Button>
-            <Button
-              type="submit"
-              form="admin-form"
-              disabled={isLoading || loadingOrganizations}
-              className="bg-[#4F46E5] hover:bg-[#4338CA] text-white px-8 py-2 h-[44px] text-[14px] font-medium rounded-lg"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                "Save Admin"
+                    )}
+                  </FormControl>
+                  {organizations.length > 0 && (
+                    <div className="text-xs text-gray-500 mt-1">
+                      Found {organizations.length} organization{organizations.length !== 1 ? 's' : ''}
+                    </div>
+                  )}
+                  <FormMessage />
+                </FormItem>
               )}
-            </Button>
-          </div>
+            />
+
+            {/* Status */}
+            <FormField
+              control={form.control}
+              name="is_active"
+              render={({ field }) => (
+                <FormItem className="space-y-2">
+                  <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
+                    Status<span className="text-red-500 ml-1">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <select
+                        {...field}
+                        disabled={isLoading}
+                        className="h-[48px] w-full border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg px-3 bg-white appearance-none cursor-pointer"
+                      >
+                        <option value="">Select status</option>
+                        <option value="true">Active</option>
+                        <option value="false">Inactive</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+
+          </form>
+        </Form>
+      </div>
+
+      {/* Footer - At Very Bottom */}
+      <div className="px-6 py-6 bg-gradient-to-r from-[#4F46E5] via-[#7C8FE8] to-[#A8B5EB] flex-shrink-0 mt-auto border-t-0">
+        <div className="flex justify-end gap-3">
+          <Button
+            type="button"
+            onClick={handleClear}
+            disabled={isLoading}
+            className="bg-[#EF4444] hover:bg-[#DC2626] text-white px-8 py-2 h-[44px] text-[14px] font-medium rounded-lg"
+          >
+            Clear
+          </Button>
+          <Button
+            type="submit"
+            form="admin-form"
+            disabled={isLoading || loadingOrganizations}
+            className="bg-[#4F46E5] hover:bg-[#4338CA] text-white px-8 py-2 h-[44px] text-[14px] font-medium rounded-lg"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              "Save Admin"
+            )}
+          </Button>
         </div>
       </div>
-    </div>
+    </SlideModal>
   );
-
-  // Render portal only on client side
-  if (typeof window === 'undefined') return null;
-
-  return createPortal(modal, document.body);
 } 
