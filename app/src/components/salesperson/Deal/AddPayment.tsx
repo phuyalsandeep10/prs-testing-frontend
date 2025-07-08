@@ -5,8 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ChevronDown, Paperclip } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiClient } from "@/lib/api";
+import { useAddPayment } from "@/hooks/api";
 import { useUI } from "@/stores";
 
 const AddPaymentSchema = z.object({
@@ -50,46 +49,36 @@ const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => 
     { value: "final", label: "Final Installment" },
   ];
 
-  const queryClient = useQueryClient();
   const { addNotification } = useUI();
+  const addPaymentMutation = useAddPayment();
 
-  const createPaymentMutation = useMutation({
-    mutationFn: async (fd: FormData) => {
-      return apiClient.postMultipart("/deals/payments/", fd);
-    },
-    onSuccess: () => {
-      // invalidate deals query so tables refresh
-      queryClient.invalidateQueries({ queryKey: ["deals"] });
+  const onSubmit = async (data: AddPaymentData) => {
+    if (!dealId) return; // safety
+
+    const paymentData = {
+      client: dealId,
+      amount: parseFloat(data.receivedAmount.replace(/[$,]/g, '')),
+      payment_method: data.paymentType,
+      remarks: data.remarks,
+      payment_date: data.paymentDate,
+      receipt_file: data.attachReceipt?.[0] as File,
+    };
+
+    try {
+      await addPaymentMutation.mutateAsync(paymentData);
       addNotification({
         type: "success",
         title: "Payment added",
         message: "Payment has been submitted for verification.",
       });
       onCancel();
-    },
-    onError: (err: any) => {
+    } catch (err: any) {
       addNotification({
         type: "error",
         title: "Failed to add payment",
         message: err.message || "Please try again.",
       });
-    },
-  });
-
-  const onSubmit = (data: AddPaymentData) => {
-    if (!dealId) return; // safety
-
-    const fd = new FormData();
-    fd.append("client", dealId);
-    fd.append("amount", data.receivedAmount);
-    fd.append("payment_method", data.paymentType);
-    fd.append("remarks", data.remarks);
-    fd.append("payment_date", data.paymentDate);
-    if (data.attachReceipt && data.attachReceipt[0]) {
-      fd.append("receipt_file", data.attachReceipt[0]);
     }
-
-    createPaymentMutation.mutate(fd);
   };
 
   const handlePaymentTypeSelect = (type: { value: string; label: string }) => {

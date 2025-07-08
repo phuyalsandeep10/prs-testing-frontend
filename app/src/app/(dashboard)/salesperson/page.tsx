@@ -9,22 +9,20 @@ import Shortcuts from "@/components/salesperson/Dashboard/Shortcut";
 import Standing from "@/components/salesperson/Dashboard/Standing";
 import PersonalGoal from "@/components/salesperson/Dashboard/PersonalGoal";
 import Streaks from "@/components/salesperson/Dashboard/Streaks";
-import { useDashboardStore } from "@/store/apiCall/Achieve";
+import { useDashboard } from "@/hooks/api";
 
 export default function SalespersonDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  const { data, sendRequest, loading, error } = useDashboardStore();
-  const endpoint = `${process.env.NEXT_PUBLIC_API_URL}/dashboard/dashboard/`;
+  const { data, isLoading, error, refetch } = useDashboard();
 
   const refreshDashboard = () => {
-    sendRequest("GET", endpoint);
+    refetch();
   };
 
   useEffect(() => {
     setMounted(true);
-    refreshDashboard(); // Fetch dashboard data on mount
   }, []);
 
   useEffect(() => {

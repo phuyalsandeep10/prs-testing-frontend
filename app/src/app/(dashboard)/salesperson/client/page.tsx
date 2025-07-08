@@ -26,7 +26,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { clientApi } from '@/lib/api';
+import { useClients, useDeleteClient } from "@/hooks/api";
 
 
 
@@ -73,53 +73,14 @@ const ClientsPage = React.memo(() => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   // Use debounced search hook for better performance
   const { searchValue, debouncedSearchValue, setSearchValue } = useDebouncedSearch('', 300);
 
-  useEffect(() => {
-    if (!isAuthInitialized) {
-      return;
-    }
-    
-    const fetchClients = async () => {
-      try {
-        setLoading(true);
-        const resp = await clientApi.getAll({ page: 1, limit: 100 });
-        
-        // clientApi.getAll() returns the array directly from getPaginated
-        let payload: any[] = [];
-        
-        if (Array.isArray(resp)) {
-          payload = resp;
-        } else {
-          console.error('Unexpected API response format:', resp);
-          setError('Invalid response structure from server');
-          return;
-        }
-        
-        const mapped = payload.map((c: any) => ({
-          ...c,
-          client_name: c.name || c.client_name,
-          phone_number: c.phoneNumber || c.phone_number,
-          created_at: c.createdAt || c.created_at,
-        }));
-        
-        setClients(mapped);
-      } catch (err: any) {
-        console.error('Failed to fetch clients:', err);
-        let msg = err.message || 'Failed to load clients';
-        setError(msg);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchClients();
-  }, [isAuthInitialized]);
+  // Use standardized client hooks
+  const { data: clients = [], isLoading: loading, error } = useClients();
+  const deleteClientMutation = useDeleteClient();
 
   // Memoized search function
   const searchAllClientColumns = useCallback((client: Client, query: string): boolean => {
@@ -157,17 +118,12 @@ const ClientsPage = React.memo(() => {
 
   const confirmDelete = useCallback(async (clientId: string) => {
     try {
-      const response = await clientApi.delete(clientId);
-      if (response.success) {
-        setClients(prevClients => prevClients.filter(c => c.id !== clientId));
-        toast.success("Client deleted successfully!");
-      } else {
-        toast.error(response.message || 'Failed to delete client.');
-      }
+      await deleteClientMutation.mutateAsync(clientId);
+      toast.success("Client deleted successfully!");
     } catch (err: any) {
       toast.error(err.message || 'An error occurred while deleting the client.');
     }
-  }, []);
+  }, [deleteClientMutation]);
 
   const handleView = useCallback((client: Client) => {
     router.push(`/dashboard/salesperson/client/${client.id}/deals`);
@@ -289,7 +245,7 @@ const ClientsPage = React.memo(() => {
   }
 
   if (error) {
-    return <div>Error: {error}</div>;
+    return <div>Error: {error.message || 'Failed to load clients'}</div>;
   }
 
   return (
@@ -418,30 +374,8 @@ const ClientsPage = React.memo(() => {
       >
         <AddNewClientForm
           onClose={() => setShowAddModal(false)}
-          onClientAdded={async (newClient) => {
-            // Refetch client data to ensure consistency
-            try {
-              const resp = await clientApi.getAll({ page: 1, limit: 100 });
-              
-              // clientApi.getAll() returns the array directly
-              if (Array.isArray(resp)) {
-                const mapped = resp.map((c: any) => ({
-                  ...c,
-                  client_name: c.name || c.client_name,
-                  phone_number: c.phoneNumber || c.phone_number,
-                  created_at: c.createdAt || c.created_at,
-                }));
-                setClients(mapped);
-              } else {
-                console.error('Unexpected API response format:', resp);
-                // Fallback to manual addition if refetch fails
-                setClients(prev => [newClient, ...prev]);
-              }
-            } catch (err) {
-              console.error('Failed to refresh client list:', err);
-              // Fallback to manual addition if refetch fails
-              setClients(prev => [newClient, ...prev]);
-            }
+          onClientAdded={() => {
+            // React Query will automatically update the cache
             setShowAddModal(false);
           }}
         />
@@ -459,30 +393,8 @@ const ClientsPage = React.memo(() => {
           <EditClientForm
             client={selectedClient}
             onClose={() => setShowEditModal(false)}
-            onClientUpdated={async (updatedClient) => {
-              // Refetch client data to ensure consistency
-              try {
-                const resp = await clientApi.getAll({ page: 1, limit: 100 });
-                
-                // clientApi.getAll() returns the array directly
-                if (Array.isArray(resp)) {
-                  const mapped = resp.map((c: any) => ({
-                    ...c,
-                    client_name: c.name || c.client_name,
-                    phone_number: c.phoneNumber || c.phone_number,
-                    created_at: c.createdAt || c.created_at,
-                  }));
-                  setClients(mapped);
-                } else {
-                  console.error('Unexpected API response format:', resp);
-                  // Fallback to manual update if refetch fails
-                  setClients(prev => prev.map(c => c.id === updatedClient.id ? updatedClient : c));
-                }
-              } catch (err) {
-                console.error('Failed to refresh client list:', err);
-                // Fallback to manual update if refetch fails
-                setClients(prev => prev.map(c => c.id === updatedClient.id ? updatedClient : c));
-              }
+            onClientUpdated={() => {
+              // React Query will automatically update the cache
               setShowEditModal(false);
             }}
           />
