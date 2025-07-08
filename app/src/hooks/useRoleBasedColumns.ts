@@ -1,80 +1,101 @@
 import { useMemo } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/stores';
 
 type UserRole = 'salesperson' | 'org-admin' | 'verifier' | 'super-admin' | 'supervisor' | 'team-member';
 
-interface ColumnConfig {
+interface UseRoleBasedColumnsProps<T> {
+  columns: ColumnDef<T>[];
+  rolePermissions: Record<UserRole, string[]>;
+}
+
+export function useRoleBasedColumns<T>({
+  columns,
+  rolePermissions,
+}: UseRoleBasedColumnsProps<T>): ColumnDef<T>[] {
+  const { user, isRole } = useAuth();
+
+  return useMemo(() => {
+    if (!user || !user.role) return columns;
+
+    const currentRole = user.role;
+    const allowedColumns = rolePermissions[currentRole] || [];
+
+    return columns.filter((column) => {
+      if (!column.id) return true;
+      return allowedColumns.includes(column.id);
+    });
+  }, [columns, rolePermissions, user]);
+}
+
+// Helper function to get role-based column visibility
+export function useRoleBasedColumnVisibility<T>(
+  columns: ColumnDef<T>[],
+  rolePermissions: Record<UserRole, string[]>
+): Record<string, boolean> {
+  const { user } = useAuth();
+
+  return useMemo(() => {
+    if (!user || !user.role) return {};
+
+    const currentRole = user.role;
+    const allowedColumns = rolePermissions[currentRole] || [];
+    const visibility: Record<string, boolean> = {};
+
+    columns.forEach((column) => {
+      if (column.id) {
+        visibility[column.id] = allowedColumns.includes(column.id);
+      }
+    });
+
+    return visibility;
+  }, [columns, rolePermissions, user]);
+}
+
+// ==================== ROLE CONFIG FOR DEALS TABLE ====================
+interface RoleUIConfig {
   shouldShowSalesperson: boolean;
-  shouldShowActions: boolean;
   allowedActions: string[];
 }
 
-export const useRoleBasedColumns = (): ColumnConfig => {
+/**
+ * Lightweight helper to expose UI specific configuration based on the current
+ * authenticated user's role. This is intentionally kept separate from the
+ * column–filtering logic so components can opt-in to whichever behaviour they
+ * need.
+ */
+export function useRoleConfig(): RoleUIConfig {
   const { user } = useAuth();
-  
-  return useMemo(() => {
-    if (!user?.role) {
-      return {
-        shouldShowSalesperson: false,
-        shouldShowActions: false,
-        allowedActions: [],
-      };
-    }
 
-    const role = user.role.name.toLowerCase().replace(/\s+/g, '-') as UserRole;
+  // Default to salesperson settings when user is not yet loaded
+  const role = (user?.role || 'salesperson') as UserRole;
 
-    switch (role) {
-      case 'salesperson':
-        return {
-          shouldShowSalesperson: false, // Don't show salesperson column for own deals
-          shouldShowActions: true,
-          allowedActions: ['edit', 'addPayment', 'expand'],
-        };
-      
-      case 'org-admin':
-        return {
-          shouldShowSalesperson: true, // Show salesperson to identify deal owner
-          shouldShowActions: true,
-          allowedActions: ['edit', 'addPayment', 'expand'],
-        };
-      
-      case 'verifier':
-        return {
-          shouldShowSalesperson: true, // Show salesperson to identify deal owner
-          shouldShowActions: true,
-          allowedActions: ['verify', 'expand'], // Different actions for verifiers
-        };
-      
-      case 'super-admin':
-        return {
-          shouldShowSalesperson: true,
-          shouldShowActions: true,
-          allowedActions: ['edit', 'addPayment', 'verify', 'delete', 'expand'],
-        };
-      
-      case 'supervisor':
-        return {
-          shouldShowSalesperson: true, // Show salesperson for team management
-          shouldShowActions: true,
-          allowedActions: ['edit', 'addPayment', 'expand'],
-        };
-      
-      case 'team-member':
-        return {
-          shouldShowSalesperson: true,
-          shouldShowActions: false,
-          allowedActions: ['expand'], // Read-only access
-        };
-      
-      default:
-        return {
-          shouldShowSalesperson: false,
-          shouldShowActions: false,
-          allowedActions: [],
-        };
-    }
-  }, [user?.role]);
-};
+  const configMap: Record<UserRole, RoleUIConfig> = {
+    'super-admin': {
+      shouldShowSalesperson: true,
+      allowedActions: ['edit', 'addPayment', 'delete', 'verify'],
+    },
+    'org-admin': {
+      shouldShowSalesperson: true,
+      allowedActions: ['edit', 'addPayment', 'delete'],
+    },
+    supervisor: {
+      shouldShowSalesperson: true,
+      allowedActions: ['edit', 'addPayment'],
+    },
+    salesperson: {
+      shouldShowSalesperson: false,
+      allowedActions: ['edit', 'addPayment'],
+    },
+    verifier: {
+      shouldShowSalesperson: true,
+      allowedActions: ['verify'],
+    },
+    'team-member': {
+      shouldShowSalesperson: false,
+      allowedActions: [],
+    },
+  };
 
-export default useRoleBasedColumns; 
+  return configMap[role];
+} 
