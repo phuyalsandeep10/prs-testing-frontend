@@ -260,9 +260,7 @@ export default function ManageUsersPage() {
           `${user.first_name} ${user.last_name}`.trim() || user.username,
         email: user.email,
         phoneNumber: user.contact_number || "N/A",
-        role:
-          (user.role?.name.toLowerCase().replace(/[\s-]+/g, "-") as any) ||
-          "user",
+        role: (user.role?.name ? user.role.name.toLowerCase().replace(/[\s-]+/g, "-") : "user") as any,
         assignedTeam: teamNames,
         status: user.is_active ? ("active" as const) : ("inactive" as const),
       };

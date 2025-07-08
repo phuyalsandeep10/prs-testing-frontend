@@ -1,4 +1,5 @@
 "use client";
+
 import {
   createContext,
   useContext,
@@ -8,6 +9,8 @@ import {
   useCallback,
 } from "react";
 import { UserRole, Permission } from "@/lib/types/roles";
+
+import { apiClient } from "@/lib/api";
 interface UserData {
   id: string;
   email: string;
@@ -39,6 +42,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       userId: userData.id,
       organizationId: userData.organization,
     };
+    
     apiClient.setAuth(
       token,
       userRole,

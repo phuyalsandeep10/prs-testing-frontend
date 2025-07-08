@@ -20,7 +20,7 @@ export const DealSchema = z.object({
     message: "Upload Receipt is required",
   })
   .refine(
-    (files) => files?.[0]?.name.toLowerCase().endsWith(".pdf"),
+    (files) => files?.[0]?.name?.toLowerCase().endsWith(".pdf"),
     {
       message: "Only PDF files are allowed",
     }

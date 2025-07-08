@@ -12,6 +12,11 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
   // :white_check_mark: Custom headers for all routes
+  // Image optimization settings
+  images: {
+    unoptimized: true,
+  },
+  // Reduce resource hints that might cause preloading warnings
   async headers() {
     return [
       {
