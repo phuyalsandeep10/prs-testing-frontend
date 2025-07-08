@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import CommissionArc from "@/components/salesperson/commission/CommissionArc";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,7 +18,6 @@ const fetchCommissionData = async (token: string): Promise<CommissionData> => {
   const url = new URL(
     `${process.env.NEXT_PUBLIC_API_URL}/dashboard/commission/`
   );
-
   const res = await fetch(url.toString(), {
     headers: {
       "Content-Type": "application/json",
@@ -62,14 +62,14 @@ const CommissionSection: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="w-full">
-        <div className="space-y-4">
-          <Skeleton className="h-6 w-20" />
-          <Skeleton className="h-[174px] w-[300px] rounded-lg" />
-          <div className="flex justify-between items-center">
+        <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl mx-auto max-h-[350px] overflow-y-auto">      
+        <div className="space-y-3 sm:space-y-4">
+          <Skeleton className="h-5 sm:h-6 w-16 sm:w-20" />
+          <Skeleton className="h-32 sm:h-40 md:h-44 w-full rounded-lg" />
+          <div className="flex justify-between items-center px-2">
             <div className="space-y-2">
-              <Skeleton className="h-4 w-10" />
-              <Skeleton className="h-6 w-10" />
+              <Skeleton className="h-3 sm:h-4 w-8 sm:w-10" />
+              <Skeleton className="h-5 sm:h-6 w-8 sm:w-10" />
             </div>
           </div>
         </div>
@@ -78,11 +78,17 @@ const CommissionSection: React.FC = () => {
   }
 
   if (error) {
-    return <p className="text-red-500 text-sm">Error: {error.message}</p>;
+    return (
+      <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl mx-auto">
+        <p className="text-red-500 text-xs sm:text-sm text-center p-4">
+          Error: {error.message}
+        </p>
+      </div>
+    );
   }
 
   return (
-    <div style={{ maxWidth: 480, width: "100%" }}>
+    <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl mx-auto">
       <CommissionArc
         achieved={data?.achieved ?? 0}
         total={data?.total ?? 1}
@@ -90,8 +96,6 @@ const CommissionSection: React.FC = () => {
         salesAmount={data?.salesAmount ?? "$0"}
         title="Company Goal"
         subtitle={data?.subtitle ?? ""}
-        width={420}
-        height={174}
       />
     </div>
   );

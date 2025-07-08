@@ -101,7 +101,7 @@ const TopClientCard: React.FC<TopClientCardProps> = ({ data, title }) => {
   };
 
   return (
-    <div className="w-full h-[200px] sm:h-[250px] md:h-[280px] lg:h-[215px]">
+    <div className="w-full h-[200px] sm:h-[250px] md:h-[280px] lg:h-[222px]">
       <Bar ref={chartRef} data={chartData} options={options} />
     </div>
   );

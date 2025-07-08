@@ -88,7 +88,10 @@ const SelectField: React.FC<SelectFieldProps> = ({
           );
         })}
       </select>
+<<<<<<< HEAD
       
+=======
+>>>>>>> Nishreyta
     </InputWrapper>
   );
 };

@@ -19,7 +19,7 @@ const RegularClientCard: React.FC<RegularClientCardProps> = ({
   clients,
 }) => {
   return (
-    <div className="border border-[#D1D1D1] p-4 rounded-md bg-white max-w-[900px] min-w-[300px] mx-auto h-[315px] flex flex-col">
+    <div className="border border-[#D1D1D1] p-4 rounded-md bg-white max-w-[900px] min-w-[300px] mx-auto h-[319px] flex flex-col">
       <div className="mb-4">
         <h2 className="text-[20px] font-semibold mb-1 mt-2">{title}</h2>
         <p className="text-[12px] text-[#7E7E7E]">{subtitle}</p>

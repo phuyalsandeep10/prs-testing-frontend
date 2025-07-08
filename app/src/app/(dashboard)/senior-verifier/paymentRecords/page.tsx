@@ -1,5 +1,4 @@
 import React from "react";
-import VerifierPaymentOverview from "../_components/VerifierPaymentOverview";
 import Image from "next/image";
 import SearchIcon from "@/assets/icons/Search.svg";
 import {
@@ -9,8 +8,9 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select";
-import PaymentTable from "./PaymentTable";
-import MeetingDetails from "./MeetingDetails";
+import PaymentTable from "../../verifier/paymentRecords/PaymentTable";
+import VerifierPaymentOverview from "../../verifier/_components/VerifierPaymentOverview";
+import AddCommentsSection from "../../verifier/paymentRecords/AddCommentsSection";
 
 const page = () => {
   return (
@@ -37,6 +37,10 @@ const page = () => {
 
         {/* Right-side buttons */}
         <div className="flex items-center gap-4">
+          <button className="p-2 rounded-[6px] fonr-semibold text-[12px] bg-[#465FFF] text-white">
+            Add Records
+          </button>
+
           <Select>
             <SelectTrigger className="w-[88px] h-[28px] text-[10px] border-[#DFDFDF] focus:outline-none ring-0">
               <SelectValue placeholder="Month" />
@@ -70,8 +74,12 @@ const page = () => {
           </Select>
         </div>
       </div>
-      <div className="ml-8 mr-6">
-        <PaymentTable role="verifier" />
+      <div className="ml-6 mr-6">
+        <PaymentTable role="senior-verifier" />
+      </div>
+
+      <div className="ml-6 mr-6">
+        <AddCommentsSection />
       </div>
     </div>
   );

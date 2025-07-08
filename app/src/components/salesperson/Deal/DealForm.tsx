@@ -16,6 +16,7 @@ import { Client } from "@/types/deals";
 
 type DealFormData = z.infer<typeof DealSchema>;
 
+<<<<<<< HEAD
 // Removed toSnakeCase function as it's no longer needed
 
 // Removed transformDataForApi function as we now handle data transformation directly in submitDealData
@@ -133,6 +134,81 @@ const submitDealData = async (data: DealFormData, clientsData?: Client[]) => {
     console.error("Error in submitDealData:", error);
     throw error;
   }
+=======
+const toSnakeCase = (str: string) => {
+  return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+};
+
+const transformDataForApi = (data: DealFormData) => {
+  const formData = new FormData();
+  const paymentData: { [key: string]: any } = {};
+
+  // Handle file upload separately
+  if (data.uploadReceipt && data.uploadReceipt.length > 0) {
+    formData.append("payments[0]receipt_file", data.uploadReceipt[0]);
+  }
+
+  const dealKeys = [
+    "clientName",
+    "dealName",
+    "payStatus",
+    "sourceType",
+    "dealValue",
+    "dealDate",
+    "dueDate",
+    "dealRemarks",
+  ];
+  const paymentKeys = [
+    "paymentDate",
+    "receivedAmount",
+    "chequeNumber",
+    "payMethod",
+    "paymentRemarks",
+  ];
+
+  for (const key in data) {
+    if (
+      Object.prototype.hasOwnProperty.call(data, key) &&
+      key !== "uploadReceipt"
+    ) {
+      const value = (data as any)[key];
+      if (value !== undefined && value !== null && value !== "") {
+        if (dealKeys.includes(key)) {
+          const snakeKey = toSnakeCase(key);
+          const apiValue =
+            key === "payStatus"
+              ? value === "Full Pay"
+                ? "full_payment"
+                : "partial_payment"
+              : value;
+          formData.append(snakeKey, apiValue);
+        } else if (paymentKeys.includes(key)) {
+          const snakeKey =
+            key === "payMethod" ? "payment_method" : toSnakeCase(key);
+          paymentData[snakeKey] = value;
+        }
+      }
+    }
+  }
+
+  // Append nested payment data
+  for (const key in paymentData) {
+    formData.append(`payments[0]${key}`, paymentData[key]);
+  }
+
+  return formData;
+};
+
+const fetchClients = async (): Promise<Client[]> => {
+  const response = await apiClient.get<Client[]>("/clients/");
+  return response.data || [];
+};
+
+const submitDealData = async (data: DealFormData) => {
+  const formData = transformDataForApi(data);
+  const response = await apiClient.postMultipart("/deals/", formData);
+  return response.data;
+>>>>>>> Nishreyta
 };
 
 interface DealFormProps {
@@ -153,11 +229,16 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
     const isStandalonePage =
       pathname?.includes("/add") || pathname?.includes("/edit");
 
+<<<<<<< HEAD
     const { data: clients, isLoading: isLoadingClients, error: clientsError } = useQuery<Client[]>({
+=======
+    const { data: clients, isLoading: isLoadingClients } = useQuery<Client[]>({
+>>>>>>> Nishreyta
       queryKey: ["clients"],
       queryFn: fetchClients,
     });
 
+<<<<<<< HEAD
     // Debug logging
     console.log("Clients query state:", {
       clients,
@@ -223,6 +304,50 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
       "border border-[#C3C3CB] shadow-none focus:outline-none focus:border-[#C3C3CB] focus:ring-0";
     const dealWrapperClass = "mb-4";
 
+=======
+    const {
+      register,
+      handleSubmit,
+      formState: { errors, isSubmitting },
+      reset,
+      setValue,
+      watch,
+    } = useForm<DealFormData>({
+      resolver: zodResolver(DealSchema),
+    });
+
+    useImperativeHandle(ref, () => ({
+      resetForm: () => reset(),
+    }));
+
+    const mutation = useMutation({
+      mutationFn: submitDealData,
+      onSuccess: (data) => {
+        console.log("Deal created successfully", data);
+        reset();
+        queryClient.invalidateQueries({ queryKey: ["deals"] });
+        if (onSave) {
+          onSave(data as DealFormData);
+        } else if (isStandalonePage) {
+          router.push("/salesperson/deal");
+        }
+      },
+      onError: (error: any) => {
+        console.error("Failed to create deal:", error);
+      },
+    });
+
+    const onSubmit = (data: DealFormData) => {
+      mutation.mutate(data);
+    };
+
+    const dealLabelClass =
+      "block text-[13px] font-semibold whitespace-nowrap text-black";
+    const dealInputClass =
+      "border border-[#C3C3CB] shadow-none focus:outline-none focus:border-[#C3C3CB] focus:ring-0";
+    const dealWrapperClass = "mb-4";
+
+>>>>>>> Nishreyta
     return (
       <div className="h-full w-full flex flex-col">
         <form
@@ -264,6 +389,7 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                       selectClassName={dealInputClass}
                       wrapperClassName={dealWrapperClass}
                       disabled={isLoadingClients}
+<<<<<<< HEAD
                       options={(() => {
                         if (isLoadingClients) {
                           return [{ value: "", label: "Loading clients..." }];
@@ -287,6 +413,16 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                         
                         return options;
                       })()}
+=======
+                      options={
+                        clients && Array.isArray(clients)
+                          ? clients.map((c) => ({
+                              value: c.client_name,
+                              label: c.client_name,
+                            }))
+                          : []
+                      }
+>>>>>>> Nishreyta
                     />
                   </div>
                 </div>
@@ -384,11 +520,18 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                       selectClassName={dealInputClass}
                       wrapperClassName={dealWrapperClass}
                       options={[
+<<<<<<< HEAD
                         { value: "Mobile Wallet", label: "Mobile Wallet" },
                         { value: "Bank Transfer", label: "Bank Transfer" },
                         { value: "QR Payment", label: "QR Payment" },
                         { value: "Credit Card", label: "Credit Card" },
                         { value: "Cash", label: "Cash" },
+=======
+                        { value: "wallet", label: "Mobile Wallet" },
+                        { value: "cash", label: "Cash" },
+                        { value: "cheque", label: "Cheque" },
+                        { value: "bank", label: "Bank Transfer" },
+>>>>>>> Nishreyta
                       ]}
                     />
                   </div>
