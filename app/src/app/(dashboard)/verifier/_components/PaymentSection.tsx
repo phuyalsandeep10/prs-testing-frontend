@@ -8,37 +8,37 @@ const fetchInvoiceStatusOverview = async () => {
   await new Promise((res) => setTimeout(res, 800));
   return [
     {
-      label: "Paid Invoice",
+      label: "Completed Deal",
       count: "5",
       color: "#C1EAD9",
       textColor: "#026C40",
     },
     {
-      label: "Overdue Invoices",
+      label: "Overdue Deal",
       count: "5",
       color: "#FBD0D0",
       textColor: "#A90101",
     },
     {
-      label: "Pending Invoices",
+      label: "Pending Deal",
       count: "5",
       color: "#FFCA89",
       textColor: "#814804",
     },
     {
-      label: "Refunded Invoices",
+      label: "Refunded Deal",
       count: "5",
       color: "#C0C8FD",
       textColor: "#0E00D0",
     },
     {
-      label: "Disputed Invoices",
+      label: "Disputed Deal",
       count: "5",
       color: "#FBDAB1",
       textColor: "#666403",
     },
     {
-      label: "Processing Invoices",
+      label: "Processing Deal",
       count: "5",
       color: "#C0C8FD",
       textColor: "#0E00D0",
@@ -169,7 +169,7 @@ const PaymentSection = () => {
     <div className="w-full">
       <div className="flex flex-wrap gap-10 w-full">
         <PaymentOverview
-          title="Invoice Status Overview"
+          title="Deal Status Overview"
           className="bg-[#FFFFFF] h-auto flex-1 min-w-[300px]"
           subtitles={invoiceStatus || []}
         />
@@ -179,7 +179,7 @@ const PaymentSection = () => {
           subtitles={paymentMethods || []}
         />
         <PaymentOverview
-          title="Payment Failure Reasons"
+          title="Deal Failure Reasons"
           className="bg-[#FFFFFF] h-auto flex-1 min-w-[300px]"
           subtitles={failureReasons || []}
         />

@@ -13,27 +13,28 @@ import Image from "next/image";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 
-// Helper for status and satisfaction badge styles (same as before)
+type DashboardClientsResponse = {
+  clients: ApiClient[];
+  pagination: {
+    limit: number;
+    has_more: boolean;
+  };
+  status_summary: {
+    all: number;
+    clear: number;
+    pending: number;
+    bad_debt: number;
+  };
+  total_clients: number;
+};
+
 const getStatusColor = (status: string) => {
   switch (status) {
     case "clear":
       return "bg-[#E6F7FF] text-[#16A34A] px-3 py-1 text-[12px] font-medium rounded-full";
     case "pending":
       return "bg-[#FFF7ED] text-[#EA580C] px-3 py-1 text-[12px] font-medium rounded-full";
-    case "bad-depth":
-      return "bg-[#FEF2F2] text-[#DC2626] px-3 py-1 text-[12px] font-medium rounded-full";
-    default:
-      return "bg-gray-100 text-gray-600 px-3 py-1 text-[12px] font-medium rounded-full";
-  }
-};
-
-const getSatisfactionColor = (satisfaction: string) => {
-  switch (satisfaction) {
-    case "positive":
-      return "bg-[#E6F7FF] text-[#16A34A] px-3 py-1 text-[12px] font-medium rounded-full";
-    case "neutral":
-      return "bg-[#FFF7ED] text-[#EA580C] px-3 py-1 text-[12px] font-medium rounded-full";
-    case "negative":
+    case "bad_debt":
       return "bg-[#FEF2F2] text-[#DC2626] px-3 py-1 text-[12px] font-medium rounded-full";
     default:
       return "bg-gray-100 text-gray-600 px-3 py-1 text-[12px] font-medium rounded-full";
@@ -44,15 +45,16 @@ const ClientDetailsSection: React.FC = () => {
   const [showViewModal, setShowViewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ApiClient | null>(null);
-
-  // Track selected clients by id
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { data: clients = [], isLoading } = useQuery<ApiClient[]>({
     queryKey: ["clients", "commission-page"],
     queryFn: async () => {
-      const response = await apiClient.get<ApiClient[]>("/clients/");
-      return response.data || [];
+      const response = await apiClient.get<DashboardClientsResponse>(
+        "/dashboard/clients/"
+      );
+      console.log("Fetched clients:", response.data.clients);
+      return response.data.clients || [];
     },
   });
 
@@ -68,10 +70,8 @@ const ClientDetailsSection: React.FC = () => {
 
   const handleDelete = useCallback((clientId: string) => {
     console.log("Delete client:", clientId);
-    // Add your delete logic here
   }, []);
 
-  // Toggle single checkbox
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
       const newSet = new Set(prev);
@@ -82,15 +82,6 @@ const ClientDetailsSection: React.FC = () => {
       }
       return newSet;
     });
-  };
-
-  // Toggle select all
-  const toggleSelectAll = () => {
-    if (selectedIds.size === clients.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(clients.map((c) => c.id.toString())));
-    }
   };
 
   const columns: any = useMemo(
@@ -105,9 +96,8 @@ const ClientDetailsSection: React.FC = () => {
           </div>
         ),
       },
-      // Replace Active Date with Total Sales
       {
-        accessorFn: (row: ApiClient) => (row as any).total_sales ?? 0,
+        accessorFn: (row: ApiClient) => (row as any).total_deals ?? 0,
         id: "totalSales",
         header: "Total Sales",
         cell: ({ row }) => (
@@ -117,36 +107,14 @@ const ClientDetailsSection: React.FC = () => {
         ),
       },
       {
-        accessorFn: (row: ApiClient) => row.status ?? "pending",
+        accessorFn: (row: ApiClient) =>
+          (row as any).payment_status ?? "pending",
         id: "status",
         header: "Status",
         cell: ({ row }) => {
           const status = row.getValue("status") as string;
           return <span className={getStatusColor(status)}>{status}</span>;
         },
-      },
-      {
-        accessorFn: (row: ApiClient) => row.satisfaction ?? "neutral",
-        id: "satisfaction",
-        header: "Satisfaction",
-        cell: ({ row }) => {
-          const satisfaction = row.getValue("satisfaction") as string;
-          return (
-            <span className={getSatisfactionColor(satisfaction)}>
-              {satisfaction}
-            </span>
-          );
-        },
-      },
-      {
-        accessorFn: (row: ApiClient) => (row as any).projects_count ?? 0,
-        id: "projects",
-        header: "Projects",
-        cell: ({ row }) => (
-          <div className="text-[14px] text-gray-700 font-medium">
-            {row.getValue("projects")}
-          </div>
-        ),
       },
       {
         accessorFn: (row: ApiClient) => row.remarks ?? "-",
@@ -177,14 +145,14 @@ const ClientDetailsSection: React.FC = () => {
                 className="text-white flex items-center justify-center"
                 title="Edit"
               >
-                <Image src={edit} alt="View" className="w-5 h-5" />
+                <Image src={edit} alt="Edit" className="w-5 h-5" />
               </button>
               <button
                 onClick={() => handleDelete(client.id.toString())}
-                className=" text-white flex items-center justify-center"
+                className="text-white flex items-center justify-center"
                 title="Delete"
               >
-                <Image src={cancel} alt="View" className="w-5 h-5" />
+                <Image src={cancel} alt="Delete" className="w-5 h-5" />
               </button>
             </div>
           );
@@ -228,7 +196,6 @@ const ClientDetailsSection: React.FC = () => {
         )}
       </div>
 
-      {/* View Client Modal */}
       {showViewModal &&
         selectedClient &&
         typeof window !== "undefined" &&
@@ -240,7 +207,6 @@ const ClientDetailsSection: React.FC = () => {
           document.body
         )}
 
-      {/* Edit Client Modal */}
       {showEditModal &&
         selectedClient &&
         typeof window !== "undefined" &&

@@ -148,10 +148,9 @@ const PaymentDistribution: React.FC = () => {
   };
 
   return (
-    <div className="w-full max-w-[440px] h-[440px] overflow-hidden mx-auto">
+    <div className="w-full max-w-[440px] aspect-square mx-auto">
       <svg
-        width="100%"
-        height="100%"
+        className="w-full h-full"
         viewBox={`0 0 ${chartSize} ${chartSize}`}
         preserveAspectRatio="xMidYMid meet"
       >

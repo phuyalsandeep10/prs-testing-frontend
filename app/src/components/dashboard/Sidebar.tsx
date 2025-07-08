@@ -21,6 +21,7 @@ import {
   UserCheck,
   Gift,
   ChevronLeft,
+  ClipboardMinus,
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -53,6 +54,7 @@ const verifierNav = [
     href: "/verifier/refund-chargeback",
     icon: RotateCcw,
   },
+  { name: "Payment Records", href: "/verifier/paymentRecords", icon: ClipboardMinus },
 ];
 
 const salespersonNav = [

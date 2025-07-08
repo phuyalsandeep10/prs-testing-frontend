@@ -1,16 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
+  // :white_check_mark: Experimental features
   experimental: {
-    optimizePackageImports: ['@radix-ui/react-icons'],
+    optimizePackageImports: ["@radix-ui/react-icons"],
   },
-  // Reduce font preloading warnings
+  // :white_check_mark: Compiler options
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
+    removeConsole: process.env.NODE_ENV === "production",
   },
-  // Additional performance optimizations
+  // :white_check_mark: Performance and security optimizations
   poweredByHeader: false,
   compress: true,
+  // :white_check_mark: Custom headers for all routes
   // Image optimization settings
   images: {
     unoptimized: true,
@@ -19,20 +20,33 @@ const nextConfig = {
   async headers() {
     return [
       {
-        source: '/(.*)',
+        source: "/(.*)",
         headers: [
           {
-            key: 'X-DNS-Prefetch-Control',
-            value: 'on'
+            key: "X-DNS-Prefetch-Control",
+            value: "on",
           },
           {
-            key: 'X-Frame-Options',
-            value: 'DENY'
-          }
+            key: "X-Frame-Options",
+            value: "DENY",
+          },
         ],
       },
     ];
   },
+  // :white_check_mark: Local dev proxy to avoid CORS/NAT/ngrok warnings
+  async rewrites() {
+    return process.env.NODE_ENV === "development"
+      ? [
+          {
+            source: "/api/:path*",
+            destination:
+              "https://1209-2404-7c00-41-310a-6431-5f3b-7466-2bfc.ngrok-free.app/api/:path*", // local backend
+          },
+        ]
+      : [];
+  },
+  // :white_check_mark: Ignore build issues (for dev only, not recommended in prod)
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -40,5 +54,4 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
 };
-
 export default nextConfig;

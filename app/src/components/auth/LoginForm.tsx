@@ -271,7 +271,6 @@ export default function LoginForm() {
     }
   };
 
-  // Handle successful regular login
   const handleSuccessfulLogin = (data: any) => {
     console.log("🎯 handleSuccessfulLogin called with:", data);
     console.log("🔍 Full data structure:", JSON.stringify(data, null, 2));
@@ -279,6 +278,19 @@ export default function LoginForm() {
     // Store the token
     if (data.token) {
       localStorage.setItem("authToken", data.token);
+    }
+
+    const user = {
+      id: data.user_id,
+      username: data.username,
+      email: data.email,
+      role: {
+        name: (data.role || "unknown") as UserRole,
+        permissions: [], // You can fetch real permissions later if needed
+      },
+      organization: data.organization,
+    };
+  
     }
 
     // Check if user data exists
@@ -289,7 +301,9 @@ export default function LoginForm() {
     }
 
     // Use the login function from AuthContext
-    login(data.token, data.user);
+    login(data.token, user);
+
+    const userRole = (data.role || "unknown")
 
     // Get role and permissions for auth context - ensure rawRole is always a string
     // Fix role extraction
@@ -305,7 +319,6 @@ export default function LoginForm() {
 
     console.log("User role identified as:", userRole);
 
-    // Redirect based on role
     switch (userRole) {
       case "super-admin":
         router.push("/super-admin");
@@ -328,10 +341,10 @@ export default function LoginForm() {
       default:
         setError(`Unknown user role: ${userRole}`);
         console.error(`Unknown user role: ${userRole}`);
-        // Optional: redirect to a generic error page or dashboard
         break;
     }
   };
+  
 
   if (step === "otp") {
     // OTP Verification Form

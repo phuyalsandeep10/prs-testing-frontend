@@ -159,9 +159,10 @@ export interface Client {
   updated_at: string;
   remarks: string | null;
   satisfaction: 'excellent' | 'good' | 'average' | 'poor' | null;
-  status: 'clear' | 'pending' | 'bad_debt' | null;
+  payment_status: 'clear' | 'pending' | 'bad_debt' | null;
   created_by: number;
   organization: number;
+  total_value: number | null;
 }
 
 export interface Address {

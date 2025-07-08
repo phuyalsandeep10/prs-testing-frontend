@@ -9,6 +9,7 @@ import {
   useCallback,
 } from "react";
 import { UserRole, Permission } from "@/lib/types/roles";
+
 import { apiClient } from "@/lib/api";
 interface UserData {
   id: string;
@@ -20,7 +21,6 @@ interface UserData {
   organization: string;
   // Add other user properties as needed
 }
-
 interface AuthContextType {
   isAuthInitialized: boolean;
   isAuthenticated: boolean;
@@ -28,13 +28,10 @@ interface AuthContextType {
   login: (token: string, userData: UserData) => void;
   logout: () => void;
 }
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserData | null>(null);
   const [isAuthInitialized, setIsAuthInitialized] = useState(false);
-
   const setupAuth = useCallback((token: string, userData: UserData) => {
     const userRole = (userData.role?.name || "unknown")
       .toLowerCase()
@@ -45,7 +42,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       userId: userData.id,
       organizationId: userData.organization,
     };
-
+    
     apiClient.setAuth(
       token,
       userRole,
@@ -57,11 +54,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem("authToken", token);
     localStorage.setItem("user", JSON.stringify(userData));
   }, []);
-
   useEffect(() => {
     const token = localStorage.getItem("authToken");
     const userString = localStorage.getItem("user");
-
     if (token && userString) {
       try {
         const userData = JSON.parse(userString);
@@ -73,18 +68,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     setIsAuthInitialized(true);
   }, [setupAuth]);
-
   const login = (token: string, userData: UserData) => {
     setupAuth(token, userData);
   };
-
   const logout = () => {
     apiClient.clearAuth();
     setUser(null);
     localStorage.removeItem("authToken");
     localStorage.removeItem("user");
   };
-
   return (
     <AuthContext.Provider
       value={{
@@ -99,7 +91,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     </AuthContext.Provider>
   );
 };
-
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
