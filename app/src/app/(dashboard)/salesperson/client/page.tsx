@@ -127,7 +127,7 @@ const ClientsPage = React.memo(() => {
       client.client_name,
       client.email,
       client.id,
-      client.status,
+      client.payment_status,
       client.satisfaction,
       client.remarks,
       client.phone_number,
@@ -198,10 +198,10 @@ const ClientsPage = React.memo(() => {
       ),
     },
     {
-      accessorKey: "status",
+      accessorKey: "payment_status",
       header: "Status",
       cell: ({ row }: any) => {
-        const status = row.getValue("status") as string;
+        const status = row.getValue("payment_status") as string;
         return (
           <span className={getStatusColor(status)}>
             {status ? status.charAt(0).toUpperCase() + status.slice(1) : 'N/A'}

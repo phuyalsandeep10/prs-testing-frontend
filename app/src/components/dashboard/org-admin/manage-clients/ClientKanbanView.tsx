@@ -33,7 +33,7 @@ const statusConfig = {
 export function ClientKanbanView({ clients }: ClientKanbanViewProps) {
   // Group clients by status
   const clientsByStatus = clients.reduce((acc, client) => {
-    const status = client.status || "pending"; // Default to pending if status is null
+    const status = client.payment_status || "pending"; // Default to pending if status is null
     if (!acc[status]) {
       acc[status] = [];
     }

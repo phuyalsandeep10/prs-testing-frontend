@@ -47,7 +47,7 @@ export const ClientDetailCard = React.memo<ClientDetailCardProps>(({ client, onC
   }, [handleClose]);
 
   // Status badge styling with animations
-  const getStatusBadge = (status: Client['status']) => {
+  const getStatusBadge = (status: Client['payment_status']) => {
     const statusConfig = {
       clear: { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-300', label: 'Clear', icon: '✓' },
       pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-300', label: 'Pending', icon: '⏳' },
@@ -146,7 +146,7 @@ export const ClientDetailCard = React.memo<ClientDetailCardProps>(({ client, onC
             <div className="md:col-span-1 space-y-6">
               {/* Key Information Card */}
               <InfoCard title="Key Information">
-                <Metric label="Status" value={getStatusBadge(client.status)} />
+                <Metric label="Status" value={getStatusBadge(client.payment_status)} />
                 <Metric label="Nationality" value={client.nationality || 'N/A'} icon={<MapPin className="h-5 w-5 text-gray-500" />} />
                 <Metric label="Client Since" value={new Date(client.created_at).toLocaleDateString()} icon={<Calendar className="h-5 w-5 text-gray-500" />} />
               </InfoCard>
