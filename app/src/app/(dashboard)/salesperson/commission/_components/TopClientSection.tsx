@@ -1,55 +1,27 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useState } from "react";
 import TopClientCard from "@/components/salesperson/commission/TopClientCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCommissionData } from "@/hooks/api";
 
 interface ClientData {
   name: string;
   value: number;
 }
 
-const fetchTopClients = async (
-  period: string,
-  token: string
-): Promise<ClientData[]> => {
-  const url = new URL(
-    `${process.env.NEXT_PUBLIC_API_URL}/dashboard/commission/`
-  );
-  url.searchParams.set("period", period);
-  url.searchParams.set("include_details", "true");
-
-  const res = await fetch(url.toString(), {
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Token ${token}`,
-    },
-  });
-
-  if (!res.ok) {
-    const errorText = await res.text();
-    console.error("API error:", errorText);
-    throw new Error("Failed to fetch top clients");
-  }
-
-  const json = await res.json();
-  const clientsRaw = json.top_clients_this_period ?? [];
-
-  return clientsRaw.map((client: any) => ({
-    name: client.client_name,
-    value: client.total_value,
-  }));
-};
+// Using standardized hooks - no manual API functions needed
 
 // 🔁 Dynamic content only
-const TopClientContent = ({ view, token }: { view: string; token: string }) => {
-  const { data, isLoading, error } = useQuery<ClientData[], Error>({
-    queryKey: ["topClients", view, token],
-    queryFn: () => fetchTopClients(view, token),
-    enabled: !!token,
-    refetchOnWindowFocus: false,
-  });
+const TopClientContent = ({ view }: { view: string }) => {
+  // Use standardized hook for commission data with period filtering
+  const { data: commissionResponse, isLoading, error } = useCommissionData(view);
+  
+  // Transform the data to match the expected format
+  const data = commissionResponse?.top_clients_this_period?.map(client => ({
+    name: client.client_name,
+    value: client.total_value,
+  })) || [];
 
   if (isLoading) {
     return (
@@ -70,20 +42,13 @@ const TopClientContent = ({ view, token }: { view: string; token: string }) => {
     return <p className="text-red-500 text-sm">Error: {error.message}</p>;
   }
 
-  return data ? <TopClientCard data={data} /> : null;
+  return data.length > 0 ? <TopClientCard data={data} /> : null;
 };
 
 const TopClientSection = () => {
   const [view, setView] = useState<"yearly" | "monthly" | "quarterly">(
     "monthly"
   );
-  const [token, setToken] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setToken(localStorage.getItem("authToken"));
-    }
-  }, []);
 
   const getSubheading = () => {
     switch (view) {
@@ -125,7 +90,7 @@ const TopClientSection = () => {
       </div>
 
       {/* Dynamic section (only this rerenders) */}
-      <TopClientContent view={view} token={token} />
+      <TopClientContent view={view} />
     </div>
   );
 };
