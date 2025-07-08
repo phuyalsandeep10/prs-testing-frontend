@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Search,
   Plus,
@@ -18,8 +18,15 @@ import { UserTable } from "@/components/dashboard/org-admin/manage-users/UserTab
 import { TeamsTable } from "@/components/dashboard/org-admin/manage-teams/TeamsTable";
 import { AddNewUserForm } from "@/components/dashboard/org-admin/manage-users/AddNewUserForm";
 import { AddNewTeamForm } from "@/components/dashboard/org-admin/manage-teams/AddNewTeamForm";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
+import { 
+  useUsersQuery, 
+  useTeamsQuery, 
+  useDeleteUserMutation, 
+  useDeleteTeamMutation 
+} from "@/hooks/useIntegratedQuery";
 
 type TabType = "users" | "team";
 type ModalType =
@@ -31,49 +38,57 @@ type ModalType =
   | "view-user"
   | null;
 
+interface Project {
+  id: number;
+  name: string;
+}
+
 // Type definitions for API data
-interface User {
+interface ApiUser {
   id: number;
   username: string;
   first_name: string;
   last_name: string;
   email: string;
   contact_number?: string;
+  phoneNumber?: string; // Alias from backend serializer
   role?: {
     id: number;
     name: string;
   };
   organization: number;
-  teams?: number[];
+  teams?: number[] | Array<{ id: number; name: string }>;
   is_active: boolean;
   date_joined: string;
+}
+
+// Type for transformed table data
+interface UserTableData {
+  id: string;
+  name: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  role: string;
+  assignedTeam: string;
+  status: 'active' | 'inactive' | 'invited';
 }
 
 interface Team {
   id: number;
   name: string;
   organization: number;
-  team_lead: number | null; // The ID of the team lead
-  members: number[];
-  projects: number[];
+  team_lead: {
+    id: number;
+    username: string;
+  } | null;
+  members: {
+    id: number;
+    username: string;
+  }[];
+  projects: number[]; // Just project IDs
   contact_number?: string;
   created_at: string;
-
-  // Nested details from the API
-  team_lead_details?: {
-    id: number;
-    first_name: string;
-    last_name: string;
-  };
-  members_details?: {
-    id: number;
-    first_name: string;
-    last_name: string;
-  }[];
-  projects_details?: {
-    id: number;
-    name: string;
-  }[];
 }
 
 export default function ManageUsersPage() {
@@ -82,105 +97,125 @@ export default function ManageUsersPage() {
   const [openModal, setOpenModal] = useState<ModalType>(null);
   const [selectedTeam, setSelectedTeam] = useState<any>(null);
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [deletingTeamId, setDeletingTeamId] = useState<string | null>(null);
+  
+  // Pagination state
+  const [usersPagination, setUsersPagination] = useState({
+    page: 1,
+    pageSize: 10,
+    total: 0,
+  });
+  const [teamsPagination, setTeamsPagination] = useState({
+    page: 1,
+    pageSize: 10,
+    total: 0,
+  });
 
-  // Real data state
-  const [users, setUsers] = useState<User[]>([]);
-  const [teams, setTeams] = useState<Team[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
-  const [filteredTeams, setFilteredTeams] = useState<Team[]>([]);
-  const [loading, setLoading] = useState(true);
+  // API Hooks - React Query will handle loading, error states, and caching
+  const { 
+    data: usersResponse, 
+    isLoading: usersLoading, 
+    error: usersError,
+    refetch: refetchUsers 
+  } = useUsersQuery();
+  
+  const { 
+    data: teamsResponse, 
+    isLoading: teamsLoading, 
+    error: teamsError,
+    refetch: refetchTeams 
+  } = useTeamsQuery();
+  
+  const deleteUserMutation = useDeleteUserMutation();
+  const deleteTeamMutation = useDeleteTeamMutation();
 
-  // Load users from API
-  const loadUsers = async () => {
-    try {
-      const token = localStorage.getItem("authToken");
-      if (!token) {
-        toast.error("No authentication token found. Please login again.");
-        return;
-      }
+  // Extract data from API responses
+  // Handle both direct array responses and nested data responses
+  const users = Array.isArray(usersResponse) ? usersResponse : (usersResponse?.data || []);
+  const teams = Array.isArray(teamsResponse) ? teamsResponse : (teamsResponse?.data || []);
+  const projects: Project[] = []; // This seems unused in the original, keeping for compatibility
 
-      const response = await fetch("http://localhost:8000/api/v1/auth/users/", {
-        headers: {
-          Authorization: `Token ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
+  // Debug logging
+  console.log('=== MANAGE USERS DEBUG ===');
+  console.log('usersResponse:', usersResponse);
+  console.log('extracted users:', users);
+  console.log('users length:', users.length);
+  console.log('teamsResponse:', teamsResponse);
+  console.log('extracted teams:', teams);
+  console.log('teams length:', teams.length);
 
-      if (response.ok) {
-        const data = await response.json();
-        const usersList = Array.isArray(data) ? data : data.results || [];
-        setUsers(usersList);
-      } else {
-        console.error("Failed to load users:", response.status);
-        toast.error("Failed to load users");
-      }
-    } catch (error) {
-      console.error("Error loading users:", error);
-      toast.error("Network error loading users");
-    }
-  };
+  // Computed values for filtering and pagination
+  const filteredUsers = useMemo(() => {
+    console.log('=== FILTERING USERS ===');
+    console.log('users input:', users);
+    console.log('users array check:', Array.isArray(users));
+    console.log('searchTerm:', searchTerm);
+    
+    if (!users) return [];
+    const filtered = users.filter(user => {
+      const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
+      const email = user.email?.toLowerCase() || '';
+      const searchLower = searchTerm.toLowerCase();
+      return fullName.includes(searchLower) || email.includes(searchLower);
+    });
+    
+    console.log('filtered users result:', filtered);
+    console.log('filtered users length:', filtered.length);
+    return filtered;
+  }, [users, searchTerm]);
 
-  // Load teams from API
-  const loadTeams = async () => {
-    try {
-      const token = localStorage.getItem("authToken");
-      if (!token) {
-        toast.error("No authentication token found. Please login again.");
-        return;
-      }
+  const filteredTeams = useMemo(() => {
+    console.log('=== FILTERING TEAMS ===');
+    console.log('teams input:', teams);
+    console.log('teams array check:', Array.isArray(teams));
+    console.log('searchTerm:', searchTerm);
+    
+    if (!teams) return [];
+    const filtered = teams.filter(team => {
+      const teamName = team.name?.toLowerCase() || '';
+      const searchLower = searchTerm.toLowerCase();
+      return teamName.includes(searchLower);
+    });
+    
+    console.log('filtered teams result:', filtered);
+    console.log('filtered teams length:', filtered.length);
+    return filtered;
+  }, [teams, searchTerm]);
 
-      const response = await fetch("http://localhost:8000/api/v1/teams/", {
-        headers: {
-          Authorization: `Token ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const teamsList = Array.isArray(data) ? data : data.results || [];
-        setTeams(teamsList);
-      } else {
-        console.error("Failed to load teams:", response.status);
-        toast.error("Failed to load teams");
-      }
-    } catch (error) {
-      console.error("Error loading teams:", error);
-      toast.error("Network error loading teams");
-    }
-  };
-
-  // Load data on component mount
+  // Update pagination totals when data changes
   useEffect(() => {
-    const loadData = async () => {
-      setLoading(true);
-      await Promise.all([loadUsers(), loadTeams()]);
-      setLoading(false);
-    };
+    setUsersPagination(prev => ({ ...prev, total: filteredUsers.length }));
+  }, [filteredUsers.length]);
 
-    loadData();
+  useEffect(() => {
+    setTeamsPagination(prev => ({ ...prev, total: filteredTeams.length }));
+  }, [filteredTeams.length]);
 
-    // Listen for user and team creation/update events
-    const handleUserCreated = () => {
-      toast.success("User list updated");
-      loadUsers();
-    };
+  // Event handlers for form completion - React Query will auto-refresh
+  const handleTeamCreated = () => {
+    console.log('=== TEAM CREATED EVENT TRIGGERED ===');
+    toast.success("Team created successfully");
+    // React Query will automatically refetch due to cache invalidation in the mutation
+  };
 
-    const handleUserUpdated = () => {
-      toast.success("User updated successfully");
-      loadUsers();
-    };
+  const handleUserCreated = () => {
+    toast.success("User created successfully");
+    // React Query will automatically refetch due to cache invalidation in the mutation
+  };
 
-    const handleTeamCreated = async () => {
-      toast.success("Team list updated");
-      await Promise.all([loadTeams(), loadUsers()]);
-    };
+  const handleUserUpdated = () => {
+    toast.success("User updated successfully");
+    // React Query will automatically refetch due to cache invalidation in the mutation
+  };
 
-    const handleTeamUpdated = async () => {
-      toast.success("Team updated successfully");
-      await Promise.all([loadTeams(), loadUsers()]);
-    };
+  const handleTeamUpdated = () => {
+    toast.success("Team updated successfully");
+    // React Query will automatically refetch due to cache invalidation in the mutation
+  };
 
+  // Listen for custom events (keeping for compatibility)
+  useEffect(() => {
     window.addEventListener("userCreated", handleUserCreated);
     window.addEventListener("userUpdated", handleUserUpdated);
     window.addEventListener("teamCreated", handleTeamCreated);
@@ -194,109 +229,117 @@ export default function ManageUsersPage() {
     };
   }, []);
 
-  console.log("model view", openModal);
-  // Global search function for users
-  const searchAllUserColumns = (user: User, query: string): boolean => {
-    const searchableFields = [
-      `${user.first_name} ${user.last_name}`,
-      user.email,
-      user.contact_number || "",
-      user.role?.name || "",
-      user.is_active ? "active" : "inactive",
-    ];
+  const usersForForm = useMemo(() => users.map(u => ({
+    id: u.id,
+    name: `${u.first_name} ${u.last_name}`.trim() || u.email,
+    email: u.email,
+    role: typeof u.role === 'string' ? u.role : (u.role as any)?.name || 'N/A',
+  })), [users]);
 
-    return searchableFields.some((field) =>
-      field.toLowerCase().includes(query.toLowerCase())
-    );
-  };
+  // Get paginated data
+  const paginatedUsers = useMemo(() => {
+    console.log('=== PAGINATING USERS ===');
+    console.log('filteredUsers:', filteredUsers);
+    console.log('usersPagination:', usersPagination);
+    
+    const startIndex = (usersPagination.page - 1) * usersPagination.pageSize;
+    const endIndex = startIndex + usersPagination.pageSize;
+    const paginated = filteredUsers.slice(startIndex, endIndex);
+    
+    console.log('startIndex:', startIndex, 'endIndex:', endIndex);
+    console.log('paginated users result:', paginated);
+    console.log('paginated users length:', paginated.length);
+    return paginated;
+  }, [filteredUsers, usersPagination.page, usersPagination.pageSize]);
 
-  // Global search function for teams
-  const searchAllTeamColumns = (team: Team, query: string): boolean => {
-    const searchableFields = [
-      team.name,
-      team.team_lead_details
-        ? `${team.team_lead_details.first_name} ${team.team_lead_details.last_name}`
-        : "",
-      team.contact_number || "",
-      ...(team.members_details?.map((m) => `${m.first_name} ${m.last_name}`) ||
-        []),
-      ...(team.projects_details?.map((p) => p.name) || []),
-    ];
-
-    return searchableFields.some((field) =>
-      field.toLowerCase().includes(query.toLowerCase())
-    );
-  };
-
-  // Filter data based on search query
-  useEffect(() => {
-    if (searchTerm.trim()) {
-      const filteredUserData = users.filter((user) =>
-        searchAllUserColumns(user, searchTerm)
-      );
-      const filteredTeamData = teams.filter((team) =>
-        searchAllTeamColumns(team, searchTerm)
-      );
-      setFilteredUsers(filteredUserData);
-      setFilteredTeams(filteredTeamData);
-    } else {
-      setFilteredUsers(users);
-      setFilteredTeams(teams);
-    }
-  }, [searchTerm, users, teams]);
+  const paginatedTeams = useMemo(() => {
+    console.log('=== PAGINATING TEAMS ===');
+    console.log('filteredTeams:', filteredTeams);
+    console.log('teamsPagination:', teamsPagination);
+    
+    const startIndex = (teamsPagination.page - 1) * teamsPagination.pageSize;
+    const endIndex = startIndex + teamsPagination.pageSize;
+    const paginated = filteredTeams.slice(startIndex, endIndex);
+    
+    console.log('startIndex:', startIndex, 'endIndex:', endIndex);
+    console.log('paginated teams result:', paginated);
+    console.log('paginated teams length:', paginated.length);
+    return paginated;
+  }, [filteredTeams, teamsPagination.page, teamsPagination.pageSize]);
 
   // Transform API data to table format
-  const transformUsersForTable = (users: User[]) => {
-    return users.map((user) => {
-      const teamNames =
-        Array.isArray(user.teams) && user.teams.length > 0
-          ? user.teams.map((t: any) => t.name).join(", ")
-          : "Not Assigned";
+  const transformUsersForTable = useCallback((users: ApiUser[]): UserTableData[] => {
+    console.log('=== TRANSFORMING USERS FOR TABLE ===');
+    console.log('users input to transform:', users);
+    console.log('users length:', users.length);
+    
+    const transformed = users.map((user) => {
+      console.log('transforming user:', user);
+      const teamNames = Array.isArray(user.teams) && user.teams.length > 0
+        ? user.teams.map((t) => typeof t === 'object' && t !== null ? t.name : t).join(", ")
+        : "Not Assigned";
 
-      return {
+      const transformedUser = {
         id: user.id.toString(),
-        name: `${user.first_name} ${user.last_name}`.trim() || user.username,
-        fullName:
-          `${user.first_name} ${user.last_name}`.trim() || user.username,
+        name: `${user.first_name} ${user.last_name}`.trim() || user.email,
+        fullName: `${user.first_name} ${user.last_name}`.trim() || user.email,
         email: user.email,
-        phoneNumber: user.contact_number || "N/A",
-        role: (user.role?.name ? user.role.name.toLowerCase().replace(/[\s-]+/g, "-") : "user") as any,
+        phoneNumber: user.phoneNumber || user.contact_number || "N/A",
+        role: user.role?.name ? user.role.name.toLowerCase().replace(/[\s-]+/g, "-") : "user",
         assignedTeam: teamNames,
-        status: user.is_active ? ("active" as const) : ("inactive" as const),
+        status: user.is_active ? "active" : "inactive" as "active" | "inactive",
       };
+      
+      console.log('transformed user result:', transformedUser);
+      return transformedUser;
     });
-  };
+    
+    console.log('final transformed users:', transformed);
+    return transformed;
+  }, []);
 
-  const transformTeamsForTable = (teams: Team[]) => {
-    console.log("Raw teams data from API:", teams); // DEBUG: Log raw data
-
+  const transformTeamsForTable = useCallback((teams: Team[]) => {
+    console.log('=== TRANSFORM TEAMS DEBUG ===');
+    console.log('Input teams for transform:', teams);
+    console.log('Projects for mapping:', projects);
+    
     const transformed = teams.map((team) => {
+      console.log('Transforming team:', team);
+      console.log('Team lead raw:', team.team_lead);
+      console.log('Team members raw:', team.members);
+      console.log('Team projects raw:', team.projects);
+      
       const transformedTeam = {
         id: team.id.toString(),
         teamName: team.name,
-        teamLead: team.team_lead_details
-          ? `${team.team_lead_details.first_name} ${team.team_lead_details.last_name}`.trim()
+        teamLead: team.team_lead 
+          ? team.team_lead.username || "Unknown Lead"
           : "No Lead",
         contactNumber: team.contact_number || "N/A",
         teamMembers:
-          team.members_details?.map((m) => ({
+          team.members?.map((m) => ({
             id: m.id.toString(),
-            name: `${m.first_name} ${m.last_name}`,
-            avatar: `https://ui-avatars.com/api/?name=${m.first_name}+${m.last_name}&background=random`,
+            name: m.username || "Unknown Member",
+            avatar: `https://ui-avatars.com/api/?name=${m.username}&background=random`,
           })) || [],
         assignedProjects:
-          team.projects_details?.map((p) => p.name).join(", ") || "No projects",
+          team.projects?.map((projectId) => {
+            const project = projects.find((p) => p.id === projectId);
+            return project?.name || `Project ${projectId}`;
+          }).join(", ") || "No projects",
         extraProjectsCount:
-          team.projects_details && team.projects_details.length > 1
-            ? team.projects_details.length - 1
+          team.projects && team.projects.length > 1
+            ? team.projects.length - 1
             : 0,
       };
-      console.log("Transformed team for table:", transformedTeam); // DEBUG: Log transformed data
+      
+      console.log('Transformed team result:', transformedTeam);
       return transformedTeam;
     });
 
+    console.log('Final transformed teams:', transformed);
     return transformed;
-  };
+  }, [projects]);
 
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
@@ -326,6 +369,42 @@ export default function ManageUsersPage() {
     setOpenModal(null);
     setSelectedTeam(null);
     setSelectedUser(null);
+  };
+
+  // Pagination handlers
+  const handleUsersPageChange = (page: number) => {
+    setUsersPagination(prev => ({ ...prev, page }));
+  };
+
+  const handleTeamsPageChange = (page: number) => {
+    setTeamsPagination(prev => ({ ...prev, page }));
+  };
+
+  // DELETE handlers
+  const handleDeleteUser = async (userData: any) => {
+    setDeletingUserId(userData.id);
+    try {
+      await deleteUserMutation.mutateAsync(userData.id);
+      // Success notification is handled by the mutation
+    } catch (error) {
+      // Error notification is handled by the mutation
+      console.error("Delete user failed:", error);
+    } finally {
+      setDeletingUserId(null);
+    }
+  };
+
+  const handleDeleteTeam = async (teamData: any) => {
+    setDeletingTeamId(teamData.id);
+    try {
+      await deleteTeamMutation.mutateAsync(teamData.id);
+      // Success notification is handled by the mutation
+    } catch (error) {
+      // Error notification is handled by the mutation
+      console.error("Delete team failed:", error);
+    } finally {
+      setDeletingTeamId(null);
+    }
   };
 
   return (
@@ -411,58 +490,89 @@ export default function ManageUsersPage() {
           </div>
         )}
 
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4F46E5] mx-auto mb-4"></div>
-              <p className="text-gray-600">
-                Loading {activeTab === "users" ? "users" : "teams"}...
-              </p>
+        <ErrorBoundary>
+          {(usersLoading || teamsLoading) ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4F46E5] mx-auto mb-4"></div>
+                <p className="text-gray-600">
+                  Loading {activeTab === "users" ? "users" : "teams"}...
+                </p>
+              </div>
             </div>
-          </div>
-        ) : activeTab === "users" ? (
-          filteredUsers.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-600 text-lg">No users found</p>
-              <p className="text-gray-500 mb-4">
-                Start by creating your first user.
-              </p>
-              <Button
-                onClick={() => setOpenModal("add-user")}
-                className="bg-[#4F46E5] hover:bg-[#4338CA] text-white"
-              >
-                Add First User
-              </Button>
-            </div>
+          ) : activeTab === "users" ? (
+            filteredUsers.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-600 text-lg">No users found</p>
+                <p className="text-gray-500 mb-4">
+                  Start by creating your first user.
+                </p>
+                <Button
+                  onClick={() => setOpenModal("add-user")}
+                  className="bg-[#4F46E5] hover:bg-[#4338CA] text-white"
+                >
+                  Add First User
+                </Button>
+              </div>
+            ) : (
+              (() => {
+                const tableData = transformUsersForTable(paginatedUsers as any);
+                console.log('=== RENDERING USER TABLE ===');
+                console.log('table data being passed to UserTable:', tableData);
+                console.log('table data length:', tableData.length);
+                console.log('pagination props:', {
+                  page: usersPagination.page,
+                  pageSize: usersPagination.pageSize,
+                  total: usersPagination.total,
+                });
+                return (
+                  <UserTable
+                    data={tableData}
+                    onView={handleViewUser}
+                    onEdit={handleEditUser}
+                    onDelete={handleDeleteUser}
+                    pagination={{
+                      page: usersPagination.page,
+                      pageSize: usersPagination.pageSize,
+                      total: usersPagination.total,
+                      onPageChange: handleUsersPageChange,
+                    }}
+                    deletingUserId={deletingUserId}
+                  />
+                );
+              })()
+            )
           ) : (
-            <UserTable
-              data={transformUsersForTable(filteredUsers)}
-              onView={handleViewUser}
-              onEdit={handleEditUser}
-              onDelete={(user) => console.log("Delete user:", user)}
+            filteredTeams.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-600 text-lg">No teams found</p>
+                <p className="text-gray-500 mb-4">
+                  Start by creating your first team.
+                </p>
+                <Button
+                  onClick={() => setOpenModal("add-team")}
+                  className="bg-[#4F46E5] hover:bg-[#4338CA] text-white"
+                >
+                  Add First Team
+                </Button>
+              </div>
+            ) : (
+                          <TeamsTable
+              data={transformTeamsForTable(paginatedTeams as any)}
+              onView={handleViewTeam}
+              onEdit={handleEditTeam}
+              onDelete={handleDeleteTeam}
+              pagination={{
+                page: teamsPagination.page,
+                pageSize: teamsPagination.pageSize,
+                total: teamsPagination.total,
+                onPageChange: handleTeamsPageChange,
+              }}
+              deletingTeamId={deletingTeamId}
             />
-          )
-        ) : filteredTeams.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600 text-lg">No teams found</p>
-            <p className="text-gray-500 mb-4">
-              Start by creating your first team.
-            </p>
-            <Button
-              onClick={() => setOpenModal("add-team")}
-              className="bg-[#4F46E5] hover:bg-[#4338CA] text-white"
-            >
-              Add First Team
-            </Button>
-          </div>
-        ) : (
-          <TeamsTable
-            data={transformTeamsForTable(filteredTeams)}
-            onView={handleViewTeam}
-            onEdit={handleEditTeam}
-            onDelete={(team) => console.log("Delete team:", team)}
-          />
-        )}
+            )
+          )}
+        </ErrorBoundary>
       </div>
 
       {/* Modal Overlay - Rendered at document.body level using Portal */}
@@ -532,12 +642,8 @@ export default function ManageUsersPage() {
                   zIndex: 100000,
                 }}
               >
-                {openModal === "add-user" && (
-                  <AddNewUserForm onClose={handleCloseModal} />
-                )}
-                {openModal === "add-team" && (
-                  <AddNewTeamForm onClose={handleCloseModal} />
-                )}
+                {openModal === "add-user" && <AddNewUserForm onClose={handleCloseModal} onFormSubmit={handleUserCreated}/>}
+                {openModal === "add-team" && <AddNewTeamForm onClose={handleCloseModal} onFormSubmit={handleTeamCreated}/>}
                 {openModal === "edit-team" && selectedTeam && (
                   <EditTeamForm
                     team={selectedTeam}

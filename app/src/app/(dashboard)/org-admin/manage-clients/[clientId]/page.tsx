@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { notFound, useParams } from "next/navigation";
-import { apiClient } from "@/lib/api/client";
-import { type Client } from "@/lib/types/roles";
+import { apiClient } from "@/lib/api";
+import type { Client as ClientBase } from "@/types/deals";
+type Client = ClientBase & Record<string, any>;
 import { ClientDetailClient } from "../../../../../components/dashboard/org-admin/manage-clients/ClientDetailClient";
 import { toast } from "sonner";
 

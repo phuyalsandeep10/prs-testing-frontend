@@ -16,6 +16,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useRouter } from 'next/navigation';
+import { apiClient, ApiError } from '@/lib/api';
 
 interface Admin {
   id: number;
@@ -34,41 +36,23 @@ export default function ManageAdminsPage() {
   // Load admins from API
   const loadAdmins = async () => {
     try {
-      const token = localStorage.getItem('authToken');
-      console.log('Loading admins with token:', token ? 'Present' : 'Missing');
-      
-      if (!token) {
-        toast.error('No authentication token found. Please login again.');
-        setLoading(false);
-        return;
-      }
+      const response = await apiClient.get<any[]>(
+        '/v1/auth/users/',
+        { role_name: 'Org Admin' }
+      );
 
-      const response = await fetch('http://localhost:8000/api/v1/auth/users/?role_name=Org Admin', {
-        headers: {
-          'Authorization': `Token ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      console.log('Admins response status:', response.status);
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Admins data received:', data);
-        setAdmins(Array.isArray(data) ? data : data.results || []);
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Failed to load admins:', response.status, errorData);
-        
-        if (response.status === 401) {
+      setAdmins(Array.isArray(response.data) ? response.data : response.data?.results || []);
+    } catch (error: any) {
+      console.error('Error loading admins:', error);
+      if (error instanceof ApiError) {
+        if (error.code === '401') {
           toast.error('Authentication failed. Please login again.');
         } else {
-          toast.error(`Failed to load admins: ${response.status}`);
+          toast.error(error.message);
         }
+      } else {
+        toast.error('Network error. Please check if the backend server is running.');
       }
-    } catch (error) {
-      console.error('Error loading admins:', error);
-      toast.error('Network error. Please check if the backend server is running.');
     } finally {
       setLoading(false);
     }
@@ -79,49 +63,29 @@ export default function ManageAdminsPage() {
     setDeleting(adminId);
     
     try {
-      const token = localStorage.getItem('authToken');
-      
-      if (!token) {
-        toast.error('No authentication token found. Please login again.');
-        setDeleting(null);
-        return;
-      }
-
       console.log(`Attempting to delete admin ${adminId}: ${adminName} (${adminEmail})`);
-      
-      const response = await fetch(`http://localhost:8000/api/v1/auth/users/${adminId}/`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Token ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
 
-      if (response.ok || response.status === 204) {
-        console.log(`Admin ${adminName} deleted successfully`);
-        toast.success(`Admin "${adminName}" has been deleted successfully`);
-        
-        // Remove from local state
-        setAdmins(prev => prev.filter(admin => admin.id !== adminId));
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Failed to delete admin:', response.status, errorData);
-        
-        if (response.status === 401) {
-          toast.error('Authentication failed. Please login again.');
-        } else if (response.status === 403) {
-          toast.error('You do not have permission to delete this admin.');
-        } else if (response.status === 404) {
-          toast.error('Admin not found. They may have been already deleted.');
-          // Remove from local state anyway
-          setAdmins(prev => prev.filter(admin => admin.id !== adminId));
-        } else {
-          toast.error(`Failed to delete admin: ${errorData.error || 'Unknown error'}`);
-        }
-      }
-    } catch (error) {
+      await apiClient.delete<void>(`/v1/auth/users/${adminId}/`);
+
+      toast.success(`Admin "${adminName}" has been deleted successfully`);
+      // Remove from local state
+      setAdmins(prev => prev.filter(admin => admin.id !== adminId));
+    } catch (error: any) {
       console.error('Error deleting admin:', error);
-      toast.error('Network error. Please check if the backend server is running.');
+      if (error instanceof ApiError) {
+        if (error.code === '401') {
+          toast.error('Authentication failed. Please login again.');
+        } else if (error.code === '404') {
+          toast.error('Admin not found. They may have been already deleted.');
+          setAdmins(prev => prev.filter(admin => admin.id !== adminId));
+        } else if (error.code === '403') {
+          toast.error('You do not have permission to delete this admin.');
+        } else {
+          toast.error(error.message);
+        }
+      } else {
+        toast.error('Network error. Please check if the backend server is running.');
+      }
     } finally {
       setDeleting(null);
     }

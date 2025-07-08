@@ -13,14 +13,15 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { type Client } from "@/lib/types/roles";
+import { clientApi } from '@/lib/api';
 
 const formSchema = z.object({
   client_name: z.string().min(1, "Client name is required"),
   email: z.string().email("Invalid email address"),
   phone_number: z.string().min(10, "Contact number must be at least 10 digits"),
   nationality: z.string().min(1, "Nationality is required"),
-  status: z.enum(["clear", "pending", "bad_debt"]),
-  satisfaction: z.enum(["excellent", "good", "average", "poor"]),
+  status: z.enum(["clear", "pending", "bad_debt"]).optional(),
+  satisfaction: z.enum(["excellent", "good", "average", "poor"]).optional(),
   remarks: z.string().optional(),
 });
 
@@ -47,8 +48,8 @@ export default function EditClientForm({ client, onClose, onClientUpdated }: Edi
       email: client.email || "",
       phone_number: client.phone_number || "",
       nationality: client.nationality || "",
-      status: client.status || "clear",
-      satisfaction: client.satisfaction || "good",
+      status: client.status && ["clear", "pending", "bad_debt"].includes(client.status) ? client.status as "clear" | "pending" | "bad_debt" : "clear",
+      satisfaction: client.satisfaction && ["excellent", "good", "average", "poor"].includes(client.satisfaction) ? client.satisfaction as "excellent" | "good" | "average" | "poor" : "average",
       remarks: client.remarks || "",
     },
   });
@@ -56,17 +57,53 @@ export default function EditClientForm({ client, onClose, onClientUpdated }: Edi
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     try {
-      const response = await apiClient.updateClient(client.id, values);
+      const phoneRaw = values.phone_number.trim();
+      const payload: any = {
+        name: values.client_name,
+        email: values.email,
+        nationality: values.nationality,
+        phoneNumber: phoneRaw.startsWith('+') ? phoneRaw : `+977${phoneRaw}`,
+        status: values.status,
+        satisfaction: values.satisfaction,
+        remarks: values.remarks || '',
+      };
+      const response = await clientApi.update({ id: client.id, ...payload });
       if (response.success && response.data) {
         toast.success("Client updated successfully!");
-        onClientUpdated(response.data);
+        const apiObj: any = response.data;
+        const mapped: Client = {
+          ...(apiObj as any),
+          client_name: apiObj.name,
+          phone_number: apiObj.phoneNumber,
+          created_at: apiObj.createdAt || client.created_at,
+        };
+        onClientUpdated(mapped);
         handleClose();
       } else {
         toast.error(response.message || "Failed to update client.");
       }
     } catch (error: any) {
       console.error("Failed to update client:", error);
-      toast.error(error.message || "Failed to update client. Please try again.");
+      
+      if (error.code === '404') {
+        toast.error("Client not found. The client may have been deleted or you don't have permission to edit it. Please refresh the page.");
+      } else if (error.code === '401') {
+        toast.error("Authentication failed. Please login again.");
+      } else if (error.details) {
+        // Handle validation errors from backend
+        if (error.details.email) {
+          toast.error(`Email Error: ${error.details.email[0]}`);
+        } else if (error.details.phone_number) {
+          toast.error(`Phone Error: ${error.details.phone_number[0]}`);
+        } else if (error.details.client_name) {
+          toast.error(`Name Error: ${error.details.client_name[0]}`);
+        } else {
+          const k = Object.keys(error.details)[0];
+          toast.error(`${k}: ${error.details[k][0]}`);
+        }
+      } else {
+        toast.error(error.message || 'Failed to update client. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }

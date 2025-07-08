@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import StatsCard from '@/components/dashboard/StatsCard';
 import { toast } from "sonner";
+import { apiClient, ApiError } from '@/lib/api';
 
 interface DashboardStats {
   totalOrganizations: number;
@@ -18,50 +19,24 @@ export default function SuperAdminDashboard() {
   });
   const [loading, setLoading] = useState(true);
 
-  // Load dashboard stats from API
+  // Load dashboard stats from API using apiClient
   const loadStats = async () => {
+    setLoading(true);
     try {
-      const token = localStorage.getItem('authToken');
-      
-      if (!token) {
-        toast.error('No authentication token found. Please login again.');
-        setLoading(false);
-        return;
-      }
-      
-      // Fetch organizations
-      const orgsResponse = await fetch('http://localhost:8000/api/v1/organizations/', {
-        headers: {
-          'Authorization': `Token ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      // Fetch admins
-      const adminsResponse = await fetch('http://localhost:8000/api/v1/auth/users/?role=org_admin', {
-        headers: {
-          'Authorization': `Token ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      // Fetch all users
-      const usersResponse = await fetch('http://localhost:8000/api/v1/auth/users/', {
-        headers: {
-          'Authorization': `Token ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      const [orgsData, adminsData, usersData] = await Promise.all([
-        orgsResponse.ok ? orgsResponse.json() : { results: [] },
-        adminsResponse.ok ? adminsResponse.json() : { results: [] },
-        usersResponse.ok ? usersResponse.json() : { results: [] },
+      // apiClient handles tokens and base URL automatically
+      const [orgsResponse, adminsResponse, usersResponse] = await Promise.all([
+        apiClient.get<any>('/v1/organizations/'),
+        apiClient.get<any>('/v1/auth/users/', { role_name: 'Org Admin' }),
+        apiClient.get<any>('/v1/auth/users/'),
       ]);
 
-      const organizations = Array.isArray(orgsData) ? orgsData : orgsData.results || [];
-      const admins = Array.isArray(adminsData) ? adminsData : adminsData.results || [];
-      const users = Array.isArray(usersData) ? usersData : usersData.results || [];
+      const orgsData = orgsResponse.data;
+      const adminsData = adminsResponse.data;
+      const usersData = usersResponse.data;
+      
+      const organizations = Array.isArray(orgsData) ? orgsData : orgsData?.results || [];
+      const admins = Array.isArray(adminsData) ? adminsData : adminsData?.results || [];
+      const users = Array.isArray(usersData) ? usersData : usersData?.results || [];
 
       setStats({
         totalOrganizations: organizations.length,
@@ -71,7 +46,11 @@ export default function SuperAdminDashboard() {
 
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
-      toast.error('Error loading dashboard data');
+      if (error instanceof ApiError) {
+        toast.error(error.message);
+      } else {
+        toast.error('An unexpected error occurred while loading dashboard data.');
+      }
     } finally {
       setLoading(false);
     }

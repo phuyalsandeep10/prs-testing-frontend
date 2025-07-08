@@ -264,7 +264,7 @@ export default function NewAdminPage() {
         first_name: values.first_name,
         last_name: values.last_name,
         organization: parseInt(values.organization),
-        role: orgAdminRoleId,
+        org_role: orgAdminRoleId,
         is_active: values.is_active === "true",
       };
 

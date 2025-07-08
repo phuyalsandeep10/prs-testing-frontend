@@ -6,7 +6,8 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { toast } from "sonner";
 import { Loader2, X } from "lucide-react";
-import { Client } from "@/lib/types/roles";
+import type { Client } from "@/lib/types/roles";
+import { clientApi } from "@/lib/api";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -67,19 +68,53 @@ export default function AddNewClientForm({
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     try {
-      const response = await fetch.get("/api/clients");
+      const phoneRaw = values.phone_number.trim();
+      const payload: any = {
+        name: values.client_name,
+        email: values.email,
+        nationality: values.nationality,
+        remarks: values.remarks || '',
+        phoneNumber: phoneRaw.startsWith('+') ? phoneRaw : `+977${phoneRaw}`,
+      };
+      
+      const response = await clientApi.create(payload);
+      
       if (response.success && response.data) {
         toast.success("Client created successfully!");
-        onClientAdded(response.data);
+        // Map API response to table shape (convert camelCase keys)
+        const apiClientObj: any = response.data;
+        const mappedClient: Client = {
+          ...(apiClientObj as any),
+          client_name: apiClientObj.name,
+          phone_number: apiClientObj.phoneNumber,
+          created_at: apiClientObj.createdAt || new Date().toISOString(),
+        };
+        onClientAdded(mappedClient);
         handleClose();
       } else {
         toast.error(response.message || "Failed to create client.");
       }
     } catch (error: any) {
       console.error("Failed to create client:", error);
-      toast.error(
-        error.message || "Failed to create client. Please try again."
-      );
+      
+      if (error.code === '401') {
+        toast.error("Authentication failed. Please login again.");
+      } else if (error.details) {
+        // Handle validation errors from backend
+        if (error.details.email) {
+          toast.error(`Email Error: ${error.details.email[0]}`);
+        } else if (error.details.phone_number) {
+          toast.error(`Phone Error: ${error.details.phone_number[0]}`);
+        } else if (error.details.client_name) {
+          toast.error(`Name Error: ${error.details.client_name[0]}`);
+        } else {
+          const firstKey = Object.keys(error.details)[0];
+          const firstMsg = error.details[firstKey]?.[0] || error.message;
+          toast.error(`${firstKey}: ${firstMsg}`);
+        }
+      } else {
+        toast.error(error.message || "Failed to create client. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }

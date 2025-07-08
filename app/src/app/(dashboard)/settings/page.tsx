@@ -3,9 +3,23 @@ import { useState } from "react";
 import SettingsSection, {
   Tab,
 } from "@/components/dashboard/settings/settingSection";
+import { useAuth } from "@/stores";
 
 const Page = () => {
   const [tab, setTab] = useState<Tab>("account");
+  const { isAuthInitialized } = useAuth();
+
+  // Show loading until auth is fully initialized
+  if (!isAuthInitialized) {
+    return (
+      <div className="min-h-screen bg-gray-50 font-outfit flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen bg-gray-50 font-outfit">

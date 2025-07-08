@@ -2,18 +2,20 @@
 
 import * as React from "react";
 import { ArrowLeft, Calendar, User, DollarSign, Briefcase, Clock, FileText, Building, Mail, Phone } from "lucide-react";
-import { apiClient } from "@/lib/api/client";
-import { type Deal, type Client as ClientType } from "@/lib/types/roles";
+import { apiClient } from "@/lib/api";
+import type { Client as ClientType } from "@/types/deals";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useParams } from "next/navigation";
 
+type DealType = Record<string, any>;
+
 const ClientDealsPage: React.FC = () => {
   const { clientId } = useParams<{ clientId: string }>();
   const [client, setClient] = React.useState<ClientType | null>(null);
-  const [deals, setDeals] = React.useState<Deal[]>([]);
+  const [deals, setDeals] = React.useState<DealType[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
   React.useEffect(() => {
@@ -72,8 +74,8 @@ const ClientDealsPage: React.FC = () => {
           <div>
             <h2 className="text-2xl font-bold text-gray-800">{client.client_name}</h2>
             <div className="flex items-center gap-4 text-gray-500 mt-1">
-              <span className="flex items-center gap-2"><Mail className="h-4 w-4" /> {client.email}</span>
-              <span className="flex items-center gap-2"><Phone className="h-4 w-4" /> {client.phone_number}</span>
+              <span className="flex items-center gap-2"><Mail className="h-4 w-4" /> {(client as any).email}</span>
+              <span className="flex items-center gap-2"><Phone className="h-4 w-4" /> {(client as any).phone_number}</span>
             </div>
           </div>
         </div>
@@ -104,7 +106,7 @@ const ClientDealsPage: React.FC = () => {
   );
 };
 
-const DealDetailView: React.FC<{ deal: Deal }> = ({ deal }) => {
+const DealDetailView: React.FC<{ deal: DealType }> = ({ deal }) => {
   return (
     <div className="bg-gray-50 p-6 rounded-lg border">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

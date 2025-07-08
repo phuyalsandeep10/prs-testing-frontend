@@ -1,5 +1,8 @@
 "use client";
 
+// Force dynamic rendering because we rely on client-side routing hooks like useSearchParams
+export const dynamic = "force-dynamic";
+
 import React, { useState, useRef } from "react";
 import { Plus, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";

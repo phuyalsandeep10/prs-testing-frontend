@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useMemo, useCallback, memo, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Eye, Edit, Trash2, Plus, Search, Filter, LayoutGrid, List } from 'lucide-react';
+import { Edit, Trash2, Plus, Search, Filter, LayoutGrid, List } from 'lucide-react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
@@ -13,7 +13,7 @@ import AddNewClientForm from './AddNewClientForm';
 import EditClientForm from './EditClientForm';
 import { useDebouncedSearch } from '@/hooks/useDebounce';
 import { createPortal } from 'react-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/stores';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,10 +26,20 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { clientApi } from '@/lib/api';
+
+
 
 // Memoized status color function
 const getStatusColor = (status: string | null) => {
   switch (status) {
+    case 'clear':
+      return 'bg-green-100 text-green-700 px-3 py-1 text-[12px] font-medium rounded-full';
+    case 'pending':
+      return 'bg-yellow-100 text-yellow-700 px-3 py-1 text-[12px] font-medium rounded-full';
+    case 'bad_debt':
+      return 'bg-red-100 text-red-700 px-3 py-1 text-[12px] font-medium rounded-full';
+    // Legacy status values
     case 'active':
       return 'bg-green-100 text-green-700 px-3 py-1 text-[12px] font-medium rounded-full';
     case 'inactive':
@@ -58,7 +68,7 @@ const getSatisfactionColor = (satisfaction: string | null) => {
 };
 
 const ClientsPage = React.memo(() => {
-  const { isAuthInitialized } = useAuth();
+  const { isAuthInitialized, isAuthenticated } = useAuth();
   const [view, setView] = useState<"table" | "kanban">("table");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -75,20 +85,35 @@ const ClientsPage = React.memo(() => {
     if (!isAuthInitialized) {
       return;
     }
+    
     const fetchClients = async () => {
       try {
         setLoading(true);
-        const response = await fetch("/app/clients");
+        const resp = await clientApi.getAll({ page: 1, limit: 100 });
+        
+        // clientApi.getAll() returns the array directly from getPaginated
+        let payload: any[] = [];
+        
+        if (Array.isArray(resp)) {
+          payload = resp;
+        } else {
+          console.error('Unexpected API response format:', resp);
+          setError('Invalid response structure from server');
+          return;
+        }
+        
+        const mapped = payload.map((c: any) => ({
+          ...c,
+          client_name: c.name || c.client_name,
+          phone_number: c.phoneNumber || c.phone_number,
+          created_at: c.createdAt || c.created_at,
+        }));
+        
+        setClients(mapped);
       } catch (err: any) {
-        console.error("Failed to fetch clients:", err);
-        let errorMessage = 'An unexpected error occurred.';
-        if (err && err.message) {
-          errorMessage = err.message;
-        }
-        if (err && err.details) {
-          errorMessage += ` Details: ${JSON.stringify(err.details)}`;
-        }
-        setError(errorMessage);
+        console.error('Failed to fetch clients:', err);
+        let msg = err.message || 'Failed to load clients';
+        setError(msg);
       } finally {
         setLoading(false);
       }
@@ -132,7 +157,7 @@ const ClientsPage = React.memo(() => {
 
   const confirmDelete = useCallback(async (clientId: string) => {
     try {
-      const response = await apiClient.deleteClient(clientId);
+      const response = await clientApi.delete(clientId);
       if (response.success) {
         setClients(prevClients => prevClients.filter(c => c.id !== clientId));
         toast.success("Client deleted successfully!");
@@ -346,35 +371,35 @@ const ClientsPage = React.memo(() => {
       <div className="px-8 py-6">
         {view === 'table' ? (
           <UnifiedTable
-            data={filteredClients}
-            columns={columns}
-            config={{
-              features: {
-                pagination: true,
-                sorting: true,
-                filtering: false, // Disable built-in filtering
-                globalSearch: false, // Disable built-in search
-                columnVisibility: false, // Disable column visibility button
-              },
-              styling: {
-                variant: 'figma', // Use figma variant for consistent styling
-                size: 'md',
-                striped: false,
-                bordered: true,
-                hover: true,
-              },
-              pagination: {
-                pageSize: 10,
-                showSizeSelector: true,
-                showInfo: true,
-              },
-              messages: {
-                loading: 'Loading clients...',
-                empty: 'No clients found',
-                error: 'Failed to load clients',
-              },
-            }}
-          />
+              data={filteredClients}
+              columns={columns}
+              config={{
+                features: {
+                  pagination: true,
+                  sorting: true,
+                  filtering: false, // Disable built-in filtering
+                  globalSearch: false, // Disable built-in search
+                  columnVisibility: false, // Disable column visibility button
+                },
+                styling: {
+                  variant: 'figma', // Use figma variant for consistent styling
+                  size: 'md',
+                  striped: false,
+                  bordered: true,
+                  hover: true,
+                },
+                pagination: {
+                  pageSize: 10,
+                  showSizeSelector: true,
+                  showInfo: true,
+                },
+                messages: {
+                  loading: 'Loading clients...',
+                  empty: 'No clients found',
+                  error: 'Failed to load clients',
+                },
+              }}
+            />
         ) : (
           <ClientKanbanView 
             clients={filteredClients} 
@@ -388,10 +413,32 @@ const ClientsPage = React.memo(() => {
         <div className="fixed inset-0 z-[99999]" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }}>
           <AddNewClientForm
             onClose={() => setShowAddModal(false)}
-            onClientAdded={(newClient) => {
+                      onClientAdded={async (newClient) => {
+            // Refetch client data to ensure consistency
+            try {
+              const resp = await clientApi.getAll({ page: 1, limit: 100 });
+              
+              // clientApi.getAll() returns the array directly
+              if (Array.isArray(resp)) {
+                const mapped = resp.map((c: any) => ({
+                  ...c,
+                  client_name: c.name || c.client_name,
+                  phone_number: c.phoneNumber || c.phone_number,
+                  created_at: c.createdAt || c.created_at,
+                }));
+                setClients(mapped);
+              } else {
+                console.error('Unexpected API response format:', resp);
+                // Fallback to manual addition if refetch fails
+                setClients(prev => [newClient, ...prev]);
+              }
+            } catch (err) {
+              console.error('Failed to refresh client list:', err);
+              // Fallback to manual addition if refetch fails
               setClients(prev => [newClient, ...prev]);
-              setShowAddModal(false);
-            }}
+            }
+            setShowAddModal(false);
+          }}
           />
         </div>,
         document.body
@@ -403,8 +450,30 @@ const ClientsPage = React.memo(() => {
           <EditClientForm
             client={selectedClient}
             onClose={() => setShowEditModal(false)}
-            onClientUpdated={(updatedClient) => {
-              setClients(prev => prev.map(c => c.id === updatedClient.id ? updatedClient : c));
+            onClientUpdated={async (updatedClient) => {
+              // Refetch client data to ensure consistency
+              try {
+                const resp = await clientApi.getAll({ page: 1, limit: 100 });
+                
+                // clientApi.getAll() returns the array directly
+                if (Array.isArray(resp)) {
+                  const mapped = resp.map((c: any) => ({
+                    ...c,
+                    client_name: c.name || c.client_name,
+                    phone_number: c.phoneNumber || c.phone_number,
+                    created_at: c.createdAt || c.created_at,
+                  }));
+                  setClients(mapped);
+                } else {
+                  console.error('Unexpected API response format:', resp);
+                  // Fallback to manual update if refetch fails
+                  setClients(prev => prev.map(c => c.id === updatedClient.id ? updatedClient : c));
+                }
+              } catch (err) {
+                console.error('Failed to refresh client list:', err);
+                // Fallback to manual update if refetch fails
+                setClients(prev => prev.map(c => c.id === updatedClient.id ? updatedClient : c));
+              }
               setShowEditModal(false);
             }}
           />
