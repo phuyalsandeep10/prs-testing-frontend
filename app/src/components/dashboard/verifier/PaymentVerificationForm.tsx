@@ -4,11 +4,11 @@ import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
 import SelectField from "@/components/ui/clientForm/SelectField";
 import TextAreaField from "@/components/ui/clientForm/TextAreaField";
 import Button from "@/components/ui/clientForm/Button";
 import InputField from "@/components/ui/clientForm/InputField";
+import { useUpdatePaymentStatus } from "@/hooks/api";
 
 const createSchema = (mode: "deny" | "verify") =>
   z.object({
@@ -66,14 +66,7 @@ function getErrorMessage(error: any): string | null {
   return null;
 }
 
-// Mock API function
-const submitPaymentVerification = async (data: PaymentVerificationData) => {
-  await new Promise((resolve) => setTimeout(resolve, 1000));
-  return {
-    success: true,
-    message: "Payment verification submitted successfully",
-  };
-};
+// Using standardized hooks - no manual API functions needed
 
 const PaymentVerificationForm: React.FC<PaymentVerificationFormProps> = ({
   mode = "verification",
@@ -111,22 +104,29 @@ const PaymentVerificationForm: React.FC<PaymentVerificationFormProps> = ({
     },
   });
 
-  const mutation = useMutation({
-    mutationFn: submitPaymentVerification,
-    onSuccess: (response) => {
-      console.log(response.message);
-      reset();
-      if (onSave) {
-        onSave(mutation.variables as PaymentVerificationData);
-      }
-    },
-    onError: (error) => {
-      console.error("Submission failed:", error);
-    },
-  });
+  // Use standardized hook for payment verification
+  const updatePaymentStatusMutation = useUpdatePaymentStatus();
 
   const onSubmit = async (data: PaymentVerificationData) => {
-    mutation.mutate(data);
+    try {
+      // Extract payment ID from the deal ID or use a provided payment ID
+      const paymentId = invoiceId || data.dealId;
+      
+      await updatePaymentStatusMutation.mutateAsync({
+        paymentId,
+        status: validationMode === "verify" ? "verified" : "rejected",
+        notes: data.verifierRemarks,
+      });
+      
+      console.log("Payment verification submitted successfully");
+      reset();
+      
+      if (onSave) {
+        onSave(data);
+      }
+    } catch (error) {
+      console.error("Submission failed:", error);
+    }
   };
 
   useEffect(() => {
@@ -442,7 +442,7 @@ const PaymentVerificationForm: React.FC<PaymentVerificationFormProps> = ({
             setTriggerSubmit(true);
           }}
           className="px-6 py-2 border border-gray-300 text-gray-700 hover:bg-gray-100 bg-white"
-          disabled={isSubmitting}
+          disabled={updatePaymentStatusMutation.isPending}
         >
           Deny Payment
         </Button>
@@ -454,9 +454,9 @@ const PaymentVerificationForm: React.FC<PaymentVerificationFormProps> = ({
             setTriggerSubmit(true);
           }}
           className="px-6 py-2 bg-[#4F46E5] hover:bg-[#4F46E5]/90 text-white"
-          disabled={isSubmitting}
+          disabled={updatePaymentStatusMutation.isPending}
         >
-          {isSubmitting
+          {updatePaymentStatusMutation.isPending
             ? "Saving..."
             : mode === "verification"
             ? "Verify Payment"
