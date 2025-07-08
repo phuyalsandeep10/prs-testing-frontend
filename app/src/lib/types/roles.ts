@@ -37,6 +37,8 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  first_name: string;
+  last_name: string;
   role: UserRole;
   organizationId?: string;
   teamId?: string;
@@ -47,6 +49,8 @@ export interface User {
   updatedAt: string;
   lastLogin?: string;
   avatar?: string;
+  address?: string;
+  phoneNumber?: string;
 }
 
 // Organization structure

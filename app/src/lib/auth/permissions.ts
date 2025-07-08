@@ -79,7 +79,8 @@ export const ROUTE_PERMISSIONS: Record<string, Permission[]> = {
  */
 export function hasPermission(userRole: UserRole, permission: Permission): boolean {
   const rolePermissions = ROLE_PERMISSIONS[userRole];
-  return rolePermissions.includes(permission);
+  // Gracefully handle cases where the role might not be in the map
+  return rolePermissions ? rolePermissions.includes(permission) : false;
 }
 
 /**

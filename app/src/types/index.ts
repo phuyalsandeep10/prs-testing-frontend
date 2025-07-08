@@ -1,3 +1,5 @@
+import { User } from '@/lib/types/roles';
+
 // ==================== CORE TYPES ====================
 export interface BaseEntity {
   id: string;
@@ -6,19 +8,16 @@ export interface BaseEntity {
 }
 
 // ==================== USER & AUTH TYPES ====================
-export type UserRole = 'super-admin' | 'org-admin' | 'salesperson' | 'supervisor' | 'verifier' | 'team-member';
+// This is now the single source of truth for the User type.
+// Other User types have been removed to avoid conflicts.
+export type UserRole = 
+  | 'super-admin' 
+  | 'org-admin' 
+  | 'supervisor' 
+  | 'salesperson' 
+  | 'verifier' 
+  | 'team-member';
 export type UserStatus = 'active' | 'inactive' | 'invited' | 'suspended';
-
-export interface User extends BaseEntity {
-  name: string;
-  email: string;
-  phoneNumber: string;
-  role: UserRole;
-  assignedTeam?: string;
-  status: UserStatus;
-  avatar?: string;
-  permissions?: Permission[];
-}
 
 export interface AuthState {
   user: User | null;
@@ -165,6 +164,21 @@ export interface Notification extends BaseEntity {
   isRead: boolean;
   userId: string;
   actionUrl?: string;
+}
+
+export interface NotificationPreferences {
+  desktopNotification: boolean;
+  unreadNotificationBadge: boolean;
+  pushNotificationTimeout: string;
+  communicationEmails: boolean;
+  announcementsUpdates: boolean;
+  allNotificationSounds: boolean;
+}
+
+export interface UserSession extends BaseEntity {
+  ip_address?: string;
+  device: string;
+  is_current_session?: boolean;
 }
 
 // ==================== DASHBOARD TYPES ====================

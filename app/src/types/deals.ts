@@ -24,24 +24,32 @@ export interface ActivityLog {
 
 export interface Deal {
   id: string;
-  deal_id: string;
-  organization: string;
-  client_name: string;
-  deal_name: string;
-  created_by: {
+  name: string;
+  email: string;
+  value: string;
+  status: 'clear' | 'pending' | 'bad_debt' | 'prospect' | 'active' | 'inactive' | null;
+  satisfaction: 'excellent' | 'good' | 'average' | 'poor' | 'neutral' | null;
+  created_at: string;
+  updated_at: string;
+  // Legacy fields for backward compatibility with existing components
+  deal_id?: string;
+  organization?: string;
+  client_name?: string;
+  deal_name?: string;
+  created_by?: {
     id: string;
     full_name: string;
     email: string;
   };
-  pay_status: 'partial_payment' | 'full_payment';
-  source_type: string;
-  deal_value: string;
-  deal_date: string;
-  due_date: string;
-  deal_remarks: string | null;
-  payments: Payment[];
-  activity_logs: ActivityLog[];
-  version: number;
+  pay_status?: 'partial_payment' | 'full_payment';
+  source_type?: string;
+  deal_value?: string;
+  deal_date?: string;
+  due_date?: string;
+  deal_remarks?: string | null;
+  payments?: Payment[];
+  activity_logs?: ActivityLog[];
+  version?: number;
 }
 
 export interface Client {

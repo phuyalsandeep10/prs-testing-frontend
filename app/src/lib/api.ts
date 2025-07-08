@@ -1,9 +1,16 @@
 import { 
   ApiResponse, 
   PaginatedResponse, 
-  User, 
   Client, 
   Team, 
+  NotificationPreferences,
+  UserSession,
+  // Note: Deal type lives in a dedicated module to keep the generic type bundle smaller
+  // Importing lazily to avoid circular deps with heavy role definitions
+} from '@/types';
+import { User } from '@/lib/types/roles';
+import type { Deal, Payment } from '@/types/deals';
+import {
   CommissionData,
   CreateInput,
   UpdateInput,
@@ -33,15 +40,31 @@ class ApiClient {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
+    // List of endpoints that do NOT require an auth token.
+    const PUBLIC_ENDPOINTS = [
+      '/auth/login',
+      '/auth/super-admin/login',
+      '/auth/super-admin/verify',
+      '/auth/org-admin/login',
+      '/auth/org-admin/verify',
+      '/auth/change-password',
+      '/auth/forgot-password',
+      '/auth/reset-password',
+    ];
+
     try {
       const authToken = localStorage.getItem('authToken');
       
+      // Check if the current request endpoint path starts with any of the public paths.
+      const isPublicEndpoint = PUBLIC_ENDPOINTS.some(publicEp => endpoint.startsWith(publicEp));
+
       const response = await fetch(url, {
         ...options,
         signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
-          ...(authToken && { 'Authorization': `Token ${authToken}` }),
+          // Attach token only when we have one and the request is NOT for a public endpoint.
+          ...(authToken && !isPublicEndpoint && { 'Authorization': `Token ${authToken}` }),
           ...options.headers,
         },
       });
@@ -49,6 +72,11 @@ class ApiClient {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
+        // On 401/403 clear stored token to avoid poison for future auth attempts
+        if (response.status === 401 || response.status === 403) {
+          localStorage.removeItem('authToken');
+        }
+
         const errorData = await response.json().catch(() => ({}));
         throw new ApiError(
           errorData.message || `HTTP ${response.status}: ${response.statusText}`,
@@ -141,6 +169,56 @@ class ApiClient {
     }
   }
 
+  async putMultipart<T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
+    const url = `${this.baseURL}${endpoint}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+    try {
+      const authToken = localStorage.getItem('authToken');
+      const headers: HeadersInit = {
+        ...(authToken && { 'Authorization': `Token ${authToken}` }),
+      };
+
+      const response = await fetch(url, {
+        method: 'PUT',
+        body: formData,
+        signal: controller.signal,
+        headers,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new ApiError(
+          errorData.message || `HTTP ${response.status}: ${response.statusText}`,
+          response.status.toString(),
+          errorData
+        );
+      }
+
+      const data = await response.json();
+      return {
+        data,
+        success: true,
+        message: data.message,
+      };
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      if (error?.name === 'AbortError') {
+        throw new ApiError('Request timeout', 'TIMEOUT');
+      }
+      throw new ApiError(
+        error?.message || 'An unexpected error occurred',
+        'UNKNOWN_ERROR'
+      );
+    }
+  }
+
   async put<T>(endpoint: string, data: any): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'PUT',
@@ -169,6 +247,76 @@ class ApiClient {
     const allParams = { page, limit, ...params };
     const response = await this.get<PaginatedResponse<T>>(endpoint, allParams);
     return response.data;
+  }
+
+  // ==================== AUTH MANAGEMENT ====================
+  /**
+   * Stores the auth token locally so it can be attached to subsequent requests.
+   * Additional parameters are accepted for forward-compatibility but are not used here yet.
+   */
+  setAuth(token: string, ..._rest: any[]): void {
+    localStorage.setItem('authToken', token);
+  }
+
+  /**
+   * Clears any stored authentication information.
+   */
+  clearAuth(): void {
+    localStorage.removeItem('authToken');
+  }
+
+  // ==================== DEAL & CLIENT SHORTCUTS ====================
+  /** Convenience wrapper for fetching a single deal by id */
+  async getDealById(id: string): Promise<ApiResponse<Deal>> {
+    return this.get<Deal>(`/deals/${id}`);
+  }
+
+  /** Convenience wrapper for fetching a single client by id */
+  async getClientById(id: string): Promise<ApiResponse<Client>> {
+    return this.get<Client>(`/clients/${id}`);
+  }
+
+  /** Fetch all deals for a given client */
+  async getDealsByClientId(clientId: string): Promise<ApiResponse<Deal[]>> {
+    return this.get<Deal[]>(`/deals?client=${clientId}`);
+  }
+
+  // ==================== SETTINGS API METHODS ====================
+  
+  // Profile Management
+  async getProfile(): Promise<ApiResponse<User>> {
+    return this.get<User>('/auth/users/profile/');
+  }
+
+  async updateProfile(data: Partial<User>): Promise<ApiResponse<User>> {
+    return this.patch<User>('/auth/users/profile/', data);
+  }
+
+  // Password Management
+  async changePassword(data: {
+    current_password: string;
+    new_password: string;
+    confirm_password: string;
+  }): Promise<ApiResponse<{ message: string }>> {
+    return this.post<{ message: string }>('/auth/users/change_password/', data);
+  }
+
+  // Notification Preferences
+  async getNotificationPreferences(): Promise<ApiResponse<NotificationPreferences>> {
+    return this.get<NotificationPreferences>('/auth/users/notification_preferences/');
+  }
+
+  async updateNotificationPreferences(data: Partial<NotificationPreferences>): Promise<ApiResponse<NotificationPreferences>> {
+    return this.patch<NotificationPreferences>('/auth/users/notification_preferences/', data);
+  }
+
+  // Session Management
+  async getSessions(): Promise<ApiResponse<UserSession[]>> {
+    return this.get<UserSession[]>('/auth/sessions/');
+  }
+
+  async revokeSession(sessionId: string): Promise<ApiResponse<{ message: string }>> {
+    return this.delete<{ message: string }>(`/auth/sessions/${sessionId}/`);
   }
 }
 
@@ -208,16 +356,16 @@ export const clientApi = {
     apiClient.getPaginated<Client>('/clients', params?.page, params?.limit, params),
   
   getById: (id: string) =>
-    apiClient.get<Client>(`/clients/${id}`),
+    apiClient.get<Client>(`/clients/${id}/`),
   
   create: (data: CreateInput<Client>) =>
     apiClient.post<Client>('/clients', data),
   
   update: (data: UpdateInput<Client>) =>
-    apiClient.put<Client>(`/clients/${data.id}`, data),
+    apiClient.put<Client>(`/clients/${data.id}/`, data),
   
   delete: (id: string) =>
-    apiClient.delete<void>(`/clients/${id}`),
+    apiClient.delete<void>(`/clients/${id}/`),
   
   addActivity: (clientId: string, activity: CreateInput<Activity>) =>
     apiClient.post<Client>(`/clients/${clientId}/activities`, activity),
@@ -245,6 +393,44 @@ export const teamApi = {
   
   removeMember: (teamId: string, userId: string) =>
     apiClient.delete<Team>(`/teams/${teamId}/members/${userId}`),
+};
+
+// ==================== DEAL API ====================
+export const dealApi = {
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    status?: string;
+    category?: string;
+    ordering?: string;
+  }) =>
+    apiClient.getPaginated<Deal>('/deals', params?.page, params?.limit, params),
+
+  getById: (id: string) => apiClient.get<Deal>(`/deals/${id}`),
+
+  create: (data: CreateInput<Deal>) => apiClient.post<Deal>('/deals', data),
+
+  update: (data: UpdateInput<Deal>) => apiClient.put<Deal>(`/deals/${data.id}`, data),
+
+  delete: (id: string) => apiClient.delete<void>(`/deals/${id}`),
+};
+
+// ==================== PAYMENT API ====================
+export const paymentApi = {
+  getAll: (params?: { page?: number; limit?: number; dealId?: string; clientId?: string }) =>
+    apiClient.getPaginated<Payment>('/payments', params?.page, params?.limit, params),
+
+  getById: (id: string) => apiClient.get<Payment>(`/payments/${id}`),
+
+  create: (data: CreateInput<Payment>) => apiClient.post<Payment>('/payments', data),
+
+  update: (data: UpdateInput<Payment>) => apiClient.put<Payment>(`/payments/${data.id}`, data),
+
+  delete: (id: string) => apiClient.delete<void>(`/payments/${id}`),
+
+  verify: (id: string, status: 'verified' | 'rejected') =>
+    apiClient.post<Payment>(`/payments/${id}/verify`, { status }),
 };
 
 export class ApiError extends Error {
