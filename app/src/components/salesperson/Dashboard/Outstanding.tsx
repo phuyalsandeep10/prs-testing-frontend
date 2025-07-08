@@ -1,57 +1,34 @@
 "use client";
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import { User } from "lucide-react";
+import { useDashboardStore } from "@/store/apiCall/Achieve";
+import satisfied from "@/assets/photo/100.png";
+import neutral from "@/assets/photo/75.png";
+import unsatisfied from "@/assets/photo/35.png";
 import Image from "next/image";
 
-interface Deal {
-  id: string;
-  personName: string;
-  projectName: string;
-  amount: number;
-  avatar?: string;
-  initials?: string;
-}
-
-const sampleDeals: Deal[] = [
-  {
-    id: "1",
-    personName: "Abinash Tiwari",
-    projectName: "Project AB",
-    amount: 20000,
-    initials: "AT",
-  },
-  {
-    id: "2",
-    personName: "Pankaj Gurung",
-    projectName: "Project Web Dev",
-    amount: 30000,
-    initials: "PG",
-  },
-  {
-    id: "3",
-    personName: "Kiran Rai",
-    projectName: "SEO",
-    amount: 22000,
-    initials: "KR",
-  },
-  {
-    id: "4",
-    personName: "Sarah Johnson",
-    projectName: "Mobile App Design",
-    amount: 18000,
-    initials: "SJ",
-  },
-  {
-    id: "5",
-    personName: "Mike Chen",
-    projectName: "E-commerce Platform",
-    amount: 35000,
-    initials: "MC",
-  },
-];
-
 const Outstanding: React.FC = () => {
-  const deals = sampleDeals;
+  const { data, loading, error, sendRequest, cancel, retry } =
+    useDashboardStore();
+  const endpoint = `${process.env.NEXT_PUBLIC_API_URL}/dashboard/dashboard/`;
+
+  useEffect(() => {
+    if (!process.env.NEXT_PUBLIC_API_URL) {
+      console.error("NEXT_PUBLIC_API_URL is not defined");
+      return;
+    }
+
+    sendRequest("GET", endpoint);
+    return () => cancel(endpoint);
+  }, [sendRequest, cancel]);
+
+  const deals = useMemo(() => {
+    return data?.outstanding_deals
+      ? [...data.outstanding_deals]
+          .sort((a, b) => b.deal_value - a.deal_value)
+          .slice(0, 5)
+      : [];
+  }, [data?.outstanding_deals]);
 
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -82,6 +59,37 @@ const Outstanding: React.FC = () => {
     return colors[index % colors.length];
   };
 
+  const getSatisfactionImage = (level: string) => {
+    switch (level) {
+      case "satisfied":
+        return satisfied;
+      case "neutral":
+        return neutral;
+      case "unsatisfied":
+        return unsatisfied;
+      default:
+        return neutral;
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="w-full min-h-[295px]">
+        <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 flex flex-col items-center justify-center">
+          <p className="text-md font-outfit font-medium text-red-500 mb-4">
+            {error.displayMessage}
+          </p>
+          <button
+            className="text-sm font-medium font-outfit text-[#465FFF] border border-[#465FFF] rounded-md px-4 py-2 hover:bg-[#465FFF] hover:text-white transition-colors duration-150"
+            onClick={() => retry()}
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full min-h-[295px]">
       <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
@@ -90,47 +98,49 @@ const Outstanding: React.FC = () => {
             Deals with Outstanding Payments
           </h2>
         </div>
+
+        {loading[endpoint] && (
+          <div className="p-6 flex justify-center items-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#465FFF]"></div>
+          </div>
+        )}
+
         <div className="overflow-y-auto max-h-[300px]">
-          {deals.slice(0, 5).map((deal, index) => (
+          {deals.map((deal, index) => (
             <div
               key={deal.id}
               className="px-4 sm:px-5 py-2 hover:bg-gray-50 transition-colors duration-150"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3 min-w-0">
-                  <div
-                    className={`min-w-[40px] min-h-[40px] rounded-md flex items-center justify-center text-white text-md font-outfit font-medium ${getAvatarColors(
-                      index
-                    )}`}
-                  >
-                    {deal.avatar ? (
-                      <Image
-                        height={40}
-                        width={40}
-                        src={deal.avatar}
-                        alt={deal.personName}
-                        className="w-full h-full rounded-full object-cover"
-                      />
-                    ) : (
-                      <span>
-                        {deal.initials || getInitials(deal.personName)}
-                      </span>
-                    )}
+                  {/* Avatar + Satisfaction Image */}
+                  <div className="w-[40px] h-[40px] flex items-center justify-center border border-gray-300 rounded-md bg-gray-400">
+                    <Image
+                      src={getSatisfactionImage(deal.client_satisfaction)}
+                      alt={`Client satisfaction: ${
+                        deal.client_satisfaction || "neutral"
+                      }`}
+                      width={40}
+                      height={40}
+                      className="rounded-md object-cover"
+                    />
                   </div>
+
                   <div className="flex flex-col min-w-0">
                     <span className="text-sm font-medium text-gray-900 truncate">
-                      {deal.personName}
+                      {deal.client_name}
                     </span>
                   </div>
                 </div>
                 <div className="text-sm font-semibold text-gray-900 flex-shrink-0">
-                  {formatAmount(deal.amount)}
+                  {formatAmount(deal.deal_value)}
                 </div>
               </div>
             </div>
           ))}
         </div>
-        {deals.length === 0 && (
+
+        {deals.length === 0 && !loading[endpoint] && (
           <div className="px-4 sm:px-6 py-8 text-center text-gray-500">
             <User className="w-8 h-8 mx-auto mb-2 text-gray-300" />
             <p className="text-sm">No outstanding payments found</p>
