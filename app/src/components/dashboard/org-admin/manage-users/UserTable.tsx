@@ -1,19 +1,48 @@
 "use client";
 
 import * as React from "react";
-import { Eye, Edit, Trash2, ChevronUp, ChevronDown, ArrowUpDown } from "lucide-react";
+import { Eye, Edit, Trash2, ChevronUp, ChevronDown, ArrowUpDown, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useState, useMemo } from "react";
-import { UserTableData } from "./columns";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
+
+// Type for table data
+export interface UserTableData {
+  id: string;
+  name: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  role: string;
+  assignedTeam: string;
+  status: 'active' | 'inactive' | 'invited';
+}
 
 interface UserTableProps {
   data: UserTableData[];
   onView?: (user: UserTableData) => void;
   onEdit?: (user: UserTableData) => void;
   onDelete?: (user: UserTableData) => void;
+  pagination?: {
+    page: number;
+    pageSize: number;
+    total: number;
+    onPageChange: (page: number) => void;
+  };
+  deletingUserId?: string | null;
 }
 
-export function UserTable({ data, onView, onEdit, onDelete }: UserTableProps) {
+export function UserTable({ data, onView, onEdit, onDelete, pagination, deletingUserId }: UserTableProps) {
   const [sortConfig, setSortConfig] = useState<{
     key: keyof UserTableData;
     direction: 'asc' | 'desc' | null;
@@ -163,13 +192,47 @@ export function UserTable({ data, onView, onEdit, onDelete }: UserTableProps) {
                     >
                       <Edit className="h-4 w-4" />
                     </button>
-                    <button
-                      onClick={() => onDelete(user)}
-                      className="w-8 h-8 rounded-full bg-[#EF4444] text-white flex items-center justify-center hover:bg-[#DC2626] transition-colors"
-                      title="Delete User"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    {/* Delete with confirmation popup */}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <button
+                          className="w-8 h-8 rounded-full bg-[#EF4444] text-white flex items-center justify-center hover:bg-[#DC2626] transition-colors disabled:opacity-50"
+                          title="Delete User"
+                          disabled={deletingUserId === user.id}
+                        >
+                          {deletingUserId === user.id ? (
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="bg-white border-2 border-red-100 shadow-xl max-w-md">
+                        <AlertDialogHeader className="text-center pb-4">
+                          <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                            <AlertTriangle className="h-8 w-8 text-red-500" />
+                          </div>
+                          <AlertDialogTitle className="text-xl font-bold text-red-600 mb-2">
+                            Delete User
+                          </AlertDialogTitle>
+                          <AlertDialogDescription className="text-gray-700 leading-relaxed">
+                            Are you sure you want to delete <strong className="text-red-600">{user.fullName}</strong>?<br/><br/>
+                            <span className="text-red-500 font-medium">⚠️ This action cannot be undone.</span>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter className="flex gap-3 pt-4">
+                          <AlertDialogCancel className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 border-0">
+                            Cancel
+                          </AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => onDelete?.(user)}
+                            className="flex-1 bg-red-500 hover:bg-red-600 focus:ring-red-500 text-white font-semibold"
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </td>
               </tr>
@@ -178,42 +241,63 @@ export function UserTable({ data, onView, onEdit, onDelete }: UserTableProps) {
         </table>
       </div>
       
-      {/* Pagination Footer - Exact Figma Design */}
-      <div className="px-6 py-4 bg-white border-t border-gray-100 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button className="px-4 py-2 text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium">
-            ← Previous
-          </button>
+      {/* Pagination Footer - Proper Implementation */}
+      {pagination && (
+        <div className="px-6 py-4 bg-white border-t border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => pagination.onPageChange(pagination.page - 1)}
+              disabled={pagination.page <= 1}
+              className="px-4 py-2 text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              ← Previous
+            </button>
+            <span className="text-[14px] text-gray-500">
+              Page {pagination.page} of {Math.ceil(pagination.total / pagination.pageSize)}
+            </span>
+          </div>
+          
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.min(5, Math.ceil(pagination.total / pagination.pageSize)) }, (_, i) => {
+              const pageNum = i + 1;
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => pagination.onPageChange(pageNum)}
+                  className={`w-9 h-9 flex items-center justify-center text-[14px] rounded-lg transition-colors font-medium ${
+                    pagination.page === pageNum
+                      ? 'bg-[#4F46E5] text-white'
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+            {Math.ceil(pagination.total / pagination.pageSize) > 5 && (
+              <>
+                <span className="text-[14px] text-gray-400 mx-2">...</span>
+                <button
+                  onClick={() => pagination.onPageChange(Math.ceil(pagination.total / pagination.pageSize))}
+                  className="w-9 h-9 flex items-center justify-center text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium"
+                >
+                  {Math.ceil(pagination.total / pagination.pageSize)}
+                </button>
+              </>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => pagination.onPageChange(pagination.page + 1)}
+              disabled={pagination.page >= Math.ceil(pagination.total / pagination.pageSize)}
+              className="px-4 py-2 text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next →
+            </button>
+          </div>
         </div>
-        
-        <div className="flex items-center gap-1">
-          <button className="w-9 h-9 flex items-center justify-center text-[14px] bg-[#4F46E5] text-white rounded-lg transition-colors font-medium">
-            1
-          </button>
-          <button className="w-9 h-9 flex items-center justify-center text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium">
-            2
-          </button>
-          <button className="w-9 h-9 flex items-center justify-center text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium">
-            3
-          </button>
-          <span className="text-[14px] text-gray-400 mx-2">...</span>
-          <button className="w-9 h-9 flex items-center justify-center text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium">
-            8
-          </button>
-          <button className="w-9 h-9 flex items-center justify-center text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium">
-            9
-          </button>
-          <button className="w-9 h-9 flex items-center justify-center text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium">
-            10
-          </button>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <button className="px-4 py-2 text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium">
-            Next →
-          </button>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -24,9 +24,16 @@ interface TeamsTableProps {
   onView?: (team: Team) => void;
   onEdit?: (team: Team) => void;
   onDelete?: (team: Team) => void;
+  pagination?: {
+    page: number;
+    pageSize: number;
+    total: number;
+    onPageChange: (page: number) => void;
+  };
+  deletingTeamId?: string | null;
 }
 
-export function TeamsTable({ data, onView, onEdit, onDelete }: TeamsTableProps) {
+export function TeamsTable({ data, onView, onEdit, onDelete, pagination, deletingTeamId }: TeamsTableProps) {
   const [sortConfig, setSortConfig] = useState<{
     key: keyof Team;
     direction: 'asc' | 'desc' | null;
@@ -229,10 +236,15 @@ export function TeamsTable({ data, onView, onEdit, onDelete }: TeamsTableProps) 
                     </button>
                     <button
                       onClick={() => onDelete?.(team)}
-                      className="w-8 h-8 rounded-full bg-[#EF4444] text-white flex items-center justify-center hover:bg-[#DC2626] transition-colors"
+                      className="w-8 h-8 rounded-full bg-[#EF4444] text-white flex items-center justify-center hover:bg-[#DC2626] transition-colors disabled:opacity-50"
                       title="Delete Team"
+                      disabled={deletingTeamId === team.id}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      {deletingTeamId === team.id ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
                     </button>
                   </div>
                 </td>
@@ -242,42 +254,63 @@ export function TeamsTable({ data, onView, onEdit, onDelete }: TeamsTableProps) 
         </table>
       </div>
       
-      {/* Pagination Footer - Exact Figma Design */}
-      <div className="px-6 py-4 bg-white border-t border-gray-100 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button className="px-4 py-2 text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium">
-            ← Previous
-          </button>
+      {/* Pagination Footer - Proper Implementation */}
+      {pagination && (
+        <div className="px-6 py-4 bg-white border-t border-gray-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => pagination.onPageChange(pagination.page - 1)}
+              disabled={pagination.page <= 1}
+              className="px-4 py-2 text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              ← Previous
+            </button>
+            <span className="text-[14px] text-gray-500">
+              Page {pagination.page} of {Math.ceil(pagination.total / pagination.pageSize)}
+            </span>
+          </div>
+          
+          <div className="flex items-center gap-1">
+            {Array.from({ length: Math.min(5, Math.ceil(pagination.total / pagination.pageSize)) }, (_, i) => {
+              const pageNum = i + 1;
+              return (
+                <button
+                  key={pageNum}
+                  onClick={() => pagination.onPageChange(pageNum)}
+                  className={`w-9 h-9 flex items-center justify-center text-[14px] rounded-lg transition-colors font-medium ${
+                    pagination.page === pageNum
+                      ? 'bg-[#4F46E5] text-white'
+                      : 'text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+            {Math.ceil(pagination.total / pagination.pageSize) > 5 && (
+              <>
+                <span className="text-[14px] text-gray-400 mx-2">...</span>
+                <button
+                  onClick={() => pagination.onPageChange(Math.ceil(pagination.total / pagination.pageSize))}
+                  className="w-9 h-9 flex items-center justify-center text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium"
+                >
+                  {Math.ceil(pagination.total / pagination.pageSize)}
+                </button>
+              </>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => pagination.onPageChange(pagination.page + 1)}
+              disabled={pagination.page >= Math.ceil(pagination.total / pagination.pageSize)}
+              className="px-4 py-2 text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next →
+            </button>
+          </div>
         </div>
-        
-        <div className="flex items-center gap-1">
-          <button className="w-9 h-9 flex items-center justify-center text-[14px] bg-[#4F46E5] text-white rounded-lg transition-colors font-medium">
-            1
-          </button>
-          <button className="w-9 h-9 flex items-center justify-center text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium">
-            2
-          </button>
-          <button className="w-9 h-9 flex items-center justify-center text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium">
-            3
-          </button>
-          <span className="text-[14px] text-gray-400 mx-2">...</span>
-          <button className="w-9 h-9 flex items-center justify-center text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium">
-            8
-          </button>
-          <button className="w-9 h-9 flex items-center justify-center text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium">
-            9
-          </button>
-          <button className="w-9 h-9 flex items-center justify-center text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium">
-            10
-          </button>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <button className="px-4 py-2 text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium">
-            Next →
-          </button>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

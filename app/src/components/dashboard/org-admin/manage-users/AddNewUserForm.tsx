@@ -4,8 +4,9 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { toast } from "sonner";
 import { Eye, EyeOff, Loader2, X } from "lucide-react";
+import { useCreateUserMutation, useUpdateUserMutation, useTeamsQuery } from "@/hooks/useIntegratedQuery";
+import { useAuth, useUI } from "@/stores";
 
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -22,10 +23,22 @@ interface TeamOption {
 }
 
 const formSchema = z.object({
-  fullName: z.string().min(1, "Full name is required"),
-  email: z.string().email("Invalid email address"),
-  contactNumber: z.string().min(10, "Contact number must be at least 10 digits"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  fullName: z.string()
+    .min(2, "Full name must be at least 2 characters")
+    .max(100, "Full name must be less than 100 characters")
+    .regex(/^[a-zA-Z\s]+$/, "Full name can only contain letters and spaces"),
+  email: z.string()
+    .email("Invalid email address")
+    .max(254, "Email must be less than 254 characters"),
+  contactNumber: z.string()
+    .min(10, "Contact number must be at least 10 digits")
+    .max(15, "Contact number must be less than 15 digits")
+    .regex(/^\d+$/, "Contact number can only contain digits"),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .max(128, "Password must be less than 128 characters")
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, 
+      "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"),
   confirmPassword: z.string(),
   role: z.string().min(1, "Role is required"),
   team: z.string().optional(),
@@ -44,9 +57,17 @@ interface AddNewUserFormProps {
 export function AddNewUserForm({ onClose, onFormSubmit, initialData, isEdit = false }: AddNewUserFormProps) {
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [teams, setTeams] = React.useState<TeamOption[]>([]);
-  const [teamsLoading, setTeamsLoading] = React.useState(true);
+  const [passwordValue, setPasswordValue] = React.useState("");
+  const { user } = useAuth();
+  const { addNotification } = useUI();
+
+  // Use React Query for teams data
+  const { data: teamsData, isLoading: teamsLoading } = useTeamsQuery();
+  const teams = teamsData?.data || [];
+
+  // Mutations
+  const createUserMutation = useCreateUserMutation();
+  const updateUserMutation = useUpdateUserMutation();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -61,53 +82,8 @@ export function AddNewUserForm({ onClose, onFormSubmit, initialData, isEdit = fa
     },
   });
 
-  // Load teams from API
-  React.useEffect(() => {
-    const loadTeams = async () => {
-      try {
-        const token = localStorage.getItem('authToken');
-        if (!token) {
-          setTeamsLoading(false);
-          return;
-        }
-
-        const response = await fetch('http://localhost:8000/api/v1/teams/', {
-          headers: {
-            'Authorization': `Token ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const teamsList = Array.isArray(data) ? data : data.results || [];
-          setTeams(teamsList.map((team: any) => ({
-            id: team.id,
-            name: team.name
-          })));
-        } else {
-          console.error('Failed to load teams:', response.status);
-        }
-      } catch (error) {
-        console.error('Error loading teams:', error);
-      } finally {
-        setTeamsLoading(false);
-      }
-    };
-
-    loadTeams();
-  }, []);
-
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setIsLoading(true);
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        toast.error('No authentication token found. Please login again.');
-        setIsLoading(false);
-        return;
-      }
-
       // Prepare user data
       const [firstName, ...lastNameParts] = values.fullName.trim().split(' ');
       const lastName = lastNameParts.join(' ') || firstName;
@@ -127,62 +103,46 @@ export function AddNewUserForm({ onClose, onFormSubmit, initialData, isEdit = fa
         userData.teams = [values.team];
       }
 
-      console.log('Sending user data:', userData);
-
-      const url = isEdit 
-        ? `http://localhost:8000/api/v1/auth/users/${initialData?.id}/`
-        : 'http://localhost:8000/api/v1/auth/users/';
-        
-      const method = isEdit ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Token ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-      });
-
-      const responseData = await response.json();
-      console.log('API Response:', responseData);
-
-      if (response.ok) {
-        toast.success(`User ${isEdit ? 'updated' : 'created'} successfully!`);
-        
-        // Trigger refresh events
-        const event = new CustomEvent(isEdit ? 'userUpdated' : 'userCreated', {
-          detail: responseData
+      if (isEdit && initialData?.id) {
+        // Update existing user
+        await updateUserMutation.mutateAsync({
+          id: initialData.id,
+          data: userData,
         });
-        window.dispatchEvent(event);
-        
-        form.reset();
-        if (onFormSubmit) {
-          onFormSubmit();
-        }
-        onClose();
+        // Notify listeners
+        window.dispatchEvent(new CustomEvent('userUpdated', { detail: { id: initialData.id } }));
       } else {
-        const errorMessage = responseData.detail || 
-                           responseData.message || 
-                           Object.values(responseData).flat().join(', ') ||
-                           `Failed to ${isEdit ? 'update' : 'create'} user`;
-        console.error('API Error:', errorMessage);
-        toast.error(errorMessage);
+        // Create new user
+        const result = await createUserMutation.mutateAsync(userData);
+        // Notify listeners for pages using custom fetch
+        window.dispatchEvent(new CustomEvent('userCreated', { detail: { id: result.id } }));
       }
+
+      // Success handling is done in the mutation hooks
+      form.reset();
+      if (onFormSubmit) {
+        onFormSubmit();
+      }
+      onClose();
     } catch (error) {
-      console.error(`Network error ${isEdit ? 'updating' : 'creating'} user:`, error);
-      toast.error(`Network error. Please check your connection and try again.`);
-    } finally {
-      setIsLoading(false);
+      // Error handling is done in the mutation hooks
+      console.error(`Error ${isEdit ? 'updating' : 'creating'} user:`, error);
     }
   };
 
   const handleClear = () => {
     if (!isLoading) {
       form.reset();
-      toast.info("Form cleared");
+      addNotification({
+        type: 'info',
+        title: 'Form cleared',
+        message: 'All form fields have been reset.',
+      });
     }
   };
+
+  // Combined loading state from mutations
+  const isLoading = createUserMutation.isPending || updateUserMutation.isPending;
 
   return (
     <div className="h-full flex flex-col bg-white">
@@ -301,7 +261,11 @@ export function AddNewUserForm({ onClose, onFormSubmit, initialData, isEdit = fa
                           className="h-[48px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg pr-12" 
                           placeholder="************" 
                           {...field} 
-                          disabled={isLoading} 
+                          disabled={isLoading}
+                          onChange={(e) => {
+                            field.onChange(e);
+                            setPasswordValue(e.target.value);
+                          }}
                         />
                         <button 
                           type="button" 
@@ -354,6 +318,29 @@ export function AddNewUserForm({ onClose, onFormSubmit, initialData, isEdit = fa
                 )}
               />
             </div>
+
+            {/* Password Requirements Display */}
+            {passwordValue && (
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="text-[14px] font-medium text-gray-900 mb-3">Password Requirements:</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: "At least 8 characters", test: passwordValue.length >= 8 },
+                    { label: "One uppercase letter", test: /[A-Z]/.test(passwordValue) },
+                    { label: "One lowercase letter", test: /[a-z]/.test(passwordValue) },
+                    { label: "One number", test: /\d/.test(passwordValue) },
+                    { label: "One special character", test: /[@$!%*?&]/.test(passwordValue) },
+                  ].map((req, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${req.test ? 'bg-green-500' : 'bg-gray-300'}`} />
+                      <span className={`text-[12px] ${req.test ? 'text-green-700' : 'text-gray-600'}`}>
+                        {req.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Role and Team */}
             <div className="grid grid-cols-2 gap-4">

@@ -1,130 +1,168 @@
 "use client";
 
-import { useState, Fragment } from 'react';
+import { useState, Fragment, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, PlusCircle, Edit2, Check, X } from 'lucide-react';
+import { Search, Edit2, Check, X, Loader2 } from 'lucide-react';
 import { AddRoleDialog } from './AddRoleDialog';
-
-const initialRoles = ['Superadmin', 'Client', 'Salesperson', 'Verifier', 'Worker'];
-
-const permissionGroups = [
-  {
-    group: 'Client Management',
-    permissions: ['View All Client', 'Create Client', 'Edit Client Details', 'View Own Client Data'],
-  },
-  {
-    group: 'Sales Management',
-    permissions: ['View All Leads', 'Assign Leads', 'Update Deal Status', 'View Sales Pipeline'],
-  },
-  {
-    group: 'Reporting and Analytics',
-    permissions: ['View Sales Report', 'Export Data'],
-  },
-  {
-    group: 'User and Role Management',
-    permissions: ['View All Users', 'Manage Roles', 'Add or Remove Users', 'Add or Remove Roles'],
-  },
-  {
-    group: 'System Settings',
-    permissions: ['Manage Permission', 'Configure Integration'],
-  },
-];
+import { usePermissionsQuery, useRolesQuery, useCreateRoleMutation, useUpdateRoleMutation, type Permission, type Role, type GroupedPermissions } from '@/hooks/usePermissionQuery';
+import { toast } from 'sonner';
 
 export const PermissionClient = () => {
-  const [roles, setRoles] = useState(initialRoles);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [permissions, setPermissions] = useState(() => {
-    const state: { [key: string]: { [key: string]: boolean } } = {};
-    permissionGroups.forEach(group => {
-      group.permissions.forEach(permission => {
-        state[permission] = {};
-        initialRoles.forEach(role => {
-          state[permission][role] = false;
+  const [rolePermissions, setRolePermissions] = useState<{ [roleId: number]: { [permissionId: number]: boolean } }>({});
+
+  // API hooks
+  const { data: permissionsData, isLoading: permissionsLoading, error: permissionsError } = usePermissionsQuery();
+  const { data: rolesData, isLoading: rolesLoading, error: rolesError } = useRolesQuery();
+  const createRoleMutation = useCreateRoleMutation();
+  const updateRoleMutation = useUpdateRoleMutation();
+
+  // Initialize role permissions state when data is loaded
+  useEffect(() => {
+    if (rolesData && permissionsData) {
+      const initialPermissions: { [roleId: number]: { [permissionId: number]: boolean } } = {};
+      
+      rolesData.forEach(role => {
+        initialPermissions[role.id] = {};
+        Object.values(permissionsData).flat().forEach(permission => {
+          initialPermissions[role.id][permission.id] = role.permissions.includes(permission.id);
         });
       });
-    });
-    return state;
-  });
+      
+      setRolePermissions(initialPermissions);
+    }
+  }, [rolesData, permissionsData]);
 
-  const handlePermissionChange = (permission: string, role: string, checked: boolean) => {
-    setPermissions(prev => ({
+  // Transform permissions data for UI
+  const permissionGroups = useMemo(() => {
+    if (!permissionsData) return [];
+    
+    return Object.entries(permissionsData).map(([category, permissions]) => ({
+      group: category,
+      permissions: permissions,
+    }));
+  }, [permissionsData]);
+
+  const roles = useMemo(() => rolesData || [], [rolesData]);
+
+  const handlePermissionChange = (permissionId: number, roleId: number, checked: boolean) => {
+    setRolePermissions(prev => ({
       ...prev,
-      [permission]: {
-        ...prev[permission],
-        [role]: checked,
+      [roleId]: {
+        ...prev[roleId],
+        [permissionId]: checked,
       },
     }));
-  };
 
-  const handleGroupPermissionChange = (group: string, role: string, checked: boolean) => {
-    const groupData = permissionGroups.find(g => g.group === group);
-    if (groupData) {
-      setPermissions(prev => {
-        const newState = { ...prev };
-        groupData.permissions.forEach(permission => {
-          newState[permission] = {
-            ...newState[permission],
-            [role]: checked,
-          };
-        });
-        return newState;
+    // Update the role permissions in the backend
+    const role = roles.find(r => r.id === roleId);
+    if (role) {
+      const updatedPermissions = checked
+        ? [...role.permissions, permissionId]
+        : role.permissions.filter(id => id !== permissionId);
+      
+      updateRoleMutation.mutate({
+        id: roleId,
+        permissions: updatedPermissions,
       });
     }
   };
 
-  const isGroupFullyChecked = (group: string, role: string): boolean => {
-    const groupData = permissionGroups.find(g => g.group === group);
-    if (!groupData) return false;
-    return groupData.permissions.every(permission => permissions[permission]?.[role] || false);
+  const handleGroupPermissionChange = (groupPermissions: Permission[], roleId: number, checked: boolean) => {
+    setRolePermissions(prev => {
+      const newState = { ...prev };
+      groupPermissions.forEach(permission => {
+        newState[roleId] = {
+          ...newState[roleId],
+          [permission.id]: checked,
+        };
+      });
+      return newState;
+    });
+
+    // Update the role permissions in the backend
+    const role = roles.find(r => r.id === roleId);
+    if (role) {
+      const groupPermissionIds = groupPermissions.map(p => p.id);
+      let updatedPermissions = [...role.permissions];
+      
+      if (checked) {
+        // Add all group permissions
+        groupPermissionIds.forEach(id => {
+          if (!updatedPermissions.includes(id)) {
+            updatedPermissions.push(id);
+          }
+        });
+      } else {
+        // Remove all group permissions
+        updatedPermissions = updatedPermissions.filter(id => !groupPermissionIds.includes(id));
+      }
+      
+      updateRoleMutation.mutate({
+        id: roleId,
+        permissions: updatedPermissions,
+      });
+    }
   };
 
-  const isGroupPartiallyChecked = (group: string, role: string): boolean => {
-    const groupData = permissionGroups.find(g => g.group === group);
-    if (!groupData) return false;
-    const checkedCount = groupData.permissions.filter(permission => permissions[permission]?.[role] || false).length;
-    return checkedCount > 0 && checkedCount < groupData.permissions.length;
+  const isGroupFullyChecked = (groupPermissions: Permission[], roleId: number): boolean => {
+    return groupPermissions.every(permission => rolePermissions[roleId]?.[permission.id] || false);
+  };
+
+  const isGroupPartiallyChecked = (groupPermissions: Permission[], roleId: number): boolean => {
+    const checkedCount = groupPermissions.filter(permission => rolePermissions[roleId]?.[permission.id] || false).length;
+    return checkedCount > 0 && checkedCount < groupPermissions.length;
   };
 
   const handleAddRole = (newRole: string) => {
-    if (newRole && !roles.includes(newRole)) {
-      setRoles(prev => [...prev, newRole]);
-      setPermissions(prev => {
-        const newState = { ...prev };
-        Object.keys(newState).forEach(permission => {
-          newState[permission][newRole] = false;
-        });
-        return newState;
-      });
-    }
+    createRoleMutation.mutate({ name: newRole });
   };
 
-  const startEditingRole = (role: string) => {
-    setEditingRole(role);
-    setEditingValue(role);
+  const startEditingRole = (role: Role) => {
+    // Don't allow editing if there's already a mutation in progress
+    if (updateRoleMutation.isPending) return;
+    
+    setEditingRole(role.id.toString());
+    setEditingValue(role.name);
   };
 
   const saveRoleName = () => {
     if (editingValue.trim() && editingRole) {
-      setRoles(prev => prev.map(role => role === editingRole ? editingValue.trim() : role));
-      setPermissions(prev => {
-        const newState = { ...prev };
-        Object.keys(newState).forEach(permission => {
-          if (newState[permission][editingRole!]) {
-            newState[permission][editingValue.trim()] = newState[permission][editingRole!];
-            delete newState[permission][editingRole!];
-          }
-        });
-        return newState;
+      const trimmedName = editingValue.trim();
+      
+      // Check if name actually changed
+      const currentRole = roles.find(r => r.id === parseInt(editingRole));
+      if (currentRole && currentRole.name === trimmedName) {
+        // No change, just cancel editing
+        setEditingRole(null);
+        setEditingValue('');
+        return;
+      }
+
+      updateRoleMutation.mutate({
+        id: parseInt(editingRole),
+        name: trimmedName,
+      }, {
+        onSuccess: () => {
+          setEditingRole(null);
+          setEditingValue('');
+        },
+        onError: (error: any) => {
+          // Keep editing mode active on error so user can retry
+          // Toast error is already handled by the mutation hook
+        }
       });
+    } else {
+      // Invalid input, cancel editing
+      setEditingRole(null);
+      setEditingValue('');
     }
-    setEditingRole(null);
-    setEditingValue('');
   };
 
   const cancelEditingRole = () => {
@@ -132,28 +170,56 @@ export const PermissionClient = () => {
     setEditingValue('');
   };
 
-  const filteredGroups = permissionGroups.filter(group => {
-    if (!searchTerm.trim()) return true;
+  const filteredGroups = useMemo(() => {
+    if (!permissionGroups) return [];
     
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      group.group.toLowerCase().includes(searchLower) ||
-      group.permissions.some(permission => 
-        permission.toLowerCase().includes(searchLower)
-      )
-    );
-  }).map(group => ({
-    ...group,
-    permissions: group.permissions.filter(permission => {
+    return permissionGroups.filter(group => {
       if (!searchTerm.trim()) return true;
-      return permission.toLowerCase().includes(searchTerm.toLowerCase());
-    })
-  })).filter(group => group.permissions.length > 0);
+      
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        group.group.toLowerCase().includes(searchLower) ||
+        group.permissions.some(permission => 
+          permission.name.toLowerCase().includes(searchLower)
+        )
+      );
+    }).map(group => ({
+      ...group,
+      permissions: group.permissions.filter(permission => {
+        if (!searchTerm.trim()) return true;
+        return permission.name.toLowerCase().includes(searchTerm.toLowerCase());
+      })
+    })).filter(group => group.permissions.length > 0);
+  }, [permissionGroups, searchTerm]);
+
+  if (permissionsLoading || rolesLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[#4F46E5] mx-auto mb-4" />
+          <p className="text-gray-600">Loading permissions...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (permissionsError || rolesError) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">Failed to load permissions</p>
+          <Button onClick={() => window.location.reload()}>
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 font-outfit">
+    <div className="w-full h-full flex flex-col bg-gray-50 font-outfit">
       {/* Header Section */}
-      <div className="bg-white px-8 py-6 border-b border-gray-200">
+      <div className="bg-white px-8 py-6 border-b border-gray-200 flex-shrink-0">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-[28px] font-semibold text-black font-outfit">
@@ -176,121 +242,161 @@ export const PermissionClient = () => {
             <Button 
               onClick={() => setIsDialogOpen(true)} 
               className="bg-[#4F46E5] hover:bg-[#4F46E5]/90 text-white px-6 py-2 h-[40px] flex items-center gap-2"
+              disabled={createRoleMutation.isPending}
             >
-              Add Roles
+              {createRoleMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                'Add Roles'
+              )}
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="px-8 py-6">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-gray-50 border-b border-gray-200">
-                <TableHead className="w-1/4 text-gray-900 font-semibold text-[14px] py-4 px-6">
-                  Permission
-                </TableHead>
-                {roles.map(role => (
-                  <TableHead key={role} className="text-center text-gray-900 font-semibold text-[14px] py-4 px-4">
-                    {editingRole === role ? (
-                      <div className="flex items-center justify-center gap-2">
-                        <Input
-                          value={editingValue}
-                          onChange={(e) => setEditingValue(e.target.value)}
-                          className="h-8 text-center text-sm"
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') saveRoleName();
-                            if (e.key === 'Escape') cancelEditingRole();
-                          }}
-                          autoFocus
-                        />
-                        <button
-                          onClick={saveRoleName}
-                          className="p-1 text-green-600 hover:text-green-700"
-                        >
-                          <Check className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={cancelEditingRole}
-                          className="p-1 text-red-600 hover:text-red-700"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center gap-2 group">
-                        <span>{role}</span>
-                        <button
-                          onClick={() => startEditingRole(role)}
-                          className="opacity-0 group-hover:opacity-100 p-1 text-gray-500 hover:text-[#4F46E5] transition-opacity"
-                        >
-                          <Edit2 className="h-3 w-3" />
-                        </button>
-                      </div>
-                    )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredGroups.map(group => (
-                <Fragment key={group.group}>
-                  {/* Group Header Row with Checkboxes */}
-                  <TableRow className="bg-[#E0E7FF] border-b border-gray-200">
-                    <TableCell className="font-semibold text-[#4F46E5] text-[14px] py-3 px-6">
-                      {group.group}
-                    </TableCell>
+      {/* Main Content - Full width with better scrolling */}
+      <div className="flex-1 overflow-hidden w-full">
+        <div className="h-full px-8 py-6 overflow-auto w-full">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden w-full">
+            <div className="overflow-x-auto w-full">
+              <Table className="w-full min-w-max">
+                <TableHeader className="sticky top-0 bg-white z-10">
+                  <TableRow className="bg-gray-50 border-b border-gray-200">
+                    <TableHead className="text-gray-900 font-semibold text-[14px] py-4 px-6 min-w-[300px] max-w-[400px]">
+                      Permission
+                    </TableHead>
                     {roles.map(role => (
-                      <TableCell key={`${group.group}-${role}`} className="text-center py-3 px-4">
-                        <div className="flex justify-center">
-                          <Checkbox
-                            checked={isGroupFullyChecked(group.group, role)}
-                            onCheckedChange={(checked) => handleGroupPermissionChange(group.group, role, !!checked)}
-                            className={`h-4 w-4 border-gray-300 data-[state=checked]:bg-[#4F46E5] data-[state=checked]:border-[#4F46E5] ${
-                              isGroupPartiallyChecked(group.group, role) ? 'data-[state=unchecked]:bg-gray-300' : ''
-                            }`}
-                          />
-                        </div>
-                      </TableCell>
+                      <TableHead key={role.id} className="text-center text-gray-900 font-semibold text-[14px] py-4 px-4 min-w-[150px] w-[150px]">
+                        {editingRole === role.id.toString() ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <Input
+                              value={editingValue}
+                              onChange={(e) => setEditingValue(e.target.value)}
+                              className={`h-8 text-center text-sm min-w-[100px] ${
+                                editingValue.trim().length === 0 ? 'border-red-300 focus:border-red-500' : ''
+                              }`}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  saveRoleName();
+                                }
+                                if (e.key === 'Escape') {
+                                  e.preventDefault();
+                                  cancelEditingRole();
+                                }
+                              }}
+                              placeholder="Role name"
+                              maxLength={50}
+                              autoFocus
+                              onFocus={(e) => e.target.select()}
+                            />
+                            <button
+                              onClick={saveRoleName}
+                              className={`p-1 flex-shrink-0 transition-colors ${
+                                editingValue.trim().length > 0 && !updateRoleMutation.isPending
+                                  ? 'text-green-600 hover:text-green-700 cursor-pointer'
+                                  : 'text-gray-400 cursor-not-allowed'
+                              }`}
+                              disabled={updateRoleMutation.isPending || editingValue.trim().length === 0}
+                              title={editingValue.trim().length === 0 ? 'Role name cannot be empty' : 'Save changes'}
+                            >
+                              {updateRoleMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Check className="h-4 w-4" />
+                              )}
+                            </button>
+                            <button
+                              onClick={cancelEditingRole}
+                              className="p-1 text-red-600 hover:text-red-700 flex-shrink-0 transition-colors"
+                              disabled={updateRoleMutation.isPending}
+                              title="Cancel editing"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center gap-2 group">
+                            <span className="truncate">{role.name}</span>
+                            <button
+                              onClick={() => startEditingRole(role)}
+                              className={`p-1 flex-shrink-0 transition-all ${
+                                updateRoleMutation.isPending
+                                  ? 'opacity-30 cursor-not-allowed'
+                                  : 'opacity-0 group-hover:opacity-100 text-gray-500 hover:text-[#4F46E5]'
+                              }`}
+                              disabled={updateRoleMutation.isPending}
+                              title={updateRoleMutation.isPending ? 'Cannot edit while updating' : 'Edit role name'}
+                            >
+                              <Edit2 className="h-3 w-3" />
+                            </button>
+                          </div>
+                        )}
+                      </TableHead>
                     ))}
                   </TableRow>
-                  {/* Permission Rows */}
-                  {group.permissions.map((permission, index) => (
-                    <TableRow 
-                      key={permission} 
-                      className={`border-b border-gray-100 hover:bg-gray-50 ${
-                        index === group.permissions.length - 1 ? 'border-b-gray-200' : ''
-                      }`}
-                    >
-                      <TableCell className="text-gray-700 text-[14px] py-4 px-6 font-medium pl-12">
-                        {permission}
-                      </TableCell>
-                      {roles.map(role => (
-                        <TableCell key={`${permission}-${role}`} className="text-center py-4 px-4">
-                          <div className="flex justify-center">
-                            <Checkbox
-                              checked={permissions[permission]?.[role] || false}
-                              onCheckedChange={(checked) => handlePermissionChange(permission, role, !!checked)}
-                              className="h-4 w-4 border-gray-300 data-[state=checked]:bg-[#4F46E5] data-[state=checked]:border-[#4F46E5]"
-                            />
-                          </div>
+                </TableHeader>
+                <TableBody>
+                  {filteredGroups.map(group => (
+                    <Fragment key={group.group}>
+                      {/* Group Header Row with Checkboxes */}
+                      <TableRow className="bg-[#E0E7FF] border-b border-gray-200">
+                        <TableCell className="font-semibold text-[#4F46E5] text-[14px] py-3 px-6">
+                          {group.group}
                         </TableCell>
+                        {roles.map(role => (
+                          <TableCell key={`${group.group}-${role.id}`} className="text-center py-3 px-4">
+                            <div className="flex justify-center">
+                              <Checkbox
+                                checked={isGroupFullyChecked(group.permissions, role.id)}
+                                onCheckedChange={(checked) => handleGroupPermissionChange(group.permissions, role.id, !!checked)}
+                                className={`h-4 w-4 border-gray-300 data-[state=checked]:bg-[#4F46E5] data-[state=checked]:border-[#4F46E5] ${
+                                  isGroupPartiallyChecked(group.permissions, role.id) ? 'data-[state=unchecked]:bg-gray-300' : ''
+                                }`}
+                                disabled={updateRoleMutation.isPending}
+                              />
+                            </div>
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                      {/* Permission Rows */}
+                      {group.permissions.map((permission, index) => (
+                        <TableRow 
+                          key={permission.id} 
+                          className={`border-b border-gray-100 hover:bg-gray-50 ${
+                            index === group.permissions.length - 1 ? 'border-b-gray-200' : ''
+                          }`}
+                        >
+                          <TableCell className="text-gray-700 text-[14px] py-4 px-6 font-medium pl-12">
+                            {permission.name}
+                          </TableCell>
+                          {roles.map(role => (
+                            <TableCell key={`${permission.id}-${role.id}`} className="text-center py-4 px-4">
+                              <div className="flex justify-center">
+                                <Checkbox
+                                  checked={rolePermissions[role.id]?.[permission.id] || false}
+                                  onCheckedChange={(checked) => handlePermissionChange(permission.id, role.id, !!checked)}
+                                  className="h-4 w-4 border-gray-300 data-[state=checked]:bg-[#4F46E5] data-[state=checked]:border-[#4F46E5]"
+                                  disabled={updateRoleMutation.isPending}
+                                />
+                              </div>
+                            </TableCell>
+                          ))}
+                        </TableRow>
                       ))}
-                    </TableRow>
+                    </Fragment>
                   ))}
-                </Fragment>
-              ))}
-            </TableBody>
-          </Table>
-
-          {/* No Results Message */}
-          {filteredGroups.length === 0 && searchTerm.trim() && (
-            <div className="text-center py-8 text-gray-500">
-              <p>No permissions found matching "{searchTerm}"</p>
+                </TableBody>
+              </Table>
             </div>
-          )}
+
+            {/* No Results Message */}
+            {filteredGroups.length === 0 && searchTerm.trim() && (
+              <div className="text-center py-8 text-gray-500">
+                <p>No permissions found matching "{searchTerm}"</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
