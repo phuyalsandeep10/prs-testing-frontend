@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useMemo } from "react";
-import { useCommissionData } from "@/hooks/api";
+import React from "react";
+import { useQuery } from "@tanstack/react-query";
 import RegularClientCard from "@/components/salesperson/commission/RegularClientCard";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -10,23 +10,52 @@ interface ClientItem {
   investedPrice: string;
 }
 
-export default function RegularClientSection() {
-  // Use standardized commission hook
-  const {
-    data: commissionData,
-    isLoading,
-    error: isError,
-  } = useCommissionData('all_time'); // Get all-time commission data
+const fetchRegularClients = async (): Promise<ClientItem[]> => {
+  const token = localStorage.getItem("authToken");
 
-  // Transform commission data to client items format
-  const clients: ClientItem[] = useMemo(() => {
-    if (!commissionData?.regular_clients_all_time) return [];
-    
-    return commissionData.regular_clients_all_time.map((client: any) => ({
-      name: client.client_name || client.name,
-      investedPrice: `$ ${Number(client.total_value || client.value || 0).toLocaleString()}`,
-    }));
-  }, [commissionData]);
+  if (!token) {
+    throw new Error("No authentication token found");
+  }
+
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/dashboard/commission/`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Token ${token}`,
+      },
+    }
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("Backend Error:", errorText);
+    throw new Error("Failed to fetch regular clients");
+  }
+
+  const json = await res.json();
+  console.log("Response JSON data:", json);
+
+  const clients = json.regular_clients_all_time ?? [];
+
+  return clients.map((client: any) => ({
+    name: client.client_name,
+    investedPrice: `$ ${Number(client.total_value).toLocaleString()}`,
+  }));
+};
+
+export default function RegularClientSection() {
+  const {
+    data: clients = [],
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ["regularClients"],
+    queryFn: fetchRegularClients,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  });
 
   const responsiveHeight = "h-[220px] sm:h-[260px] md:h-[280px] lg:h-[300px]";
 

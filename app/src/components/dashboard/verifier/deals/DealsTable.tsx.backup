@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useMemo, useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ColumnDef, Row } from "@tanstack/react-table";
 import { Check, X } from "lucide-react";
 import { format } from "date-fns";
 import { UnifiedTable } from "@/components/core";
 import ExpandButton from "@/components/shared/ExpandButton";
-import { useDeals, useUpdatePaymentStatus } from "@/hooks/api";
+import { apiClient } from "@/lib/api";
 import { Deal, Payment } from "@/types/deals";
 import { useRoleConfig } from "@/hooks/useRoleBasedColumns";
 
@@ -14,6 +15,14 @@ import { useRoleConfig } from "@/hooks/useRoleBasedColumns";
 const getOrdinalWord = (index: number): string => {
   const ordinals = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth"];
   return ordinals[index] || `${index + 1}th`;
+};
+
+// Fetch deals function for verifier (gets deals that need verification)
+const fetchDeals = async (searchTerm: string): Promise<Deal[]> => {
+  const response = await apiClient.get<Deal[]>("/deals/", {
+    search: searchTerm,
+  });
+  return response.data || [];
 };
 
 // Tooltip component for payment amounts
@@ -53,7 +62,142 @@ const PaymentTooltip = React.memo<PaymentTooltipProps>(
 
 PaymentTooltip.displayName = "PaymentTooltip";
 
+// Parent table data structure
+interface MainUsers {
+  id: string;
+  "Deal Name": string;
+  "Client Name": string;
+  "Pay Status": string;
+  Remarks: string;
+  "Deal Value": string;
+  "Deal Date": string;
+  "Pay Method": string;
+  Payment: string;
+  "Due Date": string;
+  Version: string;
+  "Sales Person": string;
+  isRejected?: boolean; // Add this for red row highlighting
+  nestedData?: NestedDealData[];
+}
 
+interface NestedDealData {
+  id: string;
+  Payment: number;
+  "Payment Date": string;
+  "Payment Created": string;
+  "Payment Value": number;
+  "Payment Version": string;
+  "Payment Status": string;
+  "Receipt Link": string;
+  "Verified By": string;
+  Remarks: string;
+  "Verification Remarks": string;
+}
+
+// Updated dummy data with payment status indicators and rejection status
+const Mainusers: MainUsers[] = [
+  {
+    id: "1",
+    "Deal Name": "Deal 123",
+    "Client Name": "Ram Dhakal",
+    "Pay Status": "Partial Pay",
+    Remarks: "Lorem Ipsum G...",
+    "Deal Value": "$10,00,000",
+    "Deal Date": "Sep 05, 2026",
+    Payment: "First:verified Second:rejected", // Format: payment:status
+    "Pay Method": "Mobile Wallet",
+    "Due Date": "Sep 05, 2026",
+    Version: "Edited",
+    "Sales Person": "Yubesh Koirala",
+    isRejected: true, // This will make the row red (because second payment is rejected)
+    nestedData: [
+      {
+        id: "1-1",
+        Payment: 1,
+        "Payment Date": "Initial Proposal",
+        "Payment Created": "John Doe",
+        "Payment Value": 20240115,
+        "Payment Version": "High",
+        "Payment Status": "Verified",
+        "Receipt Link": "PA-16659",
+        "Verified By": "Verifier A",
+        Remarks: "Test project",
+        "Verification Remarks": "Payment verified successfully",
+      },
+      {
+        id: "1-2",
+        Payment: 2,
+        "Payment Date": "Second Payment",
+        "Payment Created": "John Doe",
+        "Payment Value": 20240120,
+        "Payment Version": "High",
+        "Payment Status": "Rejected",
+        "Receipt Link": "PA-16660",
+        "Verified By": "Verifier B",
+        Remarks: "Second payment",
+        "Verification Remarks":
+          "Payment rejected due to insufficient documentation",
+      },
+    ],
+  },
+  {
+    id: "2",
+    "Deal Name": "Deal 324",
+    "Client Name": "Ram Dhakal",
+    "Pay Status": "Full Pay",
+    Remarks: "Lorem Ipsum G...",
+    "Deal Value": "$10,00,000",
+    "Deal Date": "Sep 05, 2026",
+    Payment: "First:verified", // Only first payment, verified
+    "Pay Method": "E-Cheque",
+    "Due Date": "Sep 05, 2026",
+    Version: "Original",
+    "Sales Person": "Kushal Shrestha",
+    isRejected: false, // No rejected payments
+    nestedData: [
+      {
+        id: "2-1",
+        Payment: 1,
+        "Payment Date": "Initial Proposal",
+        "Payment Created": "Jane Smith",
+        "Payment Value": 10000000,
+        "Payment Version": "High",
+        "Payment Status": "Verified",
+        "Receipt Link": "PA-16661",
+        "Verified By": "Verifier A",
+        Remarks: "Full payment completed",
+        "Verification Remarks": "Payment verified successfully",
+      },
+    ],
+  },
+  {
+    id: "3",
+    "Deal Name": "Deal 911",
+    "Client Name": "Sita Kharel",
+    "Pay Status": "Partial Pay",
+    Remarks: "Lorem Ipsum G...",
+    "Deal Value": "$10,00,000",
+    "Deal Date": "Sep 05, 2026",
+    Payment: "First:verified Second:rejected", // First verified, second rejected
+    "Pay Method": "Bank Transfer",
+    "Due Date": "Sep 05, 2026",
+    Version: "Original",
+    "Sales Person": "Kumar Raj Archarya",
+    isRejected: true, // Second payment rejected
+    nestedData: [
+      {
+        id: "3-1",
+        Payment: 1,
+        "Payment Date": "Initial Payment",
+        "Payment Created": "Kumar Raj",
+        "Payment Value": 5000000,
+        "Payment Version": "Medium",
+        "Payment Status": "Verified",
+        "Receipt Link": "PA-16662",
+        "Verified By": "Verifier A",
+        Remarks: "First installment",
+        "Verification Remarks": "Payment verified successfully",
+      },
       {
         id: "3-2",
         Payment: 2,
@@ -261,18 +405,15 @@ const DealsTable: React.FC<DealsTableProps> = ({
 }) => {
   const roleConfig = useRoleConfig();
   
-  // Use standardized deals hook for verifier
   const {
-    data: deals = [],
+    data: deals,
     isLoading,
+    isError,
     error,
-  } = useDeals({
-    // For verifier, we typically want deals that need verification
-    status: 'pending_verification',
-    ...(searchTerm && { search: searchTerm })
+  } = useQuery<Deal[], Error>({
+    queryKey: ["deals", searchTerm],
+    queryFn: () => fetchDeals(searchTerm),
   });
-  
-  const isError = !!error;
 
   const columns: ColumnDef<Deal>[] = useMemo(
     () => [
