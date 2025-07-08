@@ -69,7 +69,10 @@ export interface TableStyling {
     | "professional"
     | "compact"
     | "figma"
-    | "payment"; // NEW: Payment variant
+    | "payment"
+    | "team"        // NEW: Team table variant
+    | "user"        // NEW: User table variant  
+    | "verification"; // NEW: Verification table variant
   size?: "sm" | "md" | "lg";
   striped?: boolean;
   bordered?: boolean;
@@ -215,6 +218,30 @@ const getTableVariant = (variant: string, size: string) => {
         "text-left px-3 py-2 font-medium text-[#31323A] whitespace-nowrap h-[48px]",
       row: "border-b border-gray-200",
       cell: "px-3 py-2 text-[#31323A] text-[12px] border-b border-gray-200 whitespace-nowrap",
+    },
+    // NEW: Team table variant - matches TeamTable exactly
+    team: {
+      table: "w-auto border-collapse",
+      header: "bg-[#F8F9FA] border-b hover:bg-[#F8F9FA]",
+      headerCell: "px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider",
+      row: "border-b hover:bg-gray-50/50",
+      cell: "px-6 py-4 whitespace-nowrap text-sm text-gray-800",
+    },
+    // NEW: User table variant - matches UserTable exactly
+    user: {
+      table: "w-full",
+      header: "bg-[#F1F0FF] border-b border-gray-200",
+      headerCell: "px-6 py-4 text-left text-[14px] font-semibold text-gray-900",
+      row: "hover:bg-gray-50 transition-colors",
+      cell: "px-6 py-4 text-[14px] text-gray-700",
+    },
+    // NEW: Verification table variant - matches VerificationComponent exactly
+    verification: {
+      table: "min-w-[600px] w-full table-auto border-collapse",
+      header: "bg-[#DADFFF] border-b border-gray-400",
+      headerCell: "py-3 px-4 text-left text-[16px] font-medium text-[#31323A]",
+      row: "text-[12px] text-gray-800",
+      cell: "py-3 px-4 truncate",
     },
   };
 
@@ -393,6 +420,145 @@ interface PaginationProps {
 
 const TablePagination: React.FC<PaginationProps> = ({ table, config }) => {
   const pageSizes = [10, 20, 50, 100];
+  
+  // External pagination mode (server-side)
+  const isExternalPagination = config?.page !== undefined && config?.total !== undefined && config?.onPageChange;
+  
+  if (isExternalPagination) {
+    const currentPage = config!.page!;
+    const totalPages = Math.ceil(config!.total! / table.getState().pagination.pageSize);
+    
+    const handlePageChange = (page: number) => {
+      if (page >= 1 && page <= totalPages && page !== currentPage) {
+        config!.onPageChange!(page);
+      }
+    };
+
+    // Generate page numbers to show
+    const getPageNumbers = () => {
+      const delta = 2;
+      const range = [];
+      const rangeWithDots = [];
+
+      for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+        range.push(i);
+      }
+
+      if (currentPage - delta > 2) {
+        rangeWithDots.push(1, '...');
+      } else {
+        rangeWithDots.push(1);
+      }
+
+      rangeWithDots.push(...range);
+
+      if (currentPage + delta < totalPages - 1) {
+        rangeWithDots.push('...', totalPages);
+      } else if (totalPages > 1) {
+        rangeWithDots.push(totalPages);
+      }
+
+      return rangeWithDots;
+    };
+
+    return (
+      <div className="px-6 py-4 bg-white border-t border-gray-100 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={currentPage <= 1}
+            className="px-4 py-2 text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            ← Previous
+          </button>
+          {config?.showInfo && (
+            <span className="text-[14px] text-gray-500 ml-2">
+              Page {currentPage} of {totalPages}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1">
+          {getPageNumbers().map((pageNum, index) => {
+            if (pageNum === '...') {
+              return (
+                <span key={`dots-${index}`} className="text-[14px] text-gray-400 mx-2">
+                  ...
+                </span>
+              );
+            }
+            return (
+              <button
+                key={pageNum}
+                onClick={() => handlePageChange(pageNum as number)}
+                className={`w-9 h-9 flex items-center justify-center text-[14px] rounded-lg transition-colors font-medium ${
+                  currentPage === pageNum
+                    ? 'bg-[#4F46E5] text-white'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {config?.showSizeSelector && (
+            <select
+              value={table.getState().pagination.pageSize}
+              onChange={(e) => {
+                table.setPageSize(Number(e.target.value));
+                config?.onPageSizeChange?.(Number(e.target.value));
+              }}
+              className="px-3 py-1 text-[14px] border border-gray-300 rounded-lg"
+            >
+              {pageSizes.map(size => (
+                <option key={size} value={size}>{size} per page</option>
+              ))}
+            </select>
+          )}
+          <button
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={currentPage >= totalPages}
+            className="px-4 py-2 text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next →
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Internal pagination mode (client-side)
+  const currentPage = table.getState().pagination.pageIndex + 1;
+  const totalPages = table.getPageCount();
+
+  const getPageNumbers = () => {
+    const delta = 2;
+    const range = [];
+    const rangeWithDots = [];
+
+    for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+      range.push(i);
+    }
+
+    if (currentPage - delta > 2) {
+      rangeWithDots.push(1, '...');
+    } else {
+      rangeWithDots.push(1);
+    }
+
+    rangeWithDots.push(...range);
+
+    if (currentPage + delta < totalPages - 1) {
+      rangeWithDots.push('...', totalPages);
+    } else if (totalPages > 1) {
+      rangeWithDots.push(totalPages);
+    }
+
+    return rangeWithDots;
+  };
 
   return (
     <div className="px-6 py-4 bg-white border-t border-gray-100 flex items-center justify-between">
@@ -404,31 +570,50 @@ const TablePagination: React.FC<PaginationProps> = ({ table, config }) => {
         >
           ← Previous
         </button>
+        {config?.showInfo && (
+          <span className="text-[14px] text-gray-500 ml-2">
+            Page {currentPage} of {totalPages}
+          </span>
+        )}
       </div>
 
       <div className="flex items-center gap-1">
-        <button className="w-9 h-9 flex items-center justify-center text-[14px] bg-[#4F46E5] text-white rounded-lg transition-colors font-medium">
-          1
-        </button>
-        <button className="w-9 h-9 flex items-center justify-center text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium">
-          2
-        </button>
-        <button className="w-9 h-9 flex items-center justify-center text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium">
-          3
-        </button>
-        <span className="text-[14px] text-gray-400 mx-2">...</span>
-        <button className="w-9 h-9 flex items-center justify-center text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium">
-          8
-        </button>
-        <button className="w-9 h-9 flex items-center justify-center text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium">
-          9
-        </button>
-        <button className="w-9 h-9 flex items-center justify-center text-[14px] text-gray-600 hover:bg-gray-50 rounded-lg transition-colors font-medium">
-          10
-        </button>
+        {getPageNumbers().map((pageNum, index) => {
+          if (pageNum === '...') {
+            return (
+              <span key={`dots-${index}`} className="text-[14px] text-gray-400 mx-2">
+                ...
+              </span>
+            );
+          }
+          return (
+            <button
+              key={pageNum}
+              onClick={() => table.setPageIndex((pageNum as number) - 1)}
+              className={`w-9 h-9 flex items-center justify-center text-[14px] rounded-lg transition-colors font-medium ${
+                currentPage === pageNum
+                  ? 'bg-[#4F46E5] text-white'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {pageNum}
+            </button>
+          );
+        })}
       </div>
 
       <div className="flex items-center gap-2">
+        {config?.showSizeSelector && (
+          <select
+            value={table.getState().pagination.pageSize}
+            onChange={(e) => table.setPageSize(Number(e.target.value))}
+            className="px-3 py-1 text-[14px] border border-gray-300 rounded-lg"
+          >
+            {pageSizes.map(size => (
+              <option key={size} value={size}>{size} per page</option>
+            ))}
+          </select>
+        )}
         <button
           onClick={() => table.nextPage()}
           disabled={!table.getCanNextPage()}
@@ -594,6 +779,11 @@ export const UnifiedTable = React.memo(
     const setCurrentExpandedRows =
       onExpandedRowsChange || setInternalExpandedRows;
 
+    // Check if using external pagination
+    const isExternalPagination = config.pagination?.page !== undefined && 
+      config.pagination?.total !== undefined && 
+      config.pagination?.onPageChange;
+
     // Memoize table configuration
     const tableConfig = React.useMemo(
       () => ({
@@ -614,13 +804,25 @@ export const UnifiedTable = React.memo(
         onGlobalFilterChange: setGlobalFilter,
         getCoreRowModel: getCoreRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
-        getPaginationRowModel: features.pagination
-          ? getPaginationRowModel()
-          : undefined,
+        // For external pagination, don't use getPaginationRowModel
+        ...(features.pagination && !isExternalPagination
+          ? { getPaginationRowModel: getPaginationRowModel() }
+          : {}),
         getSortedRowModel: getSortedRowModel(),
+        // For external pagination, use manual pagination
+        ...(isExternalPagination
+          ? { 
+              manualPagination: true,
+              pageCount: Math.ceil((config.pagination?.total || 0) / (config.pagination?.pageSize || 10))
+            }
+          : {}),
         initialState: {
           pagination: {
             pageSize: config.pagination?.pageSize || 10,
+            // For external pagination, set the page index correctly
+            ...(isExternalPagination && config.pagination?.page
+              ? { pageIndex: config.pagination.page - 1 }
+              : {}),
           },
         },
       }),
@@ -635,6 +837,9 @@ export const UnifiedTable = React.memo(
         features.selection,
         features.pagination,
         config.pagination?.pageSize,
+        config.pagination?.page,
+        config.pagination?.total,
+        isExternalPagination,
       ]
     );
 
@@ -655,6 +860,13 @@ export const UnifiedTable = React.memo(
     React.useEffect(() => {
       handleRowSelection();
     }, [handleRowSelection]);
+
+    // Sync table state with external pagination
+    React.useEffect(() => {
+      if (isExternalPagination && config.pagination?.page) {
+        table.setPageIndex(config.pagination.page - 1);
+      }
+    }, [config.pagination?.page, isExternalPagination, table]);
 
     // Memoize styling classes
     const styles = React.useMemo(
