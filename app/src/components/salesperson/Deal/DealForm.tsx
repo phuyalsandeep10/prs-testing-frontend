@@ -4,136 +4,18 @@ import React, { useImperativeHandle, forwardRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, usePathname } from "next/navigation";
 import { DealSchema } from "./DealSchema";
 import InputField from "@/components/ui/clientForm/InputField";
 import SelectField from "@/components/ui/clientForm/SelectField";
 import TextAreaField from "@/components/ui/clientForm/TextAreaField";
 import Button from "@/components/ui/clientForm/Button";
-import { apiClient } from "@/lib/api";
+import { useClients, useCreateDeal } from "@/hooks/api";
 import { Client } from "@/types/deals";
 
 type DealFormData = z.infer<typeof DealSchema>;
 
-// Removed toSnakeCase function as it's no longer needed
-
-// Removed transformDataForApi function as we now handle data transformation directly in submitDealData
-
-const fetchClients = async (): Promise<Client[]> => {
-  try {
-    // Try to fetch from deals endpoint first (backend manages clients through deals)
-    const response = await apiClient.get<Client[]>("/deals/");
-    console.log("Fetched clients from /deals/:", response.data);
-    return response.data || [];
-  } catch (error) {
-    console.error("Failed to fetch clients:", error);
-    // Fallback to empty array if API fails
-    return [];
-  }
-};
-
-const submitDealData = async (data: DealFormData, clientsData?: Client[]) => {
-  try {
-    // Check if client already exists
-    let clientId: string | null = null;
-    
-    // Find existing client by name
-    if (clientsData && clientsData.length > 0) {
-      const existingClient = clientsData.find(c => c.client_name === data.clientName);
-      if (existingClient) {
-        clientId = existingClient.id;
-      }
-    }
-
-    // Step 1: Create or update the client/deal
-    // Backend expects form data, not JSON
-    console.log("Creating client form data with:", data);
-    
-    const clientFormData = new FormData();
-    clientFormData.append("client_name", data.clientName);
-    clientFormData.append("email", `${data.clientName.toLowerCase().replace(/\s+/g, '.')}@example.com`);
-    clientFormData.append("phone_number", "+977-9841234567"); // Default phone number
-    clientFormData.append("value", data.dealValue);
-    clientFormData.append("status", data.payStatus === "Full Pay" ? "active" : "pending");
-    clientFormData.append("satisfaction", "neutral");
-    clientFormData.append("category", "occasional");
-    clientFormData.append("remarks", data.dealRemarks || "");
-    clientFormData.append("expected_close", data.dueDate);
-    clientFormData.append("last_contact", new Date().toISOString());
-    
-    // Add deal-specific fields
-    clientFormData.append("deal_name", data.dealName);
-    clientFormData.append("source_type", data.sourceType);
-    clientFormData.append("deal_date", data.dealDate);
-    clientFormData.append("due_date", data.dueDate);
-
-    // Debug: log form data contents
-    console.log("Client form data contents:");
-    for (const [key, value] of clientFormData.entries()) {
-      console.log(`  ${key}: ${value}`);
-    }
-
-    let clientResponse;
-    if (clientId) {
-      // Update existing client
-      console.log(`Updating existing client ${clientId} with form data...`);
-      clientResponse = await apiClient.putMultipart(`/deals/${clientId}/`, clientFormData);
-    } else {
-      // Create new client  
-      console.log("Creating new client with form data...");
-      clientResponse = await apiClient.postMultipart("/deals/", clientFormData);
-    }
-    
-    console.log("Client API response:", clientResponse);
-    
-    if (!clientResponse.success || !clientResponse.data) {
-      throw new Error("Failed to save deal");
-    }
-
-    const savedClient = clientResponse.data as any;
-
-    // Step 2: Create the payment
-    const paymentData = {
-      client: savedClient.id,
-      amount: parseFloat(data.receivedAmount),
-      currency: "NPR", 
-      payment_method: data.payMethod,
-      sequence_number: 1,
-    };
-
-    // Create FormData for payment with file upload
-    const paymentFormData = new FormData();
-    for (const [key, value] of Object.entries(paymentData)) {
-      paymentFormData.append(key, value.toString());
-    }
-
-    // Add payment remarks if provided
-    if (data.paymentRemarks) {
-      paymentFormData.append("remarks", data.paymentRemarks);
-    }
-
-    // Add the receipt file if provided
-    if (data.uploadReceipt && data.uploadReceipt.length > 0) {
-      paymentFormData.append("receipt_file", data.uploadReceipt[0]);
-    }
-
-    const paymentResponse = await apiClient.postMultipart("/payments/", paymentFormData);
-    
-    if (!paymentResponse.success) {
-      console.warn("Payment creation failed:", paymentResponse);
-      // Don't throw error for payment failure, just log it
-    }
-
-    return {
-      deal: savedClient,
-      payment: paymentResponse.data,
-    };
-  } catch (error) {
-    console.error("Error in submitDealData:", error);
-    throw error;
-  }
-};
+// Using standardized hooks - no manual API functions needed
 
 interface DealFormProps {
   onSave?: (data: DealFormData) => void;
@@ -149,22 +31,12 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
   ({ onSave, onCancel, mode = "add" }, ref) => {
     const router = useRouter();
     const pathname = usePathname();
-    const queryClient = useQueryClient();
     const isStandalonePage =
       pathname?.includes("/add") || pathname?.includes("/edit");
 
-    const { data: clients, isLoading: isLoadingClients, error: clientsError } = useQuery<Client[]>({
-      queryKey: ["clients"],
-      queryFn: fetchClients,
-    });
-
-    // Debug logging
-    console.log("Clients query state:", {
-      clients,
-      isLoadingClients,
-      clientsError,
-      clientsCount: clients?.length || 0,
-    });
+    // Use standardized hooks
+    const { data: clients = [], isLoading: isLoadingClients, error: clientsError } = useClients();
+    const createDealMutation = useCreateDeal();
 
     const {
       register,
@@ -181,40 +53,38 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
       resetForm: () => reset(),
     }));
 
-      const mutation = useMutation({
-    mutationFn: (data: DealFormData) => submitDealData(data, clients),
-    onSuccess: (data) => {
-      console.log("Deal created successfully", data);
-      reset();
-      
-      // Invalidate all deal-related queries to refresh the table
-      queryClient.invalidateQueries({ queryKey: ["deals"] });
-      queryClient.invalidateQueries({ queryKey: ["clients"] });
-      queryClient.invalidateQueries({ queryKey: ["payments"] });
-      
-      // Show success message
-      if (typeof window !== "undefined" && window.alert) {
-        window.alert("Deal created successfully!");
-      }
-      
-      if (onSave) {
-        onSave(data as DealFormData);
-      } else if (isStandalonePage) {
-        router.push("/salesperson/deal");
-      }
-    },
-    onError: (error: any) => {
-      console.error("Failed to create deal:", error);
-      
-      // Show error message
-      if (typeof window !== "undefined" && window.alert) {
-        window.alert(`Failed to create deal: ${error.message || "Unknown error"}`);
-      }
-    },
-  });
+    const onSubmit = async (data: DealFormData) => {
+      try {
+        const dealData = {
+          client: data.clientName,
+          deal_amount: parseFloat(data.dealValue.replace(/[$,]/g, '')),
+          deal_type: data.sourceType,
+          deal_details: data.dealRemarks,
+          expected_closing_date: data.dueDate,
+        };
 
-    const onSubmit = (data: DealFormData) => {
-      mutation.mutate(data);
+        await createDealMutation.mutateAsync(dealData);
+        
+        // Show success message
+        if (typeof window !== "undefined" && window.alert) {
+          window.alert("Deal created successfully!");
+        }
+        
+        reset();
+        
+        if (onSave) {
+          onSave(data);
+        } else if (isStandalonePage) {
+          router.push("/salesperson/deal");
+        }
+      } catch (error: any) {
+        console.error("Failed to create deal:", error);
+        
+        // Show error message
+        if (typeof window !== "undefined" && window.alert) {
+          window.alert(`Failed to create deal: ${error.message || "Unknown error"}`);
+        }
+      }
     };
 
     const dealLabelClass =
@@ -589,7 +459,7 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
 
         {/* Fixed bottom button container */}
         <div className="flex-shrink-0 flex justify-end gap-4 bg-gradient-to-r from-[#0C29E3] via-[#929FF4] to-[#C6CDFA] p-4">
-          {mutation.isError && (
+          {createDealMutation.isError && (
             <p className="text-red-600 text-sm mr-auto">
               Error submitting form. Please try again.
             </p>
@@ -604,11 +474,11 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
 
           <Button
             type="submit"
-            disabled={isSubmitting}
+            disabled={createDealMutation.isPending}
             className="bg-[#009959] text-white w-[119px] p-2 h-[40px] rounded-[6px] text-[14px] font-semibold"
             onClick={handleSubmit(onSubmit)}
           >
-            {isSubmitting ? "Submitting..." : "Save Deal"}
+            {createDealMutation.isPending ? "Submitting..." : "Save Deal"}
           </Button>
         </div>
       </div>
