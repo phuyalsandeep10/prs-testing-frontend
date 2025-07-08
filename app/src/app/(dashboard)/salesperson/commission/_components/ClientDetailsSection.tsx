@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useCallback } from "react";
 import { UnifiedTable } from "@/components/core";
 import type { Client as ApiClient } from "@/lib/types/roles";
-import { createPortal } from "react-dom";
+import SlideModal from "@/components/ui/SlideModal";
 import { ClientDetailCard } from "../../client/ClientDetailCard";
 import EditClientForm from "../../client/EditClientForm";
 import Eye from "@/assets/icons/Eye.svg";
@@ -196,28 +196,30 @@ const ClientDetailsSection: React.FC = () => {
         )}
       </div>
 
-      {showViewModal &&
-        selectedClient &&
-        typeof window !== "undefined" &&
-        createPortal(
-          <ClientDetailCard
-            client={selectedClient}
-            onClose={() => setShowViewModal(false)}
-          />,
-          document.body
-        )}
+      {/* View Client Modal */}
+      {showViewModal && selectedClient && (
+        <ClientDetailCard
+          client={selectedClient}
+          onClose={() => setShowViewModal(false)}
+        />
+      )}
 
-      {showEditModal &&
-        selectedClient &&
-        typeof window !== "undefined" &&
-        createPortal(
+      {/* Edit Client Modal */}
+      <SlideModal
+        isOpen={showEditModal && selectedClient !== null}
+        onClose={() => setShowEditModal(false)}
+        title="Edit Client"
+        width="lg"
+        showCloseButton={true}
+      >
+        {selectedClient && (
           <EditClientForm
             client={selectedClient}
             onClose={() => setShowEditModal(false)}
             onClientUpdated={() => setShowEditModal(false)}
-          />,
-          document.body
+          />
         )}
+      </SlideModal>
     </>
   );
 };

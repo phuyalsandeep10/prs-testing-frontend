@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import SlideModal from "@/components/ui/SlideModal";
 import Acheve from "@/components/salesperson/Dashboard/Acheve";
 import ChartDashboard from "@/components/salesperson/Dashboard/Chart";
 import Outstanding from "@/components/salesperson/Dashboard/Outstanding";
@@ -52,25 +52,18 @@ export default function SalespersonDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 px-8 py-4 relative">
-      {isModalOpen &&
-        mounted &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/60"
-            onClick={handleCloseModal}
-          >
-            <div
-              onClick={(e) => e.stopPropagation()}
-              className="flex items-center justify-center pointer-events-auto"
-            >
-              <PersonalGoal
-                onClose={handleCloseModal}
-                refreshDashboard={refreshDashboard}
-              />
-            </div>
-          </div>,
-          document.body
-        )}
+      <SlideModal
+        isOpen={isModalOpen && mounted}
+        onClose={handleCloseModal}
+        title="Personal Goal"
+        width="lg"
+        showCloseButton={true}
+      >
+        <PersonalGoal
+          onClose={handleCloseModal}
+          refreshDashboard={refreshDashboard}
+        />
+      </SlideModal>
 
       <div className={isModalOpen ? "opacity-50" : ""}>
         <div className="flex justify-between mb-5">

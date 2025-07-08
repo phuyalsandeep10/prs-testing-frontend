@@ -12,7 +12,7 @@ import { ClientKanbanView } from './ClientKanbanView';
 import AddNewClientForm from './AddNewClientForm';
 import EditClientForm from './EditClientForm';
 import { useDebouncedSearch } from '@/hooks/useDebounce';
-import { createPortal } from 'react-dom';
+import SlideModal from '@/components/ui/SlideModal';
 import { useAuth } from '@/stores';
 import {
   AlertDialog,
@@ -408,12 +408,17 @@ const ClientsPage = React.memo(() => {
         )}
       </div>
 
-      {/* Add Client Modal - Portal Rendered */}
-      {showAddModal && typeof window !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[99999]" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }}>
-          <AddNewClientForm
-            onClose={() => setShowAddModal(false)}
-                      onClientAdded={async (newClient) => {
+      {/* Add Client Modal */}
+      <SlideModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        title="Add New Client"
+        width="lg"
+        showCloseButton={true}
+      >
+        <AddNewClientForm
+          onClose={() => setShowAddModal(false)}
+          onClientAdded={async (newClient) => {
             // Refetch client data to ensure consistency
             try {
               const resp = await clientApi.getAll({ page: 1, limit: 100 });
@@ -439,14 +444,18 @@ const ClientsPage = React.memo(() => {
             }
             setShowAddModal(false);
           }}
-          />
-        </div>,
-        document.body
-      )}
+        />
+      </SlideModal>
 
-      {/* Edit Client Modal - Portal Rendered */}
-      {showEditModal && selectedClient && typeof window !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[99999]" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }}>
+      {/* Edit Client Modal */}
+      <SlideModal
+        isOpen={showEditModal && selectedClient !== null}
+        onClose={() => setShowEditModal(false)}
+        title="Edit Client"
+        width="lg"
+        showCloseButton={true}
+      >
+        {selectedClient && (
           <EditClientForm
             client={selectedClient}
             onClose={() => setShowEditModal(false)}
@@ -477,9 +486,8 @@ const ClientsPage = React.memo(() => {
               setShowEditModal(false);
             }}
           />
-        </div>,
-        document.body
-      )}
+        )}
+      </SlideModal>
     </div>
   );
 });

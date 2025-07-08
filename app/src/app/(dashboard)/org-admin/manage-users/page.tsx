@@ -19,7 +19,7 @@ import { TeamsTable } from "@/components/dashboard/org-admin/manage-teams/TeamsT
 import { AddNewUserForm } from "@/components/dashboard/org-admin/manage-users/AddNewUserForm";
 import { AddNewTeamForm } from "@/components/dashboard/org-admin/manage-teams/AddNewTeamForm";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
-import { createPortal } from "react-dom";
+import SlideModal from "@/components/ui/SlideModal";
 import { toast } from "sonner";
 import { 
   useUsersQuery, 
@@ -575,92 +575,91 @@ export default function ManageUsersPage() {
         </ErrorBoundary>
       </div>
 
-      {/* Modal Overlay - Rendered at document.body level using Portal */}
-      {openModal &&
-        typeof window !== "undefined" &&
-        createPortal(
-          <div
-            className="fixed inset-0 z-[99999] flex items-center justify-center"
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              zIndex: 99999,
-            }}
-          >
-            {/* Full Screen Backdrop */}
-            <div
-              className="absolute inset-0 w-full h-full bg-black animate-fadeInCenter"
-              onClick={handleCloseModal}
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: "rgba(0, 0, 0, 0.5)",
-              }}
-            />
-
-            {/* Modal Content */}
-            {openModal === "view-team" || openModal === "view-user" ? (
-              /* Centered Card Modals */
-              <div className="relative z-[100000] flex items-center justify-center w-full h-full p-4 pointer-events-none">
-                <div
-                  className="bg-white rounded-2xl shadow-2xl w-full max-w-md transform transition-all pointer-events-auto"
-                  style={{ zIndex: 100000 }}
-                >
-                  {openModal === "view-team" && selectedTeam && (
-                    <TeamDetailView
-                      team={selectedTeam}
-                      onClose={handleCloseModal}
-                    />
-                  )}
-                  {openModal === "view-user" && selectedUser && (
-                    <UserDetailView
-                      user={selectedUser}
-                      onClose={handleCloseModal}
-                    />
-                  )}
-                </div>
-              </div>
-            ) : (
-              /* Right Side Form Modals */
-              <div
-                className={`${
-                  openModal === "add-user"
-                    ? "animate-fadeInSide "
-                    : "animate-fadeInSide"
-                } fixed top-0 right-0 h-full w-[384px] bg-white shadow-2xl z-[100000] `}
-                style={{
-                  position: "fixed",
-                  top: 0,
-                  right: 0,
-                  height: "100vh",
-                  zIndex: 100000,
-                }}
-              >
-                {openModal === "add-user" && <AddNewUserForm onClose={handleCloseModal} onFormSubmit={handleUserCreated}/>}
-                {openModal === "add-team" && <AddNewTeamForm onClose={handleCloseModal} onFormSubmit={handleTeamCreated}/>}
-                {openModal === "edit-team" && selectedTeam && (
-                  <EditTeamForm
-                    team={selectedTeam}
-                    onClose={handleCloseModal}
-                  />
-                )}
-                {openModal === "edit-user" && selectedUser && (
-                  <EditUserForm
-                    user={selectedUser}
-                    onClose={handleCloseModal}
-                  />
-                )}
-              </div>
-            )}
-          </div>,
-          document.body
+      {/* View Team Modal */}
+      <SlideModal
+        isOpen={openModal === "view-team"}
+        onClose={handleCloseModal}
+        title="Team Details"
+        width="md"
+        showCloseButton={true}
+      >
+        {selectedTeam && (
+          <TeamDetailView
+            team={selectedTeam}
+            onClose={handleCloseModal}
+          />
         )}
+      </SlideModal>
+
+      {/* View User Modal */}
+      <SlideModal
+        isOpen={openModal === "view-user"}
+        onClose={handleCloseModal}
+        title="User Details"
+        width="md"
+        showCloseButton={true}
+      >
+        {selectedUser && (
+          <UserDetailView
+            user={selectedUser}
+            onClose={handleCloseModal}
+          />
+        )}
+      </SlideModal>
+
+      {/* Add User Modal */}
+      <SlideModal
+        isOpen={openModal === "add-user"}
+        onClose={handleCloseModal}
+        title="Add New User"
+        width="md"
+        showCloseButton={true}
+      >
+        <AddNewUserForm onClose={handleCloseModal} onFormSubmit={handleUserCreated}/>
+      </SlideModal>
+
+      {/* Add Team Modal */}
+      <SlideModal
+        isOpen={openModal === "add-team"}
+        onClose={handleCloseModal}
+        title="Add New Team"
+        width="md"
+        showCloseButton={true}
+      >
+        <AddNewTeamForm onClose={handleCloseModal} onFormSubmit={handleTeamCreated}/>
+      </SlideModal>
+
+      {/* Edit Team Modal */}
+      <SlideModal
+        isOpen={openModal === "edit-team"}
+        onClose={handleCloseModal}
+        title="Edit Team"
+        width="md"
+        showCloseButton={true}
+      >
+        {selectedTeam && (
+          <EditTeamForm
+            team={selectedTeam}
+            onClose={handleCloseModal}
+          />
+        )}
+      </SlideModal>
+
+      {/* Edit User Modal */}
+      <SlideModal
+        isOpen={openModal === "edit-user"}
+        onClose={handleCloseModal}
+        title="Edit User"
+        width="md"
+        showCloseButton={true}
+      >
+        {selectedUser && (
+          <EditUserForm
+            user={selectedUser}
+            onClose={handleCloseModal}
+          />
+        )}
+      </SlideModal>
     </div>
   );
 }
