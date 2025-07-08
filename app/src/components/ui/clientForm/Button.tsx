@@ -1,3 +1,4 @@
+import { Button as UIButton } from "@/components/ui/button";
 import React, { ReactNode, MouseEventHandler } from "react";
 
 interface ButtonProps {
@@ -16,16 +17,18 @@ const Button: React.FC<ButtonProps> = ({
   children,
 }) => {
   return (
-    <button
+    <UIButton
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`p-2 h-[40px] rounded-[6px] text-[14px] font-semibold ${className} ${
+      variant="client-form"
+      size="client-form"
+      className={`${className} ${
         disabled ? "opacity-50 cursor-not-allowed" : ""
-      } focus:outline-none focus:ring-0`}
+      }`}
     >
       {children}
-    </button>
+    </UIButton>
   );
 };
 

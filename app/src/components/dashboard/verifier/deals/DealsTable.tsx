@@ -6,7 +6,7 @@ import { ColumnDef, Row } from "@tanstack/react-table";
 import { Check, X } from "lucide-react";
 import { format } from "date-fns";
 import { UnifiedTable } from "@/components/core";
-import ExpandButton from "@/components/dashboard/salesperson/deals/ExpandButton";
+import ExpandButton from "@/components/shared/ExpandButton";
 import { apiClient } from "@/lib/api";
 import { Deal, Payment } from "@/types/deals";
 import { useRoleConfig } from "@/hooks/useRoleBasedColumns";
@@ -424,6 +424,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
           <ExpandButton
             isExpanded={row.getIsExpanded()}
             onToggle={row.getToggleExpandedHandler()}
+            variant="verifier"
           />
         ),
       },

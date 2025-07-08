@@ -8,7 +8,7 @@ import deleteIcon from "@/assets/icons/delete.svg";
 import Image from "next/image";
 import { format } from "date-fns";
 import { UnifiedTable } from "@/components/core";
-import ExpandButton from "@/components/dashboard/salesperson/deals/ExpandButton";
+import ExpandButton from "@/components/shared/ExpandButton";
 import { useRoleConfig } from "@/hooks/useRoleBasedColumns";
 import { Deal, Payment } from "@/types/deals";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -539,6 +539,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
           <ExpandButton
             isExpanded={row.getIsExpanded()}
             onToggle={row.getToggleExpandedHandler()}
+            variant="org-admin"
           />
         ),
       },

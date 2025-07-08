@@ -8,7 +8,7 @@ import add from "@/assets/icons/add.svg";
 import Image from "next/image";
 import { format } from "date-fns";
 import { ReusableTable } from "@/components/salesperson/deals/ReusableTable";
-import ExpandButton from "@/components/salesperson/deals/ExpandButton";
+import ExpandButton from "@/components/shared/ExpandButton";
 import { apiClient } from "@/lib/api";
 import { Deal, Payment } from "@/types/deals";
 
@@ -44,6 +44,7 @@ const DealsTable = ({ setTogglePaymentForm }: DealsTableProps) => {
             onToggle={() =>
               setExpandedRowId((prev) => (prev === row.id ? null : row.id))
             }
+            variant="salesperson"
           />
         ),
       },
