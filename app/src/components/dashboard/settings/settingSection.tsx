@@ -3,7 +3,7 @@
 import AccountForm from "./AccountForm";
 import NotificationSettings from "./NotificationSetting";
 import PasswordUpdateForm from "./PasswordUpdate";
-import Sessions from "./Session";
+import SessionsSettings from "./SessionsSettings";
 export type Tab = "account" | "password" | "notifications" | "sessions";
 
 type SidebarProps = {
@@ -66,7 +66,7 @@ export default function SettingsSection({ selected, onChange }: SidebarProps) {
         {selected === "account" && <AccountForm />}
         {selected === "password" && <PasswordUpdateForm />}
         {selected === "notifications" && <NotificationSettings />}
-        {selected === "sessions" && <Sessions />}
+        {selected === "sessions" && <SessionsSettings />}
       </div>
     </div>
   );

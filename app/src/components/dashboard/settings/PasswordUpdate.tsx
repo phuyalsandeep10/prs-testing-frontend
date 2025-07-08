@@ -1,15 +1,20 @@
-import React, { useState } from "react";
+"use client";
+
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Eye, EyeOff, KeyRound, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import Update from "@/components/global-components/Update";
+import { usePasswordManagement } from "@/hooks/usePasswordChange";
 
 // Zod schema for password validation
 const passwordSchema = z
   .object({
-    currentPassword: z.string().min(1, "Current password is required"),
-    newPassword: z
+    current_password: z.string().min(1, "Current password is required"),
+    new_password: z
       .string()
       .min(8, "Password must be at least 8 characters")
       .regex(/[0-9]/, "Password must contain at least one number")
@@ -18,11 +23,11 @@ const passwordSchema = z
         "Password must contain at least one special character"
       )
       .regex(/[A-Z]/, "Password must contain at least one uppercase letter"),
-    confirmPassword: z.string(),
+    confirm_password: z.string().min(8, "Password must be at least 8 characters"),
   })
-  .refine((data) => data.newPassword === data.confirmPassword, {
+  .refine((data) => data.new_password === data.confirm_password, {
     message: "Passwords don't match",
-    path: ["confirmPassword"],
+    path: ["confirm_password"],
   });
 
 type PasswordFormData = z.infer<typeof passwordSchema>;
@@ -31,18 +36,21 @@ const PasswordUpdateForm = () => {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { changePassword, isChanging, isSuccess, isError, error, reset } = usePasswordManagement();
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [formData, setFormData] = useState<PasswordFormData | null>(null);
 
   const {
     register,
     handleSubmit,
-    watch,
-    formState: { errors, isSubmitting },
+    reset: resetForm,
+    formState: { errors },
   } = useForm<PasswordFormData>({
     resolver: zodResolver(passwordSchema),
     mode: "onChange",
   });
 
-  const newPassword = watch("newPassword") || "";
+  const newPassword = "";
 
   // Password validation checks
   const validations = [
@@ -64,14 +72,31 @@ const PasswordUpdateForm = () => {
     },
   ];
 
-  const onSubmit = async (data: PasswordFormData) => {
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      console.log("Password updated successfully:", data);
-      alert("Password updated successfully!");
-    } catch (error) {
-      console.error("Error updating password:", error);
+  const handleUpdateClick = handleSubmit((data) => {
+    setFormData(data);
+    setIsUpdateModalOpen(true);
+  });
+
+  const handleConfirmUpdate = () => {
+    if (formData) {
+      changePassword({
+        current_password: formData.current_password,
+        new_password: formData.new_password,
+        confirm_password: formData.confirm_password,
+      });
+      setIsUpdateModalOpen(false);
     }
+  };
+
+  useEffect(() => {
+    if (isSuccess) {
+      resetForm();
+    }
+  }, [isSuccess, resetForm]);
+
+  const handleCancel = () => {
+    setIsUpdateModalOpen(false);
+    reset();
   };
 
   interface InputFieldProps
@@ -120,92 +145,115 @@ const PasswordUpdateForm = () => {
   );
 
   return (
-    <div className="space-y-6 font-outfit">
-      <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-        {/* Header */}
-        <div className="text-center mb-6">
-          <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
-            <KeyRound className="w-6 h-6 text-[#4F46E5]" />
-          </div>
-          <h2 className="text-xl font-semibold text-gray-900">
-            Update Password
-          </h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Please fill the form below to update your password
-          </p>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-          <InputField
-            label="Current Password"
-            type="password"
-            showPassword={showCurrentPassword}
-            togglePassword={() =>
-              setShowCurrentPassword(!showCurrentPassword)
-            }
-            error={errors.currentPassword}
-            {...register("currentPassword")}
-          />
-
-          <InputField
-            label="New Password"
-            type="password"
-            showPassword={showNewPassword}
-            togglePassword={() => setShowNewPassword(!showNewPassword)}
-            error={errors.newPassword}
-            {...register("newPassword")}
-          />
-
-          {/* Password Requirements */}
-          <div className="space-y-4">
-            <p className="text-base font-semibold text-gray-900">
-              Your password must contain:
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {validations.map((validation, index) => (
-                <div
-                  key={index}
-                  className="flex items-center space-x-2"
-                >
-                  {validation.isValid ? (
-                    <Check className="w-4 h-4 text-green-500" />
-                  ) : (
-                    <X className="w-4 h-4 text-gray-400" />
-                  )}
-                  <span
-                    className={`text-sm ${
-                      validation.isValid ? "text-green-600" : "text-gray-600"
-                    }`}
-                  >
-                    {validation.label}
-                  </span>
-                </div>
-              ))}
+    <>
+      <div className="space-y-6 font-outfit">
+        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+          {/* Header */}
+          <div className="text-center mb-6">
+            <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <KeyRound className="w-6 h-6 text-[#4F46E5]" />
             </div>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Update Password
+            </h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Please fill the form below to update your password
+            </p>
           </div>
 
-          <InputField
-            label="Confirm New Password"
-            type="password"
-            showPassword={showConfirmPassword}
-            togglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
-            error={errors.confirmPassword}
-            {...register("confirmPassword")}
-          />
+          {isSuccess && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
+              <p className="text-sm text-green-700 font-medium">Password updated successfully!</p>
+            </div>
+          )}
 
-          <div className="flex justify-end pt-4">
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="bg-[#4F46E5] hover:bg-[#4F46E5]/90 text-white px-8 py-2"
-            >
-              {isSubmitting ? "Updating..." : "Update Password"}
-            </Button>
-          </div>
-        </form>
+          {isError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-center">
+              <p className="text-sm text-red-700 font-medium">
+                {error?.message || "Failed to update password. Please check your current password and try again."}
+              </p>
+            </div>
+          )}
+
+          {/* Form */}
+                     <form onSubmit={handleUpdateClick} className="space-y-6">
+            <InputField
+              label="Current Password"
+              type="password"
+              showPassword={showCurrentPassword}
+              togglePassword={() =>
+                setShowCurrentPassword(!showCurrentPassword)
+              }
+              error={errors.current_password}
+              {...register("current_password")}
+            />
+
+            <InputField
+              label="New Password"
+              type="password"
+              showPassword={showNewPassword}
+              togglePassword={() => setShowNewPassword(!showNewPassword)}
+              error={errors.new_password}
+              {...register("new_password")}
+            />
+
+            {/* Password Requirements */}
+            <div className="space-y-4">
+              <p className="text-base font-semibold text-gray-900">
+                Your password must contain:
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {validations.map((validation, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center space-x-2"
+                  >
+                    {validation.isValid ? (
+                      <Check className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <X className="w-4 h-4 text-gray-400" />
+                    )}
+                    <span
+                      className={`text-sm ${
+                        validation.isValid ? "text-green-600" : "text-gray-600"
+                      }`}
+                    >
+                      {validation.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <InputField
+              label="Confirm New Password"
+              type="password"
+              showPassword={showConfirmPassword}
+              togglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
+              error={errors.confirm_password}
+              {...register("confirm_password")}
+            />
+
+            <div className="flex justify-end pt-4">
+              <Button
+                type="submit"
+                className="bg-[#4F46E5] hover:bg-[#4F46E5]/90 text-white px-8 py-2"
+                disabled={isChanging}
+              >
+                {isChanging ? "Updating..." : "Update Password"}
+              </Button>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
+
+      <Update
+        open={isUpdateModalOpen}
+        onOpenChange={setIsUpdateModalOpen}
+        onCancel={handleCancel}
+        onLogout={handleConfirmUpdate}
+      />
+    </>
   );
 };
 

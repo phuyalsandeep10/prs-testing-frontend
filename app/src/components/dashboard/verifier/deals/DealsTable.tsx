@@ -9,7 +9,13 @@ import { UnifiedTable } from "@/components/core";
 import ExpandButton from "@/components/dashboard/salesperson/deals/ExpandButton";
 import { apiClient } from "@/lib/api";
 import { Deal, Payment } from "@/types/deals";
-import { useRoleBasedColumns } from "@/hooks/useRoleBasedColumns";
+import { useRoleConfig } from "@/hooks/useRoleBasedColumns";
+
+// Helper function to convert index to ordinal words
+const getOrdinalWord = (index: number): string => {
+  const ordinals = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth"];
+  return ordinals[index] || `${index + 1}th`;
+};
 
 // Fetch deals function for verifier (gets deals that need verification)
 const fetchDeals = async (searchTerm: string): Promise<Deal[]> => {
@@ -397,7 +403,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
   onVerifyPayment,
   searchTerm = "",
 }) => {
-  const roleConfig = useRoleBasedColumns();
+  const roleConfig = useRoleConfig();
   
   const {
     data: deals,
@@ -505,7 +511,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
                 return (
                   <PaymentTooltip key={index} amount={`$${p.received_amount}`}>
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${badgeClass}`}>
-                      {`Pay ${index + 1}`}
+                      {getOrdinalWord(index)}
                     </span>
                   </PaymentTooltip>
                 );

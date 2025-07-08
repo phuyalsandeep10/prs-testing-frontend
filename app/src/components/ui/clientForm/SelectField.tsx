@@ -67,7 +67,7 @@ const SelectField: React.FC<SelectFieldProps> = ({
         disabled={disabled}
       >
         <option value="">{placeholder}</option>
-        {options.map((opt) => {
+        {options.map((opt, index) => {
           const optionColor =
             id === "status"
               ? colorMap.status[opt.value as keyof typeof colorMap.status]
@@ -79,7 +79,7 @@ const SelectField: React.FC<SelectFieldProps> = ({
 
           return (
             <option
-              key={opt.value}
+              key={`${opt.value}-${index}`}
               value={opt.value}
               style={{ color: optionColor }}
             >
@@ -88,7 +88,7 @@ const SelectField: React.FC<SelectFieldProps> = ({
           );
         })}
       </select>
-      {error && <p className="text-red-500 text-sm mt-1">{error.message}</p>}
+      
     </InputWrapper>
   );
 };

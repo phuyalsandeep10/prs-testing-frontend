@@ -24,6 +24,7 @@ const Update: React.FC<UpdateModalProps> = ({
   open,
   onOpenChange,
   trigger,
+  onLogout,
   onCancel,
 }) => {
   const [internalOpen, setInternalOpen] = useState(false);
@@ -34,6 +35,7 @@ const Update: React.FC<UpdateModalProps> = ({
 
   const handleUpdate = () => {
     setIsOpen(false);
+    onLogout?.(); // Call the actual update function
   };
 
   const handleCancel = () => {
