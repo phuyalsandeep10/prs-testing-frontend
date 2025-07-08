@@ -26,10 +26,27 @@ const API_TIMEOUT = 10000;
 class ApiClient {
   private baseURL: string;
   private timeout: number;
+  private token: string | null = null;
 
   constructor(baseURL: string = API_BASE_URL, timeout: number = API_TIMEOUT) {
     this.baseURL = baseURL;
     this.timeout = timeout;
+  }
+
+    // ✅ Add this
+  public setAuth(
+    token: string,
+    role: string,
+    permissions: string[],
+    orgId: string,
+    scope: Record<string, any>
+  ) {
+    this.token = token;
+  }
+
+  // ✅ Add this
+  public clearAuth() {
+    this.token = null;
   }
 
   private async request<T>(

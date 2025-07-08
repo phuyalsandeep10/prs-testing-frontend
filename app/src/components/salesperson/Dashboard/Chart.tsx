@@ -1,5 +1,6 @@
 "use client";
-import React, { useState } from "react";
+
+import React, { useMemo, useState, useEffect } from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -20,7 +21,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { createApiStore } from "@/store/apiStore";
+import { DashboardResponse } from "@/store/types/Dashboard";
 
+// Register ChartJS modules
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -32,59 +36,111 @@ ChartJS.register(
   Legend
 );
 
-const chartData = {
-  daily: {
-    labels: [
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-    ],
-    data: [13000, 15000, 44000, 40500, 7000, 7500, 500],
-  },
-  weekly: {
-    labels: ["Week 1", "Week 2", "Week 3", "Week 4"],
-    data: [15000, 12000, 18000, 17000],
-  },
-  monthly: {
-    labels: [
-      "JAN",
-      "FEB",
-      "MAR",
-      "APR",
-      "MAY",
-      "JUN",
-      "JUL",
-      "AUG",
-      "SEP",
-      "OCT",
-      "NOV",
-      "DEC",
-    ],
-    data: [
-      12000, 17000, 9000, 13000, 10000, 19000, 10000, 8000, 7500, 11000, 1000,
-      5000,
-    ],
-  },
+// Constants
+const DAILY_LABELS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+const WEEKLY_LABELS = Array.from({ length: 52 }, (_, i) => `Week ${i + 1}`);
+const MONTHLY_LABELS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+type ChartDataPoint = {
+  label: string;
+  value: number;
 };
 
-const ChartDashboard = () => {
+// Create the Zustand store for dashboard data
+const useDashboardStore = createApiStore<DashboardResponse>();
+
+export default function ChartDashboard() {
   const [selectedRange, setSelectedRange] = useState<
     "daily" | "weekly" | "monthly"
-  >("monthly");
+  >("daily");
 
-  const chartLabels = chartData[selectedRange].labels;
-  const chartValues = chartData[selectedRange].data;
+  const { data, sendRequest, loading, error } = useDashboardStore();
+  const apiData: ChartDataPoint[] =
+    data?.chart_data?.payment_verification_trend || [];
 
-  const data = {
-    labels: chartLabels,
+  // Fetch data when component mounts or selectedRange changes
+  useEffect(() => {
+    const fetchData = async () => {
+      await sendRequest(
+        "GET",
+        `${process.env.NEXT_PUBLIC_API_URL}/dashboard/dashboard/`,
+        undefined,
+        { period: selectedRange }, // Pass the selected range as a query parameter
+        {
+          getAuthToken: () => localStorage.getItem("authToken"),
+        }
+      );
+    };
+    fetchData();
+  }, [selectedRange, sendRequest]);
+
+  const { labels, values } = useMemo(() => {
+    let labels: string[] = [];
+    let values: number[] = [];
+
+    if (selectedRange === "daily") {
+      labels = DAILY_LABELS;
+      // Map API data to daily labels
+      const dateMap: Record<string, number> = {};
+      apiData.forEach((item) => {
+        const date = new Date(item.label);
+        const dayName = DAILY_LABELS[date.getDay()];
+        dateMap[dayName] = item.value;
+      });
+      values = labels.map((label) => dateMap[label] ?? 0);
+    } else if (selectedRange === "weekly") {
+      labels = WEEKLY_LABELS;
+      // Map API data to weekly labels
+      const weekMap: Record<string, number> = {};
+      apiData.forEach((item) => {
+        if (item.label.startsWith("W")) {
+          const weekNumber = parseInt(item.label.replace("W", ""));
+          weekMap[`Week ${weekNumber}`] = item.value;
+        }
+      });
+      values = labels.map((week) => weekMap[week] ?? 0);
+    } else if (selectedRange === "monthly") {
+      labels = MONTHLY_LABELS;
+      // Map API data to monthly labels
+      const monthMap: Record<string, number> = {};
+      apiData.forEach((item) => {
+        if (MONTHLY_LABELS.includes(item.label)) {
+          monthMap[item.label] = item.value;
+        }
+      });
+      values = labels.map((month) => monthMap[month] ?? 0);
+    }
+
+    return { labels, values };
+  }, [apiData, selectedRange]);
+
+  const chartData = {
+    labels,
     datasets: [
       {
         label: "Payments",
-        data: chartValues,
+        data: values,
         fill: false,
         borderColor: "#3B82F6",
         backgroundColor: "#3B82F6",
@@ -97,7 +153,7 @@ const ChartDashboard = () => {
     ],
   };
 
-  const options = {
+  const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -126,7 +182,7 @@ const ChartDashboard = () => {
   };
 
   return (
-    <Card className="p-5 shadow-sm border rounded-xl w-full ">
+    <Card className="p-5 shadow-sm border rounded-xl w-full">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4">
         <div>
           <h2 className="text-xl font-semibold font-outfit text-black">
@@ -136,6 +192,7 @@ const ChartDashboard = () => {
             View Detailed Sales Status
           </p>
         </div>
+
         <Select
           value={selectedRange}
           onValueChange={(val) =>
@@ -152,11 +209,16 @@ const ChartDashboard = () => {
           </SelectContent>
         </Select>
       </div>
-      <div className="w-full min-h-[200px] sm:min-h-[260px] aspect-[2/1]">
-        <Line data={data} options={options} />
-      </div>
+
+      {loading["/dashboard/dashboard/"] ? (
+        <div>Loading...</div>
+      ) : error ? (
+        <div className="text-red-500">{error.displayMessage}</div>
+      ) : (
+        <div className="w-full min-h-[200px] sm:min-h-[260px] aspect-[2/1]">
+          <Line data={chartData} options={chartOptions} />
+        </div>
+      )}
     </Card>
   );
-};
-
-export default ChartDashboard;
+}

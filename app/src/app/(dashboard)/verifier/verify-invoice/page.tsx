@@ -112,8 +112,6 @@ const VerifyInvoice = () => {
     }
   ];
 
-
-
   const getTabCount = (status: string) => {
     if (status === 'all') return invoiceData.length;
     return invoiceData.filter(invoice => 

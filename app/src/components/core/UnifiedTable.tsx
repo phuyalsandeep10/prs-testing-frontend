@@ -59,10 +59,17 @@ export interface TableFeatures {
   globalSearch?: boolean;
   export?: boolean;
   refresh?: boolean;
+  splitTable?: boolean; // NEW: Split table feature
 }
 
 export interface TableStyling {
-  variant?: "default" | "minimal" | "professional" | "compact" | "figma";
+  variant?:
+    | "default"
+    | "minimal"
+    | "professional"
+    | "compact"
+    | "figma"
+    | "payment"; // NEW: Payment variant
   size?: "sm" | "md" | "lg";
   striped?: boolean;
   bordered?: boolean;
@@ -99,6 +106,11 @@ export interface TableConfig {
     error?: string;
     searchPlaceholder?: string;
   };
+  splitTable?: {
+    // NEW: Split table configuration
+    scrollableColumns?: ColumnDef<any>[];
+    rightColumns?: ColumnDef<any>[];
+  };
 }
 
 export interface UnifiedTableProps<TData> {
@@ -117,6 +129,10 @@ export interface UnifiedTableProps<TData> {
   getRowProps?: (row: Row<TData>) => React.HTMLAttributes<HTMLTableRowElement>;
   expandedRows?: Record<string, boolean>;
   onExpandedRowsChange?: (expandedRows: Record<string, boolean>) => void;
+  // NEW: Split table props
+  scrollableColumns?: ColumnDef<TData>[];
+  rightColumns?: ColumnDef<TData>[];
+  customLoadingComponent?: React.ReactNode;
 }
 
 // ==================== DEFAULT CONFIGURATIONS ====================
@@ -130,6 +146,7 @@ const defaultFeatures: TableFeatures = {
   globalSearch: true,
   export: false,
   refresh: false,
+  splitTable: false, // NEW
 };
 
 const defaultStyling: TableStyling = {
@@ -190,9 +207,182 @@ const getTableVariant = (variant: string, size: string) => {
       row: "border-b border-gray-100 hover:bg-gray-50 transition-colors",
       cell: "px-6 py-4 text-[14px] text-gray-700",
     },
+    // NEW: Payment variant
+    payment: {
+      table: "w-full text-sm",
+      header: "sticky top-0 z-10 bg-[#DADFFF] border-b border-gray-200",
+      headerCell:
+        "text-left px-3 py-2 font-medium text-[#31323A] whitespace-nowrap h-[48px]",
+      row: "border-b border-gray-200",
+      cell: "px-3 py-2 text-[#31323A] text-[12px] border-b border-gray-200 whitespace-nowrap",
+    },
   };
 
   return variants[variant as keyof typeof variants] || variants.default;
+};
+
+// ==================== SPLIT TABLE COMPONENT ====================
+interface SplitTableProps<TData> {
+  data: TData[];
+  scrollableColumns: ColumnDef<TData>[];
+  rightColumns: ColumnDef<TData>[];
+  styling: TableStyling;
+  messages: any;
+}
+
+const SplitTable = <TData,>({
+  data,
+  scrollableColumns,
+  rightColumns,
+  styling,
+  messages,
+}: SplitTableProps<TData>) => {
+  const leftTableRef = React.useRef<HTMLTableElement>(null);
+  const rightTableRef = React.useRef<HTMLTableElement>(null);
+
+  const leftTable = useReactTable({
+    data,
+    columns: scrollableColumns,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
+  const rightTable = useReactTable({
+    data,
+    columns: rightColumns,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
+  const styles = React.useMemo(
+    () => getTableVariant(styling.variant!, styling.size!),
+    [styling.variant, styling.size]
+  );
+
+  // Sync row heights between left and right tables
+  React.useEffect(() => {
+    const syncRowHeights = () => {
+      if (!leftTableRef.current || !rightTableRef.current) return;
+
+      const leftRows = leftTableRef.current.querySelectorAll("tbody tr");
+      const rightRows = rightTableRef.current.querySelectorAll("tbody tr");
+
+      // Reset heights first
+      leftRows.forEach((row) => {
+        (row as HTMLElement).style.height = "auto";
+      });
+      rightRows.forEach((row) => {
+        (row as HTMLElement).style.height = "auto";
+      });
+
+      // Calculate and apply max heights
+      for (let i = 0; i < Math.min(leftRows.length, rightRows.length); i++) {
+        const leftRowHeight = (leftRows[i] as HTMLElement).offsetHeight;
+        const rightRowHeight = (rightRows[i] as HTMLElement).offsetHeight;
+        const maxHeight = Math.max(leftRowHeight, rightRowHeight);
+
+        (leftRows[i] as HTMLElement).style.height = `${maxHeight}px`;
+        (rightRows[i] as HTMLElement).style.height = `${maxHeight}px`;
+      }
+    };
+
+    syncRowHeights();
+
+    // Sync heights when Select dropdown changes
+    const observer = new ResizeObserver(syncRowHeights);
+    if (leftTableRef.current) observer.observe(leftTableRef.current);
+    if (rightTableRef.current) observer.observe(rightTableRef.current);
+
+    return () => observer.disconnect();
+  }, [data]);
+
+  return (
+    <div className="w-full border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <div className="flex h-full">
+        {/* Scrollable left section */}
+        <div className="flex-1 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <table ref={leftTableRef} className={styles.table}>
+            <thead className={styles.header}>
+              {leftTable.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <th key={header.id} className={styles.headerCell}>
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {leftTable.getRowModel().rows.map((row, index) => (
+                <tr
+                  key={row.id}
+                  className={cn(
+                    styles.row,
+                    index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                  )}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className={styles.cell}>
+                      <div className="flex items-center min-h-[24px]">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Fixed right section */}
+        <div className="flex-shrink-0">
+          <table ref={rightTableRef} className={styles.table}>
+            <thead className={cn(styles.header, "z-20")}>
+              {rightTable.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <th key={header.id} className={styles.headerCell}>
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {rightTable.getRowModel().rows.map((row, index) => (
+                <tr
+                  key={row.id}
+                  className={cn(
+                    styles.row,
+                    index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                  )}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className={styles.cell}>
+                      <div className="flex items-center min-h-[24px]">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 // ==================== PAGINATION COMPONENT ====================
@@ -369,6 +559,9 @@ export const UnifiedTable = React.memo(
     getRowProps,
     expandedRows,
     onExpandedRowsChange,
+    scrollableColumns,
+    rightColumns,
+    customLoadingComponent,
   }: UnifiedTableProps<TData>) => {
     // Memoize configurations to prevent unnecessary re-calculations
     const features = React.useMemo(
@@ -479,6 +672,9 @@ export const UnifiedTable = React.memo(
 
     // Render loading state
     if (loading) {
+      if (customLoadingComponent) {
+        return <>{customLoadingComponent}</>;
+      }
       return (
         <div className={cn("relative", className)}>
           <TableSkeleton rows={config.pagination?.pageSize ?? 10} cols={columns.length} />
@@ -517,6 +713,45 @@ export const UnifiedTable = React.memo(
       );
     }
 
+    // Render split table if enabled
+    if (features.splitTable && scrollableColumns && rightColumns) {
+      return (
+        <div className={cn("space-y-4", className)}>
+          {/* Toolbar - Only show if any toolbar features are enabled */}
+          {(features.globalSearch ||
+            features.filtering ||
+            features.export ||
+            features.refresh ||
+            features.columnVisibility ||
+            toolbar) && (
+            <TableToolbar
+              table={table}
+              config={config}
+              onExport={onExport}
+              onRefresh={onRefresh}
+              globalFilter={globalFilter}
+              setGlobalFilter={setGlobalFilter}
+              toolbar={toolbar}
+            />
+          )}
+
+          <SplitTable
+            data={data}
+            scrollableColumns={scrollableColumns}
+            rightColumns={rightColumns}
+            styling={styling}
+            messages={messages}
+          />
+
+          {/* Pagination */}
+          {features.pagination && (
+            <TablePagination table={table} config={config.pagination} />
+          )}
+        </div>
+      );
+    }
+
+    // Render regular table
     return (
       <div className={cn("space-y-4", className)}>
         {/* Toolbar - Only show if any toolbar features are enabled */}
@@ -539,7 +774,7 @@ export const UnifiedTable = React.memo(
 
         {/* Table */}
         <div className="rounded-md border overflow-hidden">
-          <Table className={styles.table} >
+          <Table className={styles.table}>
             <TableHeader className={`!w-auto ${styles.header}`}>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
@@ -641,3 +876,5 @@ export const UnifiedTable = React.memo(
     );
   }
 );
+
+UnifiedTable.displayName = "UnifiedTable";

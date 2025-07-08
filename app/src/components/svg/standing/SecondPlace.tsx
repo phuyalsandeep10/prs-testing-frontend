@@ -3,7 +3,12 @@ import React, { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import Image from "next/image";
 
-const SecondPlace = ({ image, alt }) => {
+interface SecondPlaceProps {
+  image: string;
+  alt: string;
+}
+
+const SecondPlace: React.FC<SecondPlaceProps> = ({ image, alt }) => {
   const svgRef = useRef(null);
   const imgRef = useRef(null);
   const containerRef = useRef(null);
@@ -70,13 +75,20 @@ const SecondPlace = ({ image, alt }) => {
       }}
     >
       <div ref={imgRef}>
-        <Image
-          src={image}
-          alt={alt}
-          width={60}
-          height={60}
-          className="w-[60px] h-[60px] object-cover rounded-full border-4 border-gray-400"
-        />
+        {image ? (
+          <Image
+            src={image}
+            alt={alt}
+            width={60}
+            height={60}
+            className="w-[60px] h-[60px] object-cover rounded-full border-4 border-gray-400"
+          />
+        ) : (
+          <div className="w-[60px] h-[60px] rounded-full border-4 border-gray-400 bg-gray-200 flex items-center justify-center">
+            {/* Optional fallback: initials, icon, or blank */}
+            <span className="text-gray-500 text-sm">N/A</span>
+          </div>
+        )}
       </div>
       <svg
         ref={svgRef}

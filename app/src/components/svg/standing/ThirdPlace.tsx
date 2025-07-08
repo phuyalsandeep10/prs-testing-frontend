@@ -4,7 +4,12 @@ import { gsap } from "gsap";
 import Image from "next/image";
 import Crown from "./Crown";
 
-const ThirdPlace = ({ image, alt }) => {
+type ThirdPlaceProps = {
+  image: string;
+  alt: string;
+};
+
+const ThirdPlace: React.FC<ThirdPlaceProps> = ({ image, alt }) => {
   const svgRef = useRef(null);
   const imgRef = useRef(null);
   const containerRef = useRef(null);
@@ -74,13 +79,20 @@ const ThirdPlace = ({ image, alt }) => {
 
       {/* Image rising from bottom */}
       <div ref={imgRef}>
-        <Image
-          src={image}
-          alt={alt}
-          width={60}
-          height={60}
-          className="w-[60px] h-[60px] object-cover rounded-full border-4 border-[#FFA424]"
-        />
+        {image ? (
+          <Image
+            src={image}
+            alt={alt}
+            width={60}
+            height={60}
+            className="w-[60px] h-[60px] object-cover rounded-full border-4 border-[#FFA424]"
+          />
+        ) : (
+          <div className="w-[60px] h-[60px] rounded-full border-4 border-[#F9A914] bg-gray-200 flex items-center justify-center">
+            {/* Optional fallback: initials, icon, or blank */}
+            <span className="text-gray-500 text-sm">N/A</span>
+          </div>
+        )}
       </div>
 
       {/* SVG pillar animation */}
