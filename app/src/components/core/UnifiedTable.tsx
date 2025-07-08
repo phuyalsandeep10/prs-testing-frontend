@@ -46,6 +46,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import TableSkeleton from './TableSkeleton';
 
 // ==================== TYPES ====================
 export interface TableFeatures {
@@ -73,6 +74,22 @@ export interface TableConfig {
   styling?: TableStyling;
   pagination?: {
     pageSize?: number;
+    /**
+     * Current page (1-based). Optional – only needed when using external/server-side pagination.
+     */
+    page?: number;
+    /**
+     * Total number of rows when using server-side pagination. Optional.
+     */
+    total?: number;
+    /**
+     * Callback fired when the page index changes in external pagination mode.
+     */
+    onPageChange?: (page: number) => void;
+    /**
+     * Callback fired when the page size changes in external pagination mode.
+     */
+    onPageSizeChange?: (pageSize: number) => void;
     showSizeSelector?: boolean;
     showInfo?: boolean;
   };
@@ -463,10 +480,13 @@ export const UnifiedTable = React.memo(
     // Render loading state
     if (loading) {
       return (
-        <div className="flex items-center justify-center h-64 bg-white rounded-lg border">
-          <div className="text-center">
-            <RefreshCw className="h-8 w-8 animate-spin text-gray-400 mx-auto mb-2" />
-            <p className="text-gray-500">{messages.loading}</p>
+        <div className={cn("relative", className)}>
+          <TableSkeleton rows={config.pagination?.pageSize ?? 10} cols={columns.length} />
+          <div className="flex items-center justify-center h-64 bg-white rounded-lg border">
+            <div className="text-center">
+              <RefreshCw className="h-8 w-8 animate-spin text-gray-400 mx-auto mb-2" />
+              <p className="text-gray-500">{messages.loading}</p>
+            </div>
           </div>
         </div>
       );
@@ -475,20 +495,23 @@ export const UnifiedTable = React.memo(
     // Render error state
     if (error) {
       return (
-        <div className="flex items-center justify-center h-64 bg-white rounded-lg border border-red-200">
-          <div className="text-center">
-            <div className="text-red-500 mb-2">⚠️</div>
-            <p className="text-red-600">{error}</p>
-            {onRefresh && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onRefresh}
-                className="mt-2"
-              >
-                Try Again
-              </Button>
-            )}
+        <div className={cn("relative", className)}>
+          <TableSkeleton rows={config.pagination?.pageSize ?? 10} cols={columns.length} />
+          <div className="flex items-center justify-center h-64 bg-white rounded-lg border border-red-200">
+            <div className="text-center">
+              <div className="text-red-500 mb-2">⚠️</div>
+              <p className="text-red-600">{error}</p>
+              {onRefresh && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onRefresh}
+                  className="mt-2"
+                >
+                  Try Again
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       );

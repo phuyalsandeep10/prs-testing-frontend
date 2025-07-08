@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { ColumnDef } from "@tanstack/react-table";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,6 +18,8 @@ import jsPDF from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { UnifiedTable } from "@/components/core/UnifiedTable";
 import { CommissionFilter } from "./CommissionFilter";
+import { useCommissionQuery, useBulkUpdateCommissionMutation } from "@/hooks/useIntegratedQuery";
+import { useUI } from "@/stores";
 
 interface CommissionData {
   id: number;
@@ -69,33 +71,86 @@ const CurrencyIcon = ({ currency }: { currency: string }) => {
     return <span className="mr-2">{icons[currency]}</span>;
 };
 
+// Helper function to calculate derived fields
+const calculateRow = (row: CommissionData): CommissionData => {
+  // Convert all values to numbers to ensure proper calculation
+  const totalSales = Number(row.totalSales) || 0;
+  const percentage = Number(row.percentage) || 0;
+  const rate = Number(row.rate) || 1; // Default to 1 to avoid division by zero
+  const bonus = Number(row.bonus) || 0;
+  const penalty = Number(row.penalty) || 0;
+  
+  // Debug log for calculation
+  console.log('Calculating with:', { totalSales, percentage, rate, bonus, penalty });
+  
+  // Step 1: Calculate converted amount (commission % of total sales)
+  const convertedAmt = (totalSales * percentage) / 100;
+  
+  // Step 2: Calculate total (converted amount * rate + bonus)
+  const total = (convertedAmt * rate) + bonus;
+  
+  // Step 3: Calculate total receivable (total - penalty)
+  const totalReceivable = total - penalty;
+  
+  // Debug log for results
+  console.log('Calculated values:', { convertedAmt, total, totalReceivable });
+  
+  // Check for NaN values and provide fallbacks
+  const result = {
+    ...row,
+    convertedAmt: isNaN(convertedAmt) ? 0 : convertedAmt,
+    total: isNaN(total) ? 0 : total,
+    totalReceivable: isNaN(totalReceivable) ? 0 : totalReceivable,
+  };
+  
+  return result;
+};
+
 export const CommissionClient = () => {
-  const [commissionData, setCommissionData] = useState<CommissionData[]>([]);
-  const [filteredData, setFilteredData] = useState<CommissionData[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState<CommissionFilterData | null>(null);
+  const [commissionData, setCommissionData] = useState<CommissionData[]>([]);
+  const { addNotification } = useUI();
 
-  const calculateRow = useCallback((row: Omit<CommissionData, 'convertedAmt' | 'total' | 'totalReceivable'>): CommissionData => {
-    const convertedAmt = row.totalSales * (row.percentage / 100);
-    const total = (convertedAmt * row.rate) + row.bonus;
-    const penaltyAmt = row.penalty;
-    const totalReceivable = total - penaltyAmt;
+  // API Hooks
+  const { data: commissionResponse, isLoading, error, refetch } = useCommissionQuery();
+  const bulkUpdateMutation = useBulkUpdateCommissionMutation();
 
-    return {
-      ...row,
-      convertedAmt,
-      total,
-      totalReceivable,
-    };
-  }, []);
-
+  // Process commission data from API and update local state
   useEffect(() => {
-    const calculatedData = initialCommissionData.map(calculateRow);
-    setCommissionData(calculatedData);
-    setFilteredData(calculatedData);
-  }, [calculateRow]);
+    if (commissionResponse && Array.isArray(commissionResponse)) {
+      console.log('API Response:', commissionResponse); // Debug log
+      
+      const processedData = commissionResponse.map((item: any) => {
+        console.log('Processing item:', item); // Debug log
+        
+        const baseData = {
+          id: item.id,
+          fullName: item.fullName || '',
+          totalSales: Number(item.totalSales) || 0,
+          currency: item.currency || 'NEP',
+          rate: Number(item.rate) || 1, // Default to 1 instead of 0 for rate
+          percentage: Number(item.percentage) || 5, // Default to 5% commission
+          bonus: Number(item.bonus) || 0,
+          penalty: Number(item.penalty) || 0,
+          checked: false, // Default to unchecked for UI
+          convertedAmt: 0,
+          total: 0,
+          totalReceivable: 0,
+        };
+        
+        console.log('Base data before calculation:', baseData); // Debug log
+        
+        // Calculate derived fields using the correct formula
+        const calculatedData = calculateRow(baseData);
+        console.log('Calculated data:', calculatedData); // Debug log
+        
+        return calculatedData;
+      });
+      setCommissionData(processedData);
+    }
+  }, [commissionResponse]);
 
   // Global search function that searches across ALL columns
   const searchAllColumns = (row: CommissionData, query: string): boolean => {
@@ -118,7 +173,7 @@ export const CommissionClient = () => {
   };
 
   // Filter and search logic
-  useEffect(() => {
+  const filteredData = useMemo(() => {
     let filtered = [...commissionData];
 
     // Apply global search across ALL columns
@@ -153,21 +208,26 @@ export const CommissionClient = () => {
       });
     }
 
-    setFilteredData(filtered);
+    return filtered;
   }, [commissionData, searchQuery, activeFilters]);
 
   const handleSaveData = async () => {
-    setIsSaving(true);
-    toast.info("Saving commission data...");
-
     try {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        setIsSaving(false);
-        toast.success("Data saved successfully!");
+      const dataToSave = commissionData.map(row => ({
+        id: row.id,
+        totalSales: row.totalSales,
+        currency: row.currency,
+        rate: row.rate,
+        percentage: row.percentage,
+        bonus: row.bonus,
+        penalty: row.penalty,
+      }));
+      
+      await bulkUpdateMutation.mutateAsync(dataToSave);
+      // Success notification is handled by the mutation
     } catch (error) {
-        console.error("Save failed:", error);
-        setIsSaving(false);
-        toast.error("Failed to save data. Please try again.");
+      // Error notification is handled by the mutation
+      console.error("Save failed:", error);
     }
   };
 
@@ -445,10 +505,10 @@ export const CommissionClient = () => {
             variant="outline" 
             className="flex items-center gap-2 h-10 px-4 border-gray-300" 
             onClick={handleSaveData} 
-            disabled={isSaving}
+            disabled={bulkUpdateMutation.isPending}
           >
-            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {isSaving ? 'Saving...' : 'Save Data'}
+            {bulkUpdateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {bulkUpdateMutation.isPending ? 'Saving...' : 'Save Data'}
           </Button>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />

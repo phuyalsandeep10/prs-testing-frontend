@@ -4,13 +4,15 @@ import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { toast } from "sonner";
 import { Loader2, X } from "lucide-react";
+import { useCreateTeamMutation, useUsersQuery } from "@/hooks/useIntegratedQuery";
+import { useAuth, useUI } from "@/stores";
 
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 // Interface for user data
 interface UserOption {
@@ -25,10 +27,15 @@ interface UserOption {
 const formSchema = z.object({
   teamName: z.string().min(1, "Team name is required"),
   teamLead: z.string().min(1, "Team lead is required"),
-  teamMember: z.string().min(1, "Team member is required"),
+  teamMembers: z.array(z.string()).min(1, "At least one team member is required"),
   assignedProject: z.string().optional(),
   contactNumber: z.string().optional(),
 });
+
+interface Project {
+  id: number;
+  name: string;
+}
 
 interface AddNewTeamFormProps {
   onClose: () => void;
@@ -38,21 +45,84 @@ interface AddNewTeamFormProps {
 }
 
 export function AddNewTeamForm({ onClose, onFormSubmit, initialData, isEdit = false }: AddNewTeamFormProps) {
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [users, setUsers] = React.useState<UserOption[]>([]);
-  const [usersLoading, setUsersLoading] = React.useState(true);
-  const [projects, setProjects] = React.useState<{ id: number, name: string }[]>([]);
+  const { user } = useAuth();
+  const { addNotification } = useUI();
+
+  const { data: usersData, isLoading: usersLoading } = useUsersQuery();
+  console.log('[AddNewTeamForm] Data received from useUsersQuery:', usersData);
+  console.log('[AddNewTeamForm] Users loading state:', usersLoading);
+
+  const users: any[] = React.useMemo(() => {
+    if (!usersData) return [];
+    const d: any = usersData;
+    if (Array.isArray(d)) return d;
+    if (Array.isArray(d.results)) return d.results;
+    if (Array.isArray(d.data)) return d.data;
+    return [];
+  }, [usersData]);
+
+  const [projects, setProjects] = React.useState<{ id: number; name: string }[]>([]);
   const [projectsLoading, setProjectsLoading] = React.useState(true);
 
+  React.useEffect(() => {
+    const fetchProjects = async () => {
+      console.log('[AddNewTeamForm] Fetching projects...');
+      const token = localStorage.getItem("authToken");
+      console.log('[AddNewTeamForm] Auth token for projects fetch:', token ? 'Found' : 'Missing');
+      if (!token) {
+        setProjectsLoading(false);
+        return;
+      }
+      try {
+        const response = await fetch("http://localhost:8000/api/v1/projects/", {
+          headers: { Authorization: `Token ${token}` },
+        });
+        console.log('[AddNewTeamForm] Raw projects response status:', response.status);
+        if (response.ok) {
+          const data = await response.json();
+          console.log('[AddNewTeamForm] Raw projects data:', data);
+          // Defensive check for unexpected API response shape
+          const list = Array.isArray(data)
+            ? data
+            : Array.isArray(data.results)
+            ? data.results
+            : [];
+          setProjects(list);
+        } else {
+          console.error("Failed to fetch projects with status:", response.status);
+          setProjects([]);
+        }
+      } catch (e) {
+        console.error("Failed to fetch projects", e);
+        setProjects([]);
+      } finally {
+        setProjectsLoading(false);
+      }
+    };
+    fetchProjects();
+  }, []);
+
+  // Create team mutation
+  const createTeamMutation = useCreateTeamMutation();
+
   // Filter users based on their roles
-  const teamLeads = users.filter(user => 
-    user.role === 'Supervisor/Team Lead' || 
-    user.role === 'Org Admin' ||
-    user.role === 'Super Admin'
-  );
-  const teamMembers = users.filter(user => 
-    user.role && !['Super Admin', 'Org Admin'].includes(user.role)
-  );
+  const extractRoleName = (u: any) => (typeof u.role === 'string' ? u.role : u.role?.name || '');
+
+  const teamLeads = users.filter((u: any) => {
+    const roleName = extractRoleName(u).toLowerCase();
+    return ['supervisor', 'teamlead', 'team lead', 'org-admin', 'super-admin'].some(r => roleName.includes(r));
+  }).map((u: any) => ({
+    ...u,
+    displayName: `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() || u.name || u.username,
+  }));
+
+  const teamMembers = users.filter((u: any) => {
+    const roleName = extractRoleName(u).toLowerCase();
+    return !['super-admin', 'org-admin'].includes(roleName);
+  }).map((u: any) => ({
+    ...u,
+    displayName: `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() || u.name || u.username,
+  }));
 
   // Debug logs (can be removed in production)
   React.useEffect(() => {
@@ -60,199 +130,92 @@ export function AddNewTeamForm({ onClose, onFormSubmit, initialData, isEdit = fa
     console.log('Users state:', users);
     console.log('Team leads filtered:', teamLeads);
     console.log('Team members filtered:', teamMembers);
-    console.log('Projects state:', projects);
     console.log('Users loading:', usersLoading);
-    console.log('Projects loading:', projectsLoading);
-    console.log('Auth token exists:', !!localStorage.getItem('authToken'));
-  }, [users, teamLeads, teamMembers, projects, usersLoading, projectsLoading]);
+  }, [users, teamLeads, teamMembers, usersLoading]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       teamName: initialData?.teamName || "",
       teamLead: initialData?.teamLead || "",
-      teamMember: initialData?.teamMembers?.[0]?.name || "",
+      teamMembers: initialData?.teamMembers?.map((m: any) => `${m.id}-${m.name}`) || [],
       assignedProject: initialData?.assignedProjects || "",
       contactNumber: initialData?.contactNumber || "",
     },
   });
 
-  // Load users from API
-  React.useEffect(() => {
-    const loadUsers = async () => {
-      try {
-        const token = localStorage.getItem('authToken');
-        if (!token) {
-          setUsersLoading(false);
-          return;
-        }
-
-        const response = await fetch('http://localhost:8000/api/v1/auth/users/', {
-          headers: {
-            'Authorization': `Token ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const usersList = Array.isArray(data) ? data : data.results || [];
-          
-          const mappedUsers = usersList.map((user: any) => ({
-            id: user.id,
-            name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username,
-            email: user.email,
-            role: user.role?.name || 'User'
-          }));
-          
-          const uniqueUsers = mappedUsers.filter((user, index, self) => 
-            index === self.findIndex(u => u.id === user.id)
-          );
-          
-          setUsers(uniqueUsers);
-          console.log('Loaded users:', uniqueUsers); // Debug log
-        } else {
-          console.error('Failed to load users:', response.status);
-        }
-      } catch (error) {
-        console.error('Error loading users:', error);
-      } finally {
-        setUsersLoading(false);
-      }
-    };
-
-    const loadProjects = async () => {
-      try {
-        const token = localStorage.getItem('authToken');
-        if (!token) {
-          setProjectsLoading(false);
-          return;
-        }
-
-        const response = await fetch('http://localhost:8000/api/v1/projects/', {
-          headers: {
-            'Authorization': `Token ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const projectsList = Array.isArray(data) ? data : data.results || [];
-          const projectOptions = projectsList.map((project: any) => ({ id: project.id, name: project.name }));
-          setProjects(projectOptions);
-          console.log('Loaded projects:', projectOptions); // Debug log
-        } else {
-          console.error('Failed to load projects:', response.status);
-        }
-      } catch (error) {
-        console.error('Error loading projects:', error);
-      } finally {
-        setProjectsLoading(false);
-      }
-    };
-
-    loadUsers();
-    loadProjects();
-  }, []);
-
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setIsLoading(true);
     try {
-      const token = localStorage.getItem('authToken');
-      const userString = localStorage.getItem('user');
-
-      if (!token || !userString) {
-        toast.error('Authentication details not found. Please login again.');
-        setIsLoading(false);
-        return;
-      }
-
-      const currentUser = JSON.parse(userString);
-      const organizationId = currentUser?.organization?.id;
-
-      if (!organizationId) {
-        toast.error('Could not determine your organization. Please login again.');
-        setIsLoading(false);
-        return;
-      }
+      // Resolve organization ID (supports multiple possible field names)
+      const orgId = (user as any)?.organizationId ?? (user as any)?.organization ?? (user as any)?.organization_id;
 
       // Extract IDs from form values
       const teamLeadId = parseInt(values.teamLead.split('-')[0], 10);
-      const teamMemberIds = [parseInt(values.teamMember.split('-')[0], 10)];
-      const projectIds = values.assignedProject ? [parseInt(values.assignedProject, 10)] : [];
+      const teamMemberIds = values.teamMembers.map(member => parseInt(member.split('-')[0], 10));
 
-      // Prepare team data in the format the backend expects
+      // Prepare team data for backend
       const teamData: any = {
         name: values.teamName,
-        organization: organizationId,
         contact_number: values.contactNumber,
-        team_lead: teamLeadId,
-        members: teamMemberIds,
-      };
+        team_lead_id: teamLeadId,
+        member_ids: teamMemberIds,
+      } as Record<string, any>;
 
-      if (projectIds.length > 0) {
-        teamData.projects = projectIds;
+      if (orgId) {
+        teamData.organization = orgId;
       }
 
-      console.log('Sending team data:', teamData);
+      if (values.assignedProject) {
+        teamData.projects = [parseInt(values.assignedProject, 10)];
+      }
 
-      const url = isEdit 
-        ? `http://localhost:8000/api/v1/teams/${initialData?.id}/`
-        : 'http://localhost:8000/api/v1/teams/';
-        
-      const method = isEdit ? 'PUT' : 'POST';
-
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Authorization': `Token ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(teamData),
-      });
-
-      const responseData = await response.json();
-      console.log('API Response:', responseData);
-
-      if (response.ok) {
-        toast.success(`Team ${isEdit ? 'updated' : 'created'} successfully!`);
-        
-        // Trigger refresh events
-        const event = new CustomEvent(isEdit ? 'teamUpdated' : 'teamCreated', {
-          detail: responseData
+      // Use the create mutation (note: update mutation would need to be added to integrated hooks)
+      if (isEdit) {
+        addNotification({
+          type: 'warning',
+          title: 'Edit not implemented',
+          message: 'Team editing functionality needs to be implemented.',
         });
-        window.dispatchEvent(event);
-        
-        form.reset();
-        if (onFormSubmit) {
-          onFormSubmit();
-        }
-        onClose();
-      } else {
-        const errorMessage = responseData.detail || 
-                           responseData.message || 
-                           Object.values(responseData).flat().join(', ') ||
-                           `Failed to ${isEdit ? 'update' : 'create'} team`;
-        console.error('API Error:', errorMessage);
-        toast.error(errorMessage);
+        return;
       }
+
+      console.log('=== SUBMITTING TEAM DATA ===');
+      console.log('Team data being sent:', teamData);
+      
+      await createTeamMutation.mutateAsync(teamData);
+
+      // Success handling is done in the mutation hook
+      form.reset();
+      
+      // Trigger custom event for parent component to refresh data
+      console.log('=== DISPATCHING TEAM CREATED EVENT ===');
+      window.dispatchEvent(new CustomEvent('teamCreated'));
+      
+      if (onFormSubmit) {
+        onFormSubmit();
+      }
+      onClose();
     } catch (error) {
-      console.error(`Network error ${isEdit ? 'updating' : 'creating'} team:`, error);
-      toast.error(`Network error. Please check your connection and try again.`);
-    } finally {
-      setIsLoading(false);
+      // Error handling is done in the mutation hook
+      console.error(`Error ${isEdit ? 'updating' : 'creating'} team:`, error);
     }
   };
+
+  // Combined loading state from mutations
+  const isLoading = createTeamMutation.isPending;
 
   const handleClear = () => {
     if (!isLoading) {
       form.reset();
-      toast.info("Form cleared");
+      addNotification({
+        type: 'info',
+        title: 'Form cleared',
+        message: 'All form fields have been reset.',
+      });
     }
   };
 
-  const selectedMember = users.find(user => `${user.id}-${user.name}` === form.watch("teamMember"));
+  const selectedMembers = form.watch("teamMembers") || [];
 
   return (
     <div className="h-full flex flex-col bg-white">
@@ -320,8 +283,8 @@ export function AddNewTeamForm({ onClose, onFormSubmit, initialData, isEdit = fa
                         <div className="px-2 py-1 text-sm text-gray-500">Loading users...</div>
                       ) : teamLeads.length > 0 ? (
                         teamLeads.map((lead) => (
-                          <SelectItem key={lead.id} value={`${lead.id}-${lead.name}`}>
-                            {lead.name} ({lead.role})
+                          <SelectItem key={lead.id} value={`${lead.id}-${lead.displayName}`}>
+                            {lead.displayName} ({extractRoleName(lead)})
                           </SelectItem>
                         ))
                       ) : (
@@ -334,49 +297,57 @@ export function AddNewTeamForm({ onClose, onFormSubmit, initialData, isEdit = fa
               )}
             />
 
-            {/* Team Member - Exact Figma Avatar Design */}
+            {/* Team Members - Multi-select with Checkboxes */}
             <FormField
               control={form.control}
-              name="teamMember"
+              name="teamMembers"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
-                    Team Member<span className="text-red-500 ml-1">*</span>
+                    Team Members<span className="text-red-500 ml-1">*</span>
                   </FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading || usersLoading}>
-                    <FormControl>
-                      <SelectTrigger className="w-full h-[48px] border-gray-300 focus:border-[#4F46E5] text-[16px] rounded-lg">
-                        <SelectValue placeholder={usersLoading ? "Loading users..." : "Select team member"}>
-                          {selectedMember && (
-                            <div className="flex items-center gap-3">
-                              <div className="h-6 w-6 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-[12px] font-medium">
-                                {selectedMember.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                  <div className="border border-gray-300 rounded-lg p-3 bg-white min-h-[48px] max-h-[200px] overflow-y-auto">
+                    {usersLoading ? (
+                      <div className="text-sm text-gray-500">Loading users...</div>
+                    ) : teamMembers.length > 0 ? (
+                      <div className="space-y-2">
+                        {teamMembers.map((member) => {
+                          const memberValue = `${member.id}-${member.displayName}`;
+                          const isSelected = field.value?.includes(memberValue);
+                          return (
+                            <div key={member.id} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded-md">
+                              <Checkbox
+                                id={`member-${member.id}`}
+                                checked={isSelected}
+                                onCheckedChange={(checked) => {
+                                  const currentValue = field.value || [];
+                                  if (checked) {
+                                    field.onChange([...currentValue, memberValue]);
+                                  } else {
+                                    field.onChange(currentValue.filter((v: string) => v !== memberValue));
+                                  }
+                                }}
+                                disabled={isLoading}
+                              />
+                              <div className="flex items-center gap-3 flex-1">
+                                <div className="h-6 w-6 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-[12px] font-medium">
+                                  {member.displayName.split(' ').map((n:any) => n[0]).join('').toUpperCase()}
+                                </div>
+                                <span className="text-sm">{member.displayName} ({extractRoleName(member)})</span>
                               </div>
-                              <span className="text-[16px]">{selectedMember.name}</span>
                             </div>
-                          )}
-                        </SelectValue>
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {usersLoading ? (
-                        <div className="px-2 py-1 text-sm text-gray-500">Loading users...</div>
-                      ) : teamMembers.length > 0 ? (
-                        teamMembers.map((member) => (
-                          <SelectItem key={member.id} value={`${member.id}-${member.name}`}>
-                            <div className="flex items-center gap-3">
-                              <div className="h-6 w-6 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-[12px] font-medium">
-                                {member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                              </div>
-                              <span>{member.name} ({member.role})</span>
-                            </div>
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <div className="px-2 py-1 text-sm text-gray-500">No team members available</div>
-                      )}
-                    </SelectContent>
-                  </Select>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-500">No team members available</div>
+                    )}
+                  </div>
+                  {selectedMembers.length > 0 && (
+                    <div className="mt-2 text-sm text-gray-600">
+                      Selected: {selectedMembers.length} member{selectedMembers.length > 1 ? 's' : ''}
+                    </div>
+                  )}
                   <FormMessage className="text-[12px] text-red-500 mt-1" />
                 </FormItem>
               )}
@@ -440,28 +411,25 @@ export function AddNewTeamForm({ onClose, onFormSubmit, initialData, isEdit = fa
       </div>
 
       {/* Exact Figma Footer Buttons */}
-      <div className="px-6 py-6 border-t border-gray-100 bg-[#4F46E5]">
-        <div className="flex gap-4">
+      <div className="px-8 py-4 border-t border-gray-100 bg-gray-50">
+        <div className="flex justify-end items-center space-x-3">
           <Button
             type="button"
             variant="outline"
+            className="h-[48px] px-6 text-[16px] font-semibold text-gray-700 border-gray-300 hover:bg-gray-100"
             onClick={handleClear}
             disabled={isLoading}
-            className="flex-1 h-[48px] bg-[#EF4444] hover:bg-[#DC2626] text-white border-0 text-[16px] font-medium rounded-lg"
           >
             Clear
           </Button>
           <Button
             type="submit"
-            onClick={form.handleSubmit(onSubmit)}
+            className="h-[48px] px-6 text-[16px] font-semibold bg-[#4F46E5] hover:bg-[#4338CA] text-white"
             disabled={isLoading}
-            className="flex-1 h-[48px] bg-[#22C55E] hover:bg-[#16A34A] text-white border-0 text-[16px] font-medium rounded-lg"
+            onClick={form.handleSubmit(onSubmit)}
           >
             {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isEdit ? "Updating..." : "Saving..."}
-              </>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               isEdit ? "Update Team" : "Save Team"
             )}

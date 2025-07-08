@@ -3,7 +3,7 @@
 import React from 'react';
 import { UserRole, Permission } from '@/lib/types/roles';
 import { hasPermission, hasAnyPermission, canAccessRoute } from '@/lib/auth/permissions';
-import { useUser } from '@/hooks/useUser';
+import { useAuth } from '@/stores';
 import { Lock } from 'lucide-react';
 
 interface PermissionGateProps {
@@ -43,7 +43,7 @@ export function PermissionGate({
   showError = false,
   errorMessage = "You don't have permission to access this feature.",
 }: PermissionGateProps) {
-  const { user } = useUser();
+  const { user } = useAuth();
 
   // If no user is loaded, don't render anything
   if (!user) {
@@ -110,7 +110,7 @@ export function PermissionGate({
  * Hook version of PermissionGate for conditional logic in components
  */
 export function usePermissionGate() {
-  const { user } = useUser();
+  const { user } = useAuth();
 
   const checkPermission = (permission: Permission): boolean => {
     if (!user) return false;

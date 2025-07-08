@@ -5,7 +5,7 @@ import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import pillsButton from "@/assets/icons/pills-button.svg";
-import DealsTable from "@/components/dashboard/verifier/deals/DealsTable";
+import DealsTable from "@/components/dashboard/verifier/deals/DealsTableNew";
 import Image from "next/image";
 import DealModal from "@/components/salesperson/Deal/DealModal";
 
