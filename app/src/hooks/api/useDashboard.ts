@@ -45,6 +45,10 @@ interface CommissionData {
     client_name: string;
     total_value: number;
   }>;
+  regular_clients_all_time?: Array<{
+    client_name: string;
+    total_value: number;
+  }>;
   commission_breakdown?: any[];
 }
 
