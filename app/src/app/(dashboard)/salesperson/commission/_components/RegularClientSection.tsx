@@ -40,7 +40,7 @@ const fetchRegularClients = async (): Promise<ClientItem[]> => {
   const clients = json.regular_clients_all_time ?? [];
 
   return clients.map((client: any) => ({
-    name: client.client_name,
+    name: client.client__client_name,
     investedPrice: `$ ${Number(client.total_value).toLocaleString()}`,
   }));
 };

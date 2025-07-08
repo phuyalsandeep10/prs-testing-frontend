@@ -1,7 +1,7 @@
 "use client";
 
+import React, { useEffect, useState } from "react";
 import PaymentDistribution from "@/components/dashboard/verifier/dashboard/PaymentDistribution";
-import React from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
 
@@ -15,21 +15,65 @@ const legends = [
   { label: "Chargeback", color: "#EA1000" },
 ];
 
-// Dummy query to simulate loading
-const useChartLoader = () =>
-  useQuery({
-    queryKey: ["payment-distribution"],
-    queryFn: async () => {
-      await new Promise((res) => setTimeout(res, 800));
-      return true;
-    },
-  });
+type PaymentStatus = {
+  pending_invoices: number;
+  paid_invoices: number;
+  rejected_invoices: number;
+  refunded_invoices: number;
+  bad_debt_invoices: number;
+};
+
+const fetchPaymentDistribution = async (token: string) => {
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/verifier/dashboard/payment-status-distribution/`,
+    {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Token ${token}`,
+      },
+    }
+  );
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("Payment Distribution API error:", errorText);
+    throw new Error("Failed to fetch payment status distribution");
+  }
+
+  const data: PaymentStatus = await res.json();
+
+  // Mapping backend data to chart values
+  const chartData = [
+    { label: "Processing", value: data.pending_invoices },
+    { label: "Success", value: data.paid_invoices },
+    { label: "Failed", value: data.rejected_invoices },
+    { label: "Pending", value: data.pending_invoices },
+    { label: "Initiated", value: data.pending_invoices },
+    { label: "Refunded", value: data.refunded_invoices },
+    { label: "Chargeback", value: data.bad_debt_invoices },
+  ];
+
+  return chartData;
+};
 
 const PaymentChart = () => {
-  const { isLoading } = useChartLoader();
+  const [token, setToken] = useState<string | null>(null);
 
-  if (isLoading) {
-    // Show skeleton only without border/title container
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedToken = localStorage.getItem("authToken");
+      setToken(storedToken);
+    }
+  }, []);
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["payment-distribution", token],
+    queryFn: () => fetchPaymentDistribution(token!),
+    enabled: !!token,
+    refetchOnWindowFocus: false,
+  });
+
+  if (isLoading || !data) {
     return (
       <div className="flex flex-wrap gap-4 p-4">
         <Skeleton className="h-[250px] w-[320px] rounded-md" />
@@ -48,7 +92,8 @@ const PaymentChart = () => {
         <h1 className="text-[#465FFF] text-[20px] font-semibold mb-2">
           Payment Status Distribution
         </h1>
-        <PaymentDistribution />
+        {/* Pass data to chart here */}
+        <PaymentDistribution chartData={data} />
       </div>
 
       <div className="flex-1 flex justify-center items-center">

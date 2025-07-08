@@ -42,16 +42,21 @@ const fetchTopClients = async (
   }));
 };
 
-// 🔁 Dynamic content only
-const TopClientContent = ({ view, token }: { view: string; token: string }) => {
+const TopClientContent = ({
+  view,
+  token,
+}: {
+  view: string;
+  token: string | null;
+}) => {
   const { data, isLoading, error } = useQuery<ClientData[], Error>({
     queryKey: ["topClients", view, token],
-    queryFn: () => fetchTopClients(view, token),
+    queryFn: () => fetchTopClients(view, token!),
     enabled: !!token,
     refetchOnWindowFocus: false,
   });
 
-  if (isLoading) {
+  if (isLoading || !token) {
     return (
       <div className="space-y-3">
         {Array.from({ length: 5 }).map((_, index) => (
@@ -74,9 +79,7 @@ const TopClientContent = ({ view, token }: { view: string; token: string }) => {
 };
 
 const TopClientSection = () => {
-  const [view, setView] = useState<"yearly" | "monthly" | "quarterly">(
-    "monthly"
-  );
+  const [view, setView] = useState<"yearly" | "monthly" | "daily">("monthly");
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
@@ -91,40 +94,59 @@ const TopClientSection = () => {
         return "Yearly Top Clients";
       case "monthly":
         return "Monthly Top Clients";
-      case "quarterly":
-        return "Quarterly Top Clients";
+      case "daily":
+        return "Daily Top Clients";
       default:
         return "";
     }
   };
 
   return (
-    <div className="w-full mx-auto border border-[#D1D1D1] p-4 rounded-md">
-      {/* Static header */}
+    <div
+      className={`w-full mx-auto p-4 rounded-md ${
+        !token ? "" : "border border-[#D1D1D1]"
+      }`}
+    >
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-10 mb-4">
-        <div>
-          <h1 className="text-[18px] font-semibold mb-1">My Top Clients</h1>
-          <p className="text-[12px] text-[#7E7E7E] truncate">
-            {getSubheading()}
-          </p>
-        </div>
+        {!token ? (
+          <>
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-48 rounded" />
+              <Skeleton className="h-4 w-40 rounded" />
+            </div>
 
-        <div className="w-30">
-          <select
-            value={view}
-            onChange={(e) =>
-              setView(e.target.value as "yearly" | "monthly" | "quarterly")
-            }
-            className="w-full px-3 py-1.5 border border-[#C3C3CB] rounded-md text-sm text-[#4B5563] shadow-sm focus:outline-none"
-          >
-            <option value="yearly">Yearly</option>
-            <option value="monthly">Monthly</option>
-            <option value="quarterly">Quarterly</option>
-          </select>
-        </div>
+            <div className="w-30">
+              <Skeleton className="h-8 w-full rounded-md" />
+            </div>
+          </>
+        ) : (
+          <>
+            <div>
+              <h1 className="text-[18px] font-semibold mb-1">My Top Clients</h1>
+              <p className="text-[12px] text-[#7E7E7E] truncate">
+                {getSubheading()}
+              </p>
+            </div>
+
+            <div className="w-30">
+              <select
+                value={view}
+                onChange={(e) =>
+                  setView(e.target.value as "yearly" | "monthly" | "daily")
+                }
+                className="w-full px-3 py-1.5 border border-[#C3C3CB] rounded-md text-sm text-[#4B5563] shadow-sm focus:outline-none"
+              >
+                <option value="yearly">Yearly</option>
+                <option value="monthly">Monthly</option>
+                <option value="daily">Daily</option>
+              </select>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Dynamic section (only this rerenders) */}
+      {/* Dynamic content */}
       <TopClientContent view={view} token={token} />
     </div>
   );

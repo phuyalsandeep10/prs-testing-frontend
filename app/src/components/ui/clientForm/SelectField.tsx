@@ -88,7 +88,6 @@ const SelectField: React.FC<SelectFieldProps> = ({
           );
         })}
       </select>
-      {error && <p className="text-red-500 text-sm mt-1">{error.message}</p>}
     </InputWrapper>
   );
 };
