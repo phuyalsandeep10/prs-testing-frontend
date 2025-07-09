@@ -11,8 +11,9 @@ interface StreaksProps {
 export default function Streaks({ total = 5 }: StreaksProps) {
   const { data, loading, error, sendRequest, retry } = useStreakStore();
 
+  const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/dashboard/streak/`;
+
   useEffect(() => {
-    const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/dashboard/streak/`;
     const token = localStorage.getItem("authToken");
     sendRequest("GET", apiUrl, undefined, undefined, {
       getAuthToken: () => token,
@@ -21,45 +22,28 @@ export default function Streaks({ total = 5 }: StreaksProps) {
 
   const currentStreak = data?.current_streak ?? 0;
 
-  // Calculate stars according to your custom inverse logic
-  const calculateStarsOppositeWithHalf = (
-    streak: number,
-    totalStars: number
-  ) => {
-    // Special case for streak 3: 1 full empty + 1 half empty stars
-    if (streak === 3) {
-      const fullEmptyStars = 1;
-      const halfEmptyStars = 1;
-      const fullColoredStars = totalStars - fullEmptyStars - halfEmptyStars;
-      return { fullColoredStars, halfEmptyStars, fullEmptyStars };
-    }
-
-    // For others, linear scaling from 0 to 10 streak:
-    // stars empty (white) = (streak / 10) * totalStars
-    const scaledEmptyStars = (streak / 10) * totalStars;
-
-    const fullEmptyStars = Math.floor(scaledEmptyStars);
-    const halfEmptyStars = scaledEmptyStars - fullEmptyStars >= 0.5 ? 1 : 0;
+  const calculateInverseStars = (streak: number, totalStars: number) => {
+    const fullEmptyStars = Math.floor(streak);
+    const halfEmptyStars = streak - fullEmptyStars >= 0.5 ? 1 : 0;
     const fullColoredStars = totalStars - fullEmptyStars - halfEmptyStars;
 
     return { fullColoredStars, halfEmptyStars, fullEmptyStars };
   };
 
   const { fullColoredStars, halfEmptyStars, fullEmptyStars } =
-    calculateStarsOppositeWithHalf(currentStreak, total);
-
-  const apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/dashboard/streak/`;
+    calculateInverseStars(currentStreak, total);
 
   return (
     <div className="flex items-center gap-3">
       <span className="font-semibold text-black text-[20px] font-outfit">
         Streaks
       </span>
+
       <div className="flex gap-1">
-        {/* Loading state */}
+        {/* Loading */}
         {loading[apiUrl] && <span className="text-gray-500">Loading...</span>}
 
-        {/* Error state */}
+        {/* Error */}
         {error && !loading[apiUrl] && (
           <div className="flex flex-col gap-2">
             <span className="text-red-500">{error.displayMessage}</span>
@@ -72,14 +56,14 @@ export default function Streaks({ total = 5 }: StreaksProps) {
           </div>
         )}
 
-        {/* Stars display */}
+        {/* Stars */}
         {!loading[apiUrl] && !error && (
           <>
             {/* Full colored stars */}
             {[...Array(fullColoredStars)].map((_, i) => (
               <Star
                 key={`full-colored-${i}`}
-                className="text-[#FFBF10] w-8 h-8"
+                className="w-8 h-8 text-[#FFBF10]"
                 fill="#FFBF10"
               />
             ))}
@@ -88,9 +72,7 @@ export default function Streaks({ total = 5 }: StreaksProps) {
             {halfEmptyStars === 1 && (
               <Star
                 className="w-8 h-8"
-                style={{
-                  fill: "url(#halfStarGradientEmpty)",
-                }}
+                style={{ fill: "url(#halfStarGradientEmpty)" }}
               />
             )}
 
@@ -98,14 +80,15 @@ export default function Streaks({ total = 5 }: StreaksProps) {
             {[...Array(fullEmptyStars)].map((_, i) => (
               <Star
                 key={`full-empty-${i}`}
-                className="text-[#acabaa] w-8 h-8"
+                className="w-8 h-8 text-[#acabaa]"
+                fill="#acabaa"
               />
             ))}
           </>
         )}
       </div>
 
-      {/* SVG gradient for half empty star */}
+      {/* SVG gradient for half-empty star */}
       <svg
         width="0"
         height="0"
@@ -121,8 +104,8 @@ export default function Streaks({ total = 5 }: StreaksProps) {
             x2="100%"
             y2="0%"
           >
-            <stop offset="50%" stopColor="#acabaa" />
             <stop offset="50%" stopColor="#FFBF10" />
+            <stop offset="50%" stopColor="#acabaa" />
           </linearGradient>
         </defs>
       </svg>

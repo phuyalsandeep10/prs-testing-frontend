@@ -20,7 +20,7 @@ const Acheve = () => {
   const { data, loading, error, sendRequest, cancel, retry } =
     useDashboardStore();
   const endpoint = `${process.env.NEXT_PUBLIC_API_URL}/dashboard/dashboard/`;
-
+  console.log(endpoint);
   useEffect(() => {
     if (!process.env.NEXT_PUBLIC_API_URL) {
       console.error(
