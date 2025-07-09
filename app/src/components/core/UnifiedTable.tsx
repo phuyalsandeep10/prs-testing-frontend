@@ -27,6 +27,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  ChevronRight as ExpandIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -82,6 +83,7 @@ export interface TableConfig {
     error?: string;
     searchPlaceholder?: string;
   };
+  getRowId?: (row: any) => string;
 }
 
 export interface UnifiedTableProps<TData> {
@@ -100,6 +102,7 @@ export interface UnifiedTableProps<TData> {
   getRowProps?: (row: Row<TData>) => React.HTMLAttributes<HTMLTableRowElement>;
   expandedRows?: Record<string, boolean>;
   onExpandedRowsChange?: (expandedRows: Record<string, boolean>) => void;
+  hideExpansionColumn?: boolean;
 }
 
 // ==================== DEFAULT CONFIGURATIONS ====================
@@ -142,7 +145,7 @@ const getTableVariant = (variant: string, size: string) => {
       cell: "px-6 py-4 whitespace-nowrap text-sm text-gray-900",
     },
     minimal: {
-      table: "w-auto",
+      table: "w-[100%]",
       header: "border-b",
       headerCell: "pb-3 text-left text-sm font-medium text-gray-700",
       row: "border-b border-gray-100 hover:bg-gray-25",
@@ -150,7 +153,7 @@ const getTableVariant = (variant: string, size: string) => {
     },
     professional: {
       table:
-        "w-auto border-collapse bg-white shadow-sm rounded-lg overflow-hidden",
+        "w-[100%] border-collapse bg-white shadow-sm rounded-lg overflow-hidden",
       header:
         "bg-gradient-to-r from-blue-50 to-indigo-50 border-b-2 border-blue-200",
       headerCell:
@@ -159,7 +162,7 @@ const getTableVariant = (variant: string, size: string) => {
       cell: "px-6 py-4 text-sm text-gray-800",
     },
     compact: {
-      table: "w-auto text-sm",
+      table: "w-[100%] text-sm",
       header: "bg-gray-100 border-b",
       headerCell:
         "px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase",
@@ -177,6 +180,53 @@ const getTableVariant = (variant: string, size: string) => {
 
   return variants[variant as keyof typeof variants] || variants.default;
 };
+
+// ==================== EXPANSION COLUMN ====================
+const createExpansionColumn = <TData,>(
+  features: TableFeatures,
+  currentExpandedRows: Record<string, boolean>,
+  setCurrentExpandedRows: (expandedRows: Record<string, boolean>) => void,
+  expandedContent?: (row: Row<TData>) => React.ReactNode
+): ColumnDef<TData> => ({
+  id: "expansion",
+  header: "",
+  cell: ({ row }) => {
+    const isExpanded = currentExpandedRows[row.id];
+    const hasExpandedContent = expandedContent && features.expansion;
+
+    if (!hasExpandedContent) {
+      return null;
+    }
+
+    const handleToggle = () => {
+      setCurrentExpandedRows({
+        ...currentExpandedRows,
+        [row.id]: !isExpanded,
+      });
+    };
+
+    return (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          handleToggle();
+        }}
+        className="p-1 hover:bg-gray-100 rounded transition-colors chrome-transition-optimized"
+        title={isExpanded ? "Collapse" : "Expand"}
+      >
+        <ExpandIcon
+          className={cn(
+            "h-4 w-4 text-gray-500 transition-transform duration-200 chrome-transition-optimized",
+            isExpanded && "rotate-90"
+          )}
+        />
+      </button>
+    );
+  },
+  size: 40,
+  enableSorting: false,
+  enableHiding: false,
+});
 
 // ==================== PAGINATION COMPONENT ====================
 interface PaginationProps {
@@ -352,6 +402,7 @@ export const UnifiedTable = React.memo(
     getRowProps,
     expandedRows,
     onExpandedRowsChange,
+    hideExpansionColumn,
   }: UnifiedTableProps<TData>) => {
     // Memoize configurations to prevent unnecessary re-calculations
     const features = React.useMemo(
@@ -384,11 +435,37 @@ export const UnifiedTable = React.memo(
     const setCurrentExpandedRows =
       onExpandedRowsChange || setInternalExpandedRows;
 
+    // Create expansion column if expansion is enabled
+    const expansionColumn = React.useMemo(
+      () =>
+        features.expansion && expandedContent && !hideExpansionColumn
+          ? createExpansionColumn(
+              features,
+              currentExpandedRows,
+              setCurrentExpandedRows,
+              expandedContent
+            )
+          : null,
+      [
+        features.expansion,
+        expandedContent,
+        currentExpandedRows,
+        setCurrentExpandedRows,
+        hideExpansionColumn,
+      ]
+    );
+
+    // Combine columns with expansion column
+    const allColumns = React.useMemo(
+      () => (expansionColumn ? [expansionColumn, ...columns] : columns),
+      [expansionColumn, columns]
+    );
+
     // Memoize table configuration
     const tableConfig = React.useMemo(
       () => ({
         data,
-        columns,
+        columns: allColumns,
         state: {
           sorting,
           columnFilters,
@@ -413,10 +490,11 @@ export const UnifiedTable = React.memo(
             pageSize: config.pagination?.pageSize || 10,
           },
         },
+        getRowId: config.getRowId || ((row: any) => row.id),
       }),
       [
         data,
-        columns,
+        allColumns,
         sorting,
         columnFilters,
         columnVisibility,
@@ -425,6 +503,7 @@ export const UnifiedTable = React.memo(
         features.selection,
         features.pagination,
         config.pagination?.pageSize,
+        config.getRowId,
       ]
     );
 
@@ -515,13 +594,21 @@ export const UnifiedTable = React.memo(
         )}
 
         {/* Table */}
-        <div className="rounded-md border overflow-hidden">
-          <Table className={styles.table} >
-            <TableHeader className={`!w-auto ${styles.header}`}>
+        <div className="rounded-md border overflow-hidden chrome-table-render-optimized">
+          <Table className={cn(styles.table, "chrome-table-border-optimized")}>
+            <TableHeader
+              className={`!w-auto bg-[#D1D1D1] h-[45px] ${styles.header} chrome-table-header-optimized`}
+            >
               {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
+                <TableRow key={headerGroup.id} className="chrome-row-optimized">
                   {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id} className={styles.headerCell}>
+                    <TableHead
+                      key={header.id}
+                      className={cn(
+                        styles.headerCell,
+                        "chrome-table-cell-optimized"
+                      )}
+                    >
                       {header.isPlaceholder ? null : (
                         <div
                           className={cn(
@@ -558,48 +645,64 @@ export const UnifiedTable = React.memo(
                 </TableRow>
               ))}
             </TableHeader>
-            <TableBody>
+            <TableBody className="chrome-table-body-optimized h-[45px] bg-[#F9FAFB]">
               {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <React.Fragment key={row.id}>
-                    <TableRow
-                      data-state={row.getIsSelected() && "selected"}
-                      className={cn(
-                        styles.row,
-                        onRowClick && "cursor-pointer",
-                        row.getIsSelected() && "bg-blue-50"
-                      )}
-                      onClick={() => handleRowClick(row)}
-                      {...(getRowProps
-                        ? getRowProps(row)
-                        : ({} as React.HTMLAttributes<HTMLTableRowElement>))}
+                table.getRowModel().rows.map((row) => {
+                  return (
+                    <React.Fragment
+                      key={`row-${row.id}-${
+                        currentExpandedRows[row.id] ? "expanded" : "collapsed"
+                      }`}
                     >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id} className={styles.cell}>
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                    {features.expansion &&
-                      expandedContent &&
-                      currentExpandedRows[row.id] && (
-                        <TableRow>
-                          <TableCell colSpan={columns.length} className="p-0">
-                            <div className="p-4 bg-gray-50 border-t">
-                              {expandedContent(row)}
-                            </div>
+                      <TableRow
+                        data-state={row.getIsSelected() && "selected"}
+                        className={cn(
+                          styles.row,
+                          onRowClick && "cursor-pointer",
+                          row.getIsSelected() && "bg-blue-50",
+                          "chrome-row-optimized chrome-hover-optimized"
+                        )}
+                        onClick={() => handleRowClick(row)}
+                        {...(getRowProps
+                          ? getRowProps(row)
+                          : ({} as React.HTMLAttributes<HTMLTableRowElement>))}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell
+                            key={cell.id}
+                            className={cn(
+                              styles.cell,
+                              "chrome-table-cell-optimized"
+                            )}
+                          >
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
                           </TableCell>
-                        </TableRow>
-                      )}
-                  </React.Fragment>
-                ))
+                        ))}
+                      </TableRow>
+                      {features.expansion &&
+                        expandedContent &&
+                        currentExpandedRows[row.id] && (
+                          <TableRow className="chrome-expansion-optimized">
+                            <TableCell
+                              colSpan={allColumns.length}
+                              className="p-0 chrome-table-cell-optimized"
+                            >
+                              <div className="p-4 bg-gray-50 border-t chrome-expand">
+                                {expandedContent(row)}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                    </React.Fragment>
+                  );
+                })
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={columns.length}
+                    colSpan={allColumns.length}
                     className="h-24 text-center text-gray-500"
                   >
                     {messages.empty}

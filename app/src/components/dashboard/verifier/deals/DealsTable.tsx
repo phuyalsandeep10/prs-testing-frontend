@@ -387,7 +387,11 @@ const NestedDealColumns = [
 interface DealsTableProps {
   onEditDeal?: (dealId: string) => void;
   onAddPayment?: (dealId: string) => void;
-  onVerifyPayment?: (dealId: string, paymentId: string, status: 'verified' | 'rejected') => void;
+  onVerifyPayment?: (
+    dealId: string,
+    paymentId: string,
+    status: "verified" | "rejected"
+  ) => void;
   searchTerm?: string;
 }
 
@@ -398,7 +402,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
   searchTerm = "",
 }) => {
   const roleConfig = useRoleBasedColumns();
-  
+
   const {
     data: deals,
     isLoading,
@@ -443,7 +447,10 @@ const DealsTable: React.FC<DealsTableProps> = ({
         accessorKey: "pay_status",
         header: "Pay Status",
         cell: ({ row }) => {
-          const status = row.original.pay_status === 'full_payment' ? 'Full Pay' : 'Partial Pay';
+          const status =
+            row.original.pay_status === "full_payment"
+              ? "Full Pay"
+              : "Partial Pay";
           const getStatusColor = () => {
             switch (status.toLowerCase()) {
               case "full pay":
@@ -462,7 +469,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
         header: "Remarks",
         cell: ({ row }) => (
           <div className="text-[12px] text-gray-700 max-w-xs truncate">
-            {row.original.deal_remarks || 'N/A'}
+            {row.original.deal_remarks || "N/A"}
           </div>
         ),
       },
@@ -490,7 +497,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
         cell: ({ row }) => {
           const payments = row.original.payments;
           if (!payments || payments.length === 0) return "No Payments";
-          
+
           return (
             <div className="flex gap-1 flex-wrap">
               {payments.map((p, index) => {
@@ -504,7 +511,9 @@ const DealsTable: React.FC<DealsTableProps> = ({
 
                 return (
                   <PaymentTooltip key={index} amount={`$${p.received_amount}`}>
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${badgeClass}`}>
+                    <span
+                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${badgeClass}`}
+                    >
                       {`Pay ${index + 1}`}
                     </span>
                   </PaymentTooltip>
@@ -522,8 +531,12 @@ const DealsTable: React.FC<DealsTableProps> = ({
           if (!payments || payments.length === 0) {
             return <div className="text-[12px] text-gray-700">N/A</div>;
           }
-          const methods = [...new Set(payments.map(p => p.payment_method))];
-          return <div className="text-[12px] text-gray-700">{methods.join(', ')}</div>;
+          const methods = [...new Set(payments.map((p) => p.payment_method))];
+          return (
+            <div className="text-[12px] text-gray-700">
+              {methods.join(", ")}
+            </div>
+          );
         },
       },
       {
@@ -554,31 +567,47 @@ const DealsTable: React.FC<DealsTableProps> = ({
         },
       },
       // Conditionally include Sales Person column based on role
-      ...(roleConfig.shouldShowSalesperson ? [{
-        accessorKey: "created_by.full_name" as const,
-        header: "Sales Person",
-        cell: ({ row }: { row: { original: Deal } }) => (
-          <div className="text-[12px] text-gray-700">
-            {row.original.created_by?.full_name || 'N/A'}
-          </div>
-        ),
-      }] : []),
+      ...(roleConfig.shouldShowSalesperson
+        ? [
+            {
+              accessorKey: "created_by.full_name" as const,
+              header: "Sales Person",
+              cell: ({ row }: { row: { original: Deal } }) => (
+                <div className="text-[12px] text-gray-700">
+                  {row.original.created_by?.full_name || "N/A"}
+                </div>
+              ),
+            },
+          ]
+        : []),
       {
         id: "actions",
         header: "Actions",
         cell: ({ row }) => (
           <div className="flex items-center justify-center gap-1">
-            {roleConfig.allowedActions.includes('verify') && (
+            {roleConfig.allowedActions.includes("verify") && (
               <>
                 <button
-                  onClick={() => onVerifyPayment?.(row.original.id, row.original.payments?.[0]?.id || '', 'verified')}
+                  onClick={() =>
+                    onVerifyPayment?.(
+                      row.original.id,
+                      row.original.payments?.[0]?.id || "",
+                      "verified"
+                    )
+                  }
                   className="w-6 h-6 rounded-full bg-[#22C55E] text-white flex items-center justify-center hover:bg-[#16A34A] transition-colors"
                   title="Verify Payment"
                 >
                   <Check className="w-3 h-3" />
                 </button>
                 <button
-                  onClick={() => onVerifyPayment?.(row.original.id, row.original.payments?.[0]?.id || '', 'rejected')}
+                  onClick={() =>
+                    onVerifyPayment?.(
+                      row.original.id,
+                      row.original.payments?.[0]?.id || "",
+                      "rejected"
+                    )
+                  }
                   className="w-6 h-6 rounded-full bg-[#EF4444] text-white flex items-center justify-center hover:bg-[#DC2626] transition-colors"
                   title="Reject Payment"
                 >
@@ -608,14 +637,18 @@ const DealsTable: React.FC<DealsTableProps> = ({
         accessorKey: "received_amount",
         header: "Amount",
         cell: ({ row }) => (
-          <div className="text-[12px] text-gray-800">{row.original.received_amount}</div>
+          <div className="text-[12px] text-gray-800">
+            {row.original.received_amount}
+          </div>
         ),
       },
       {
         accessorKey: "payment_method",
         header: "Method",
         cell: ({ row }) => (
-          <div className="text-[12px] text-gray-800">{row.original.payment_method}</div>
+          <div className="text-[12px] text-gray-800">
+            {row.original.payment_method}
+          </div>
         ),
       },
       {
@@ -643,7 +676,9 @@ const DealsTable: React.FC<DealsTableProps> = ({
         header: "Verified By",
         cell: ({ row }) => (
           <div className="text-[12px] text-gray-800">
-            {row.original.verified_by ? row.original.verified_by.full_name : "N/A"}
+            {row.original.verified_by
+              ? row.original.verified_by.full_name
+              : "N/A"}
           </div>
         ),
       },
@@ -652,7 +687,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
         header: "Verifier Remarks",
         cell: ({ row }) => (
           <div className="text-[12px] text-gray-800">
-            {row.original.verification_remarks || 'N/A'}
+            {row.original.verification_remarks || "N/A"}
           </div>
         ),
       },
@@ -679,41 +714,46 @@ const DealsTable: React.FC<DealsTableProps> = ({
   );
 
   // Helper to pass deal ID to nested payment actions
-  const createNestedColumns = useCallback((dealId: string): ColumnDef<Payment>[] => [
-    ...nestedColumns.slice(0, -1), // Remove the last action column
-    {
-      id: "verification_actions",
-      header: "Actions",
-      cell: ({ row }) => (
-        <div className="flex items-center justify-center gap-1">
-          {row.original.status === 'pending' && (
-            <>
-              <button
-                onClick={() => onVerifyPayment?.(dealId, row.original.id, 'verified')}
-                className="w-5 h-5 rounded-full bg-[#22C55E] text-white flex items-center justify-center hover:bg-[#16A34A] transition-colors"
-                title="Verify"
-              >
-                <Check className="w-3 h-3" />
-              </button>
-              <button
-                onClick={() => onVerifyPayment?.(dealId, row.original.id, 'rejected')}
-                className="w-5 h-5 rounded-full bg-[#EF4444] text-white flex items-center justify-center hover:bg-[#DC2626] transition-colors"
-                title="Reject"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </>
-          )}
-        </div>
-      ),
-    }],
+  const createNestedColumns = useCallback(
+    (dealId: string): ColumnDef<Payment>[] => [
+      ...nestedColumns.slice(0, -1), // Remove the last action column
+      {
+        id: "verification_actions",
+        header: "Actions",
+        cell: ({ row }) => (
+          <div className="flex items-center justify-center gap-1">
+            {row.original.status === "pending" && (
+              <>
+                <button
+                  onClick={() =>
+                    onVerifyPayment?.(dealId, row.original.id, "verified")
+                  }
+                  className="w-5 h-5 rounded-full bg-[#22C55E] text-white flex items-center justify-center hover:bg-[#16A34A] transition-colors"
+                  title="Verify"
+                >
+                  <Check className="w-3 h-3" />
+                </button>
+                <button
+                  onClick={() =>
+                    onVerifyPayment?.(dealId, row.original.id, "rejected")
+                  }
+                  className="w-5 h-5 rounded-full bg-[#EF4444] text-white flex items-center justify-center hover:bg-[#DC2626] transition-colors"
+                  title="Reject"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </>
+            )}
+          </div>
+        ),
+      },
+    ],
     [nestedColumns, onVerifyPayment]
   );
 
   const expandedContent = useCallback(
     (row: Row<Deal>) => (
       <div className="bg-gray-50 p-4">
-        <h3 className="font-semibold text-lg mb-2">Payment Details for Verification</h3>
         <UnifiedTable
           columns={createNestedColumns(row.original.id) as ColumnDef<unknown>[]}
           data={row.original.payments || []}
@@ -739,12 +779,12 @@ const DealsTable: React.FC<DealsTableProps> = ({
 
   const getRowClassName = (row: Row<Deal>) => {
     const hasRejectedPayment = row.original.payments?.some(
-      (p: Payment) => p.status === 'rejected'
+      (p: Payment) => p.status === "rejected"
     );
     const hasPendingPayment = row.original.payments?.some(
-      (p: Payment) => p.status === 'pending'
+      (p: Payment) => p.status === "pending"
     );
-    
+
     if (hasRejectedPayment) {
       return "bg-red-50 hover:bg-red-100 transition-colors";
     }
@@ -759,7 +799,11 @@ const DealsTable: React.FC<DealsTableProps> = ({
   }
 
   if (isError) {
-    return <div className="p-4 text-center text-red-500">Error fetching deals: {error.message}</div>;
+    return (
+      <div className="p-4 text-center text-red-500">
+        Error fetching deals: {error.message}
+      </div>
+    );
   }
 
   return (

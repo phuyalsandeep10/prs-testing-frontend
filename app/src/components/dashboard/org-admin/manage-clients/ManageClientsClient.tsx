@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ClientTable } from "./ClientTable";
 import { ClientKanbanView } from "./ClientKanbanView";
-import { apiClient } from "@/lib/api/client";
+import { apiClient } from "@/lib/api";
 import { type Client } from "@/lib/types/roles";
 import { toast } from "sonner";
 
@@ -42,10 +42,17 @@ export function ManageClientsClient() {
 
   const filteredClients = React.useMemo(() => {
     if (!searchTerm) return clients;
-    return clients.filter(client =>
-      (client.client_name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (client.email?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-      (client.phone_number?.toLowerCase() || "").includes(searchTerm.toLowerCase())
+    return clients.filter(
+      (client) =>
+        (client.client_name?.toLowerCase() || "").includes(
+          searchTerm.toLowerCase()
+        ) ||
+        (client.email?.toLowerCase() || "").includes(
+          searchTerm.toLowerCase()
+        ) ||
+        (client.phone_number?.toLowerCase() || "").includes(
+          searchTerm.toLowerCase()
+        )
     );
   }, [clients, searchTerm]);
 

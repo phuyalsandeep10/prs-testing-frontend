@@ -1,11 +1,9 @@
 "use client";
-
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ChevronDown, Paperclip } from "lucide-react";
-
 const AddPaymentSchema = z.object({
   paymentDate: z.string().min(1, "Payment date is required"),
   receivedAmount: z.string().min(1, "Received amount is required"),
@@ -18,19 +16,19 @@ const AddPaymentSchema = z.object({
   paymentType: z.string().min(1, "Payment type is required"),
   remarks: z.string().min(1, "Remarks is required"),
 });
-
 type AddPaymentData = z.infer<typeof AddPaymentSchema>;
-
 interface AddPaymentProps {
   dealId?: string | null;
   onSave: (data: AddPaymentData) => void;
   onCancel: () => void;
 }
-
-const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => {
+const AddPayment: React.FC<AddPaymentProps> = ({
+  dealId,
+  onSave,
+  onCancel,
+}) => {
   const [selectedPaymentType, setSelectedPaymentType] = useState("Advance");
-  const [showDropdown, setShowDropdown] = useState(false); 
-
+  const [showDropdown, setShowDropdown] = useState(false);
   const {
     register,
     handleSubmit,
@@ -40,24 +38,20 @@ const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => 
   } = useForm<AddPaymentData>({
     resolver: zodResolver(AddPaymentSchema),
   });
-
   const paymentTypes = [
     { value: "advance", label: "Advance" },
     { value: "partial", label: "Partial Payment" },
     { value: "final", label: "Final Installment" },
   ];
-
   const onSubmit = (data: AddPaymentData) => {
     onSave(data);
     onCancel();
   };
-
   const handlePaymentTypeSelect = (type: { value: string; label: string }) => {
     setSelectedPaymentType(type.label);
     setValue("paymentType", type.value);
     setShowDropdown(false); // Close dropdown after selection
   };
-
   const handleClear = () => {
     reset();
     setSelectedPaymentType("Advance");
@@ -66,25 +60,21 @@ const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => 
     setValue("chequeNo", "12145235");
     setShowDropdown(false); // Close dropdown when clearing
   };
-
   // Close dropdown when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (!target.closest('.payment-type-dropdown')) {
+      if (!target.closest(".payment-type-dropdown")) {
         setShowDropdown(false);
       }
     };
-
     if (showDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
-
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [showDropdown]);
-
   return (
     <div className="w-full bg-white">
       <form onSubmit={handleSubmit(onSubmit)} className="h-full flex flex-col">
@@ -103,10 +93,11 @@ const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => 
                 className="w-full h-[48px] px-4 border-2 border-[#4F46E5] rounded-lg text-[16px] focus:outline-none focus:border-[#4338CA] bg-white"
               />
               {errors.paymentDate && (
-                <p className="text-red-500 text-sm mt-1">{String(errors.paymentDate.message)}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {String(errors.paymentDate.message)}
+                </p>
               )}
             </div>
-
             {/* Row 1, Col 2: Received Amount */}
             <div>
               <label className="block text-[14px] font-medium text-gray-900 mb-2">
@@ -118,10 +109,11 @@ const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => 
                 className="w-full h-[48px] px-4 border border-gray-300 rounded-lg text-[16px] focus:outline-none focus:border-gray-400 bg-white"
               />
               {errors.receivedAmount && (
-                <p className="text-red-500 text-sm mt-1">{String(errors.receivedAmount.message)}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {String(errors.receivedAmount.message)}
+                </p>
               )}
             </div>
-
             {/* Row 1, Col 3: Cheque No */}
             <div>
               <label className="block text-[14px] font-medium text-gray-900 mb-2">
@@ -133,10 +125,11 @@ const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => 
                 className="w-full h-[48px] px-4 border border-gray-300 rounded-lg text-[16px] focus:outline-none focus:border-gray-400 bg-white"
               />
               {errors.chequeNo && (
-                <p className="text-red-500 text-sm mt-1">{String(errors.chequeNo.message)}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {String(errors.chequeNo.message)}
+                </p>
               )}
             </div>
-
             {/* Row 2, Col 1: Attach Receipt */}
             <div>
               <label className="block text-[14px] font-medium text-gray-900 mb-2">
@@ -150,19 +143,22 @@ const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => 
                   accept=".png,.jpg,.jpeg,.pdf"
                   id="attachReceipt"
                 />
-                <div 
+                <div
                   className="w-full h-[48px] px-4 border border-gray-300 rounded-lg text-[16px] bg-white cursor-pointer flex items-center justify-between hover:border-gray-400 transition-colors"
-                  onClick={() => document.getElementById('attachReceipt')?.click()}
+                  onClick={() =>
+                    document.getElementById("attachReceipt")?.click()
+                  }
                 >
                   <span className="text-gray-900">Receipt.png</span>
                   <Paperclip className="h-4 w-4 text-gray-400" />
                 </div>
               </div>
               {errors.attachReceipt && (
-                <p className="text-red-500 text-sm mt-1">{String(errors.attachReceipt.message)}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {String(errors.attachReceipt.message)}
+                </p>
               )}
             </div>
-
             {/* Row 2, Col 2: Payment Type with dropdown */}
             <div className="relative payment-type-dropdown">
               <label className="block text-[14px] font-medium text-gray-900 mb-2">
@@ -173,21 +169,24 @@ const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => 
                 onClick={() => setShowDropdown(!showDropdown)}
               >
                 <span className="text-gray-900">{selectedPaymentType}</span>
-                <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+                <ChevronDown
+                  className={`h-4 w-4 text-gray-400 transition-transform ${
+                    showDropdown ? "rotate-180" : ""
+                  }`}
+                />
               </div>
-              
               {/* Dropdown - only show when state is true */}
               {showDropdown && (
-                <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden">
+                <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-y-auto max-h-[200px] h-[100%]">
                   {paymentTypes.map((type, index) => (
                     <div
                       key={type.value}
                       className={`px-4 py-3 cursor-pointer text-[16px] border-b border-gray-100 last:border-b-0 transition-colors ${
-                        type.label === selectedPaymentType 
-                          ? 'bg-gray-50 text-gray-900' 
+                        type.label === selectedPaymentType
+                          ? "bg-gray-50 text-gray-900"
                           : type.label === "Partial Payment"
-                            ? 'text-[#4F46E5] hover:bg-blue-50' // Blue text for Partial Payment as in screenshot
-                            : 'text-gray-900 hover:bg-gray-50'
+                          ? "text-[#4F46E5] hover:bg-blue-50" // Blue text for Partial Payment as in screenshot
+                          : "text-gray-900 hover:bg-gray-50"
                       }`}
                       onClick={() => handlePaymentTypeSelect(type)}
                     >
@@ -197,10 +196,11 @@ const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => 
                 </div>
               )}
               {errors.paymentType && (
-                <p className="text-red-500 text-sm mt-1">{String(errors.paymentType.message)}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {String(errors.paymentType.message)}
+                </p>
               )}
             </div>
-
             {/* Row 2, Col 3: Remarks */}
             <div>
               <label className="block text-[14px] font-medium text-gray-900 mb-2">
@@ -212,12 +212,13 @@ const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => 
                 placeholder=""
               />
               {errors.remarks && (
-                <p className="text-red-500 text-sm mt-1">{String(errors.remarks.message)}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {String(errors.remarks.message)}
+                </p>
               )}
             </div>
           </div>
         </div>
-
         {/* Footer with blue gradient background exactly as in screenshot */}
         <div className="px-0 py-0 bg-gradient-to-r from-[#4F46E5] via-[#7C8FE8] to-[#A8B5EB]">
           <div className="px-8 py-6">
@@ -242,5 +243,4 @@ const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => 
     </div>
   );
 };
-
-export default AddPayment; 
+export default AddPayment;

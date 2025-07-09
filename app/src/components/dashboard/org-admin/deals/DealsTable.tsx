@@ -283,106 +283,106 @@ const Mainusers: MainUsers[] = [
 ];
 
 // Nested table columns
-const NestedDealColumns = [
-  {
-    accessorKey: "Payment",
-    header: "Payment",
-    cell: ({ row }: any) => (
-      <div className="text-[12px] text-gray-800">{row.getValue("Payment")}</div>
-    ),
-  },
-  {
-    accessorKey: "Payment Date",
-    header: "Payment Date",
-    cell: ({ row }: any) => (
-      <div className="text-[12px] text-gray-800">
-        {row.getValue("Payment Date")}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "Payment Created",
-    header: "Payment Created",
-    cell: ({ row }: any) => (
-      <div className="text-[12px] text-gray-800">
-        {row.getValue("Payment Created")}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "Payment Value",
-    header: "Payment Value",
-    cell: ({ row }: any) => (
-      <div className="text-[12px] text-gray-800">
-        {row.getValue("Payment Value")}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "Payment Version",
-    header: "Payment Version",
-    cell: ({ row }: any) => (
-      <div className="text-[12px] text-gray-800">
-        {row.getValue("Payment Version")}
-      </div>
-    ),
-  },
+// const NestedDealColumns = [
+//   {
+//     accessorKey: "Payment",
+//     header: "Payment",
+//     cell: ({ row }: any) => (
+//       <div className="text-[12px] text-gray-800">{row.getValue("Payment")}</div>
+//     ),
+//   },
+//   {
+//     accessorKey: "Payment Date",
+//     header: "Payment Date",
+//     cell: ({ row }: any) => (
+//       <div className="text-[12px] text-gray-800">
+//         {row.getValue("Payment Date")}
+//       </div>
+//     ),
+//   },
+//   {
+//     accessorKey: "Payment Created",
+//     header: "Payment Created",
+//     cell: ({ row }: any) => (
+//       <div className="text-[12px] text-gray-800">
+//         {row.getValue("Payment Created")}
+//       </div>
+//     ),
+//   },
+//   {
+//     accessorKey: "Payment Value",
+//     header: "Payment Value",
+//     cell: ({ row }: any) => (
+//       <div className="text-[12px] text-gray-800">
+//         {row.getValue("Payment Value")}
+//       </div>
+//     ),
+//   },
+//   {
+//     accessorKey: "Payment Version",
+//     header: "Payment Version",
+//     cell: ({ row }: any) => (
+//       <div className="text-[12px] text-gray-800">
+//         {row.getValue("Payment Version")}
+//       </div>
+//     ),
+//   },
 
-  {
-    accessorKey: "Payment Status",
-    header: "Payment Status",
-    cell: ({ row }: any) => {
-      const status = row.getValue("Payment Status") as string;
-      const getStatusColor = () => {
-        switch (status.toLowerCase()) {
-          case "completed":
-            return "bg-[#E6F7FF] text-[#16A34A] px-3 py-1 text-[12px] font-medium rounded-full";
-          case "rejected":
-            return "bg-[#FEF2F2] text-[#DC2626] px-3 py-1 text-[12px] font-medium rounded-full";
-          case "pending":
-            return "bg-[#FFF7ED] text-[#EA580C] px-3 py-1 text-[12px] font-medium rounded-full";
-          default:
-            return "bg-gray-100 text-gray-600 px-3 py-1 text-[12px] font-medium rounded-full";
-        }
-      };
-      return <span className={getStatusColor()}>{status}</span>;
-    },
-  },
-  {
-    accessorKey: "Receipt Link",
-    header: "Receipt Link",
-    cell: ({ row }: any) => (
-      <div className="text-[12px] text-gray-800">
-        {row.getValue("Receipt Link")}
-      </div>
-    ),
-  },
-  {
-    cell: ({ row }) => (
-      <div className="text-[12px] text-gray-800">
-        {row.getValue("Verified By")}
-      </div>
-    ),
-    accessorKey: "Verified By",
-    header: () => <span className="text-[#009959]">Verified By</span>,
-  },
-  {
-    accessorKey: "Remarks",
-    header: "Remarks",
-    cell: ({ row }: any) => (
-      <div className="text-[12px] text-gray-800">{row.getValue("Remarks")}</div>
-    ),
-  },
-  {
-    accessorKey: "Verification Remarks",
-    header: "Verification Remarks",
-    cell: ({ row }: any) => (
-      <div className="text-[12px] text-gray-800">
-        {row.getValue("Verification Remarks")}
-      </div>
-    ),
-  },
-] as any;
+//   {
+//     accessorKey: "Payment Status",
+//     header: "Payment Status",
+//     cell: ({ row }: any) => {
+//       const status = row.getValue("Payment Status") as string;
+//       const getStatusColor = () => {
+//         switch (status.toLowerCase()) {
+//           case "completed":
+//             return "bg-[#E6F7FF] text-[#16A34A] px-3 py-1 text-[12px] font-medium rounded-full";
+//           case "rejected":
+//             return "bg-[#FEF2F2] text-[#DC2626] px-3 py-1 text-[12px] font-medium rounded-full";
+//           case "pending":
+//             return "bg-[#FFF7ED] text-[#EA580C] px-3 py-1 text-[12px] font-medium rounded-full";
+//           default:
+//             return "bg-gray-100 text-gray-600 px-3 py-1 text-[12px] font-medium rounded-full";
+//         }
+//       };
+//       return <span className={getStatusColor()}>{status}</span>;
+//     },
+//   },
+//   {
+//     accessorKey: "Receipt Link",
+//     header: "Receipt Link",
+//     cell: ({ row }: any) => (
+//       <div className="text-[12px] text-gray-800">
+//         {row.getValue("Receipt Link")}
+//       </div>
+//     ),
+//   },
+//   {
+//     cell: ({ row }) => (
+//       <div className="text-[12px] text-gray-800">
+//         {row.getValue("Verified By")}
+//       </div>
+//     ),
+//     accessorKey: "Verified By",
+//     header: () => <span className="text-[#009959]">Verified By</span>,
+//   },
+//   {
+//     accessorKey: "Remarks",
+//     header: "Remarks",
+//     cell: ({ row }: any) => (
+//       <div className="text-[12px] text-gray-800">{row.getValue("Remarks")}</div>
+//     ),
+//   },
+//   {
+//     accessorKey: "Verification Remarks",
+//     header: "Verification Remarks",
+//     cell: ({ row }: any) => (
+//       <div className="text-[12px] text-gray-800">
+//         {row.getValue("Verification Remarks")}
+//       </div>
+//     ),
+//   },
+// ] as any;
 
 interface DealsTableProps {
   onEditDeal?: (dealId: string) => void;
@@ -612,6 +612,15 @@ const DealsTable: React.FC<DealsTableProps> = ({
   const nestedColumns: ColumnDef<Payment>[] = useMemo(
     () => [
       {
+        accessorKey: "Payment",
+        header: "Payment",
+        cell: ({ row }) => (
+          <div className="text-[12px] text-gray-800">
+            {format(new Date(row.original.payment_date), "MMM d, yyyy")}
+          </div>
+        ),
+      },
+      {
         accessorKey: "payment_date",
         header: "Payment Date",
         cell: ({ row }) => (
@@ -621,8 +630,8 @@ const DealsTable: React.FC<DealsTableProps> = ({
         ),
       },
       {
-        accessorKey: "received_amount",
-        header: "Amount",
+        accessorKey: "Payment Created",
+        header: "Payment Created",
         cell: ({ row }) => (
           <div className="text-[12px] text-gray-800">
             {row.original.received_amount}
@@ -630,7 +639,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
         ),
       },
       {
-        accessorKey: "payment_method",
+        accessorKey: "Payment Value",
         header: "Method",
         cell: ({ row }) => (
           <div className="text-[12px] text-gray-800">
@@ -639,28 +648,17 @@ const DealsTable: React.FC<DealsTableProps> = ({
         ),
       },
       {
-        accessorKey: "status",
-        header: "Status",
-        cell: ({ row }) => {
-          const status = row.original.status;
-          const getStatusColor = () => {
-            switch (status.toLowerCase()) {
-              case "verified":
-                return "bg-[#E6F7FF] text-[#16A34A] px-3 py-1 text-[12px] font-medium rounded-full";
-              case "rejected":
-                return "bg-[#FEF2F2] text-[#DC2626] px-3 py-1 text-[12px] font-medium rounded-full";
-              case "pending":
-                return "bg-[#FFF7ED] text-[#EA580C] px-3 py-1 text-[12px] font-medium rounded-full";
-              default:
-                return "bg-gray-100 text-gray-600 px-3 py-1 text-[12px] font-medium rounded-full";
-            }
-          };
-          return <span className={getStatusColor()}>{status}</span>;
-        },
+        accessorKey: "Payment Version",
+        header: "Payment Version",
+        cell: ({ row }) => (
+          <div className="text-[12px] text-gray-800">
+            {row.original.payment_method}
+          </div>
+        ),
       },
       {
-        accessorKey: "verified_by.full_name",
-        header: "Verified By",
+        accessorKey: "Payment Status",
+        header: "Payment Status",
         cell: ({ row }) => (
           <div className="text-[12px] text-gray-800">
             {row.original.verified_by
@@ -670,8 +668,8 @@ const DealsTable: React.FC<DealsTableProps> = ({
         ),
       },
       {
-        accessorKey: "verification_remarks",
-        header: "Verifier Remarks",
+        accessorKey: "Receipt Link",
+        header: "Receipt Link",
         cell: ({ row }) => (
           <div className="text-[12px] text-gray-800">
             {row.original.verification_remarks || "N/A"}
@@ -679,21 +677,13 @@ const DealsTable: React.FC<DealsTableProps> = ({
         ),
       },
       {
-        accessorKey: "receipt_file",
-        header: "Receipt",
-        cell: ({ row }) =>
-          row.original.receipt_file ? (
-            <a
-              href={row.original.receipt_file}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline text-[12px]"
-            >
-              View
-            </a>
-          ) : (
-            <div className="text-[12px] text-gray-800">N/A</div>
-          ),
+        accessorKey: "Verified By",
+        header: "Verified By",
+        cell: ({ row }) => (
+          <div className="text-[12px] text-gray-800">
+            {row.original.verification_remarks || "N/A"}
+          </div>
+        ),
       },
     ],
     []
