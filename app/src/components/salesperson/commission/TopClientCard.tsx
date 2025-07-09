@@ -80,7 +80,7 @@ const TopClientCard: React.FC<TopClientCardProps> = ({ data, title }) => {
         display: !!title,
         text: title,
         font: { size: 16 },
-        padding: { bottom: 20 },
+        padding: { bottom: 10, top: 0 },
       },
       tooltip: {
         callbacks: {
@@ -91,17 +91,18 @@ const TopClientCard: React.FC<TopClientCardProps> = ({ data, title }) => {
     scales: {
       x: {
         grid: { display: false },
+        ticks: { padding: 5 },
       },
       y: {
         beginAtZero: true,
         grid: { display: true, color: "#E5E5E5" },
-        ticks: { precision: 0 },
+        ticks: { precision: 0, padding: 5 },
       },
     },
   };
 
   return (
-    <div className="w-full h-[200px] sm:h-[250px] md:h-[280px] lg:h-[222px]">
+    <div className="relative w-full h-[200px] sm:h-[220px] md:h-[188px]">
       <Bar ref={chartRef} data={chartData} options={options} />
     </div>
   );

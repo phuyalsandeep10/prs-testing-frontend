@@ -42,7 +42,7 @@ const RefundComponent: React.FC<RefundComponentProps> = ({ data }) => {
                 className={`py-3 pl-7 pr-2 ${
                   row.status.toLowerCase() === "refunded"
                     ? "text-[#EA12F9]"
-                    : row.status.toLowerCase() === "chargeback"
+                    :row.status.toLowerCase() === "bad debt"
                     ? "text-[#FF2626]"
                     : ""
                 }`}

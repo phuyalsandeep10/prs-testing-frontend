@@ -31,10 +31,14 @@ const PaymentOverview: React.FC<CardProps> = ({
           >
             <span>{item.label}</span>
             <div
-              className="w-6 h-6 rounded-full text-xs font-semibold flex items-center justify-center"
+              className="rounded-full text-xs font-semibold flex items-center justify-center px-2"
               style={{
                 backgroundColor: item.color || "#A9A9A9",
                 color: item.textColor || "#FFFFFF",
+                width: "fit-content",
+                padding: "0.4rem 0.6rem", // tweak for spacing
+                height: "auto", // will fix it with JS in useEffect if needed
+                minWidth: "1.5rem", // minimum size for small counts
               }}
             >
               {item.count}

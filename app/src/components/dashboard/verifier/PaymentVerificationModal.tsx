@@ -10,16 +10,14 @@ interface PaymentVerificationModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "verification" | "view";
-  invoiceId?: string;
-  invoiceData?: any;
+  paymentId?: string | number;
 }
 
 const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({
   isOpen,
   onOpenChange,
   mode,
-  invoiceId,
-  invoiceData,
+  paymentId,
 }) => {
   const [position, setPosition] = useState({ top: 0, left: 0 });
 
@@ -43,11 +41,10 @@ const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({
 
   const getTitle = () => {
     if (mode === "verification") {
-      const paymentId = "PA - 14670";
       return (
         <>
           <span className="text-[#31323A]">Payment for </span>
-          <span className="text-[#465FFF]">{paymentId}</span>
+          <span className="text-[#465FFF]">PA - {paymentId}</span>
         </>
       );
     }
@@ -107,8 +104,7 @@ const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({
           <div className="flex-1 overflow-auto">
             <PaymentVerificationForm
               mode={mode}
-              invoiceId={invoiceId}
-              invoiceData={invoiceData}
+              paymentId={paymentId}
               onSave={handleSave}
               onCancel={handleCancel}
             />

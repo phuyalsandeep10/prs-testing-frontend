@@ -100,8 +100,7 @@ export default function ChangePasswordPage() {
       
       const response = await fetch(
         `${
-          process.env.NEXT_PUBLIC_API_URL ||
-          "https://ce08-49-244-92-113.ngrok-free.app/api/v1"
+          process.env.NEXT_PUBLIC_API_URL
         }/auth/change-password/`,
         {
           method: "POST",

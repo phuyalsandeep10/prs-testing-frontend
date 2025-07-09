@@ -1,7 +1,6 @@
 "use client";
 
-import type React from "react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import CommissionArc from "@/components/salesperson/commission/CommissionArc";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -62,14 +61,14 @@ const CommissionSection: React.FC = () => {
 
   if (isLoading) {
     return (
-        <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl mx-auto max-h-[350px] overflow-y-auto">      
-        <div className="space-y-3 sm:space-y-4">
-          <Skeleton className="h-5 sm:h-6 w-16 sm:w-20" />
-          <Skeleton className="h-32 sm:h-40 md:h-44 w-full rounded-lg" />
+      <div className="w-full h-[322px] flex flex-col p-[10px]">
+        <div className="space-y-3">
+          <Skeleton className="h-5 w-16" />
+          <Skeleton className="h-32 w-full rounded-lg" />
           <div className="flex justify-between items-center px-2">
             <div className="space-y-2">
-              <Skeleton className="h-3 sm:h-4 w-8 sm:w-10" />
-              <Skeleton className="h-5 sm:h-6 w-8 sm:w-10" />
+              <Skeleton className="h-3 w-8" />
+              <Skeleton className="h-5 w-8" />
             </div>
           </div>
         </div>
@@ -79,8 +78,8 @@ const CommissionSection: React.FC = () => {
 
   if (error) {
     return (
-      <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl mx-auto">
-        <p className="text-red-500 text-xs sm:text-sm text-center p-4">
+      <div className="w-full h-[322px] flex items-center justify-center p-[10px]">
+        <p className="text-red-500 text-xs text-center">
           Error: {error.message}
         </p>
       </div>
@@ -88,7 +87,7 @@ const CommissionSection: React.FC = () => {
   }
 
   return (
-    <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg xl:max-w-xl mx-auto">
+    <div className="w-full h-[322px] p-[10px]">
       <CommissionArc
         achieved={data?.achieved ?? 0}
         total={data?.total ?? 1}

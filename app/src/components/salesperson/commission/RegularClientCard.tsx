@@ -19,17 +19,17 @@ const RegularClientCard: React.FC<RegularClientCardProps> = ({
   clients,
 }) => {
   return (
-    <div className="border border-[#D1D1D1] p-4 rounded-md bg-white max-w-[900px] min-w-[300px] mx-auto h-[319px] flex flex-col">
+    <div className="border border-[#D1D1D1] p-[10px] rounded-md bg-white w-full h-[302px] flex flex-col">
       <div className="mb-4">
         <h2 className="text-[20px] font-semibold mb-1 mt-2">{title}</h2>
         <p className="text-[12px] text-[#7E7E7E]">{subtitle}</p>
       </div>
 
-      <div className="space-y-1 flex-1 overflow-y-hidden">
+      <div className="space-y-1 flex-1 overflow-y-auto">
         {clients.map((client, index) => (
           <div
             key={index}
-            className="flex items-center justify-between p-2 pb-2 pt-2 rounded-lg hover:bg-gray-50 transition-colors"
+            className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors"
           >
             <div className="flex items-center overflow-hidden space-x-4">
               <p className="font-medium text-[13px]">{client.name}</p>

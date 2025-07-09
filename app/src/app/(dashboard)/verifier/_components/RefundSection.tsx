@@ -5,49 +5,48 @@ import RefundComponent from "@/components/dashboard/verifier/dashboard/RefundCom
 import { Skeleton } from "@/components/ui/skeleton";
 
 const fetchRefunds = async () => {
-  await new Promise((res) => setTimeout(res, 500));
-  return [
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/verifier/dashboard/recent-refunds-or-bad-debts/`,
     {
-      transactionId: "TXN 001",
-      client: "Joshna Khadka",
-      amount: "$ 2,000.00",
-      status: "Refunded",
-      reasons: "Customer Reports",
-      date: "2025-10-26 14:34",
-    },
-    {
-      transactionId: "TXN 002",
-      client: "Bomb Padka",
-      amount: "$ 2,000.00",
-      status: "Chargeback",
-      reasons: "Unauthorized Transactions",
-      date: "2025-10-26 14:34",
-    },
-    {
-      transactionId: "TXN 003",
-      client: "Abinash Babu Tiwari",
-      amount: "$ 2,000.00",
-      status: "Refunded",
-      reasons: "Customer Reports",
-      date: "2025-10-26 14:34",
-    },
-    {
-      transactionId: "TXN 004",
-      client: "Prekxya Adhikari",
-      amount: "$ 2,000.00",
-      status: "Chargeback",
-      reasons: "Unauthorized Transactions",
-      date: "2025-10-26 14:34",
-    },
-    {
-      transactionId: "TXN 005",
-      client: "Yubina Koirala",
-      amount: "$ 2,000.00",
-      status: "Refunded",
-      reasons: "Customer Reports",
-      date: "2025-10-26 14:34",
-    },
-  ];
+      headers: {
+        Authorization: `Token ${localStorage.getItem("authToken") || ""}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  if (!res.ok) throw new Error("Failed to fetch refund data");
+
+  const data = await res.json();
+
+  const slicedData = Array.isArray(data) ? data.slice(0, 5) : [];
+
+  return slicedData.map((item: any) => {
+    const status =
+      item.invoice_status === "bad_debt"
+        ? "Bad Debt"
+        : item.invoice_status === "refunded"
+        ? "Refunded"
+        : item.invoice_status || "Unknown";
+
+    const reasons =
+      item.invoice_status === "bad_debt"
+        ? item.failure_remarks || "No failure reason"
+        : item.invoice_status === "refunded"
+        ? item.approved_remarks || "No approved remarks"
+        : "No remarks";
+
+    return {
+      transactionId: item.invoice_id || "N/A",
+      client: item.client_name || "Unknown",
+      amount: item.payment_amount
+        ? `$ ${parseFloat(item.payment_amount).toFixed(2)}`
+        : "$ 0.00",
+      status,
+      reasons,
+      date: item.approval_date || "N/A",
+    };
+  });
 };
 
 const RefundSection = () => {
@@ -60,32 +59,32 @@ const RefundSection = () => {
     <div>
       {!isLoading && (
         <h1 className="text-[#465FFF] text-[20px] font-semibold mb-3">
-          Recent Refunds and Chargebacks
+          Recent Refunds and Bad Debts
         </h1>
       )}
 
       {isLoading && (
         <div className="space-y-4">
-          {/* Show 5 rows of skeletons to mimic refund rows */}
           {Array.from({ length: 5 }).map((_, idx) => (
             <div
               key={idx}
               className="flex justify-between space-x-4"
               style={{ minHeight: 32 }}
             >
-              <Skeleton className="w-20 h-6 rounded" /> {/* transactionId */}
-              <Skeleton className="w-32 h-6 rounded" /> {/* client */}
-              <Skeleton className="w-20 h-6 rounded" /> {/* amount */}
-              <Skeleton className="w-24 h-6 rounded" /> {/* status */}
-              <Skeleton className="w-36 h-6 rounded" /> {/* reasons */}
-              <Skeleton className="w-36 h-6 rounded" /> {/* date */}
+              <Skeleton className="w-20 h-6 rounded" />
+              <Skeleton className="w-32 h-6 rounded" />
+              <Skeleton className="w-20 h-6 rounded" />
+              <Skeleton className="w-24 h-6 rounded" />
+              <Skeleton className="w-36 h-6 rounded" />
+              <Skeleton className="w-36 h-6 rounded" />
             </div>
           ))}
         </div>
       )}
 
-      {isError && <p>Failed to load refund data.</p>}
-      {data && !isLoading && <RefundComponent data={data} />}
+      {isError && <p className="text-red-500">Failed to load refund data.</p>}
+
+      {!isLoading && data && <RefundComponent data={data} />}
     </div>
   );
 };

@@ -33,8 +33,8 @@ const CommissionArc: React.FC<CommissionArcProps> = ({
     const updateDimensions = () => {
       if (containerRef.current) {
         const containerWidth = containerRef.current.offsetWidth;
-        const padding = 24; // Account for container padding
-        const availableWidth = containerWidth - padding;
+        const padding = 10; // Match grid gap and section padding
+        const availableWidth = containerWidth - padding * 2;
 
         // Responsive width calculation
         const width = Math.min(Math.max(availableWidth, 280), 500);
@@ -55,7 +55,7 @@ const CommissionArc: React.FC<CommissionArcProps> = ({
     d3.select(svgRef.current).selectAll("*").remove();
 
     const { width, height } = dimensions;
-    const padding = 15;
+    const padding = 10;
     const radius = Math.min(width * 0.9, height * 0.8);
     const svgWidth = width + padding * 2;
     const svgHeight = height + padding * 2;
@@ -120,7 +120,6 @@ const CommissionArc: React.FC<CommissionArcProps> = ({
     const percentage =
       total > 0 ? ((achieved / total) * 100).toFixed(1) : "0.0";
 
-    // ✅ Increased font sizes
     const percentageFontSize = Math.max(radius * 0.18, 20);
     const labelFontSize = Math.max(radius * 0.13, 12);
 
@@ -128,7 +127,7 @@ const CommissionArc: React.FC<CommissionArcProps> = ({
       .append("text")
       .text(`${percentage}%`)
       .attr("text-anchor", "middle")
-      .attr("alignment-baseline", "middle")
+      .attr("alignment-baseline","middle")
       .attr("fill", "#000000")
       .attr("font-weight", "700")
       .attr("font-size", percentageFontSize)
@@ -136,7 +135,6 @@ const CommissionArc: React.FC<CommissionArcProps> = ({
       .attr("y", radius * -0.3)
       .attr("transform", `rotate(-90)`);
 
-    // Green increase label with background
     const plusLabelGroup = chartGroup
       .append("g")
       .attr(
@@ -172,35 +170,32 @@ const CommissionArc: React.FC<CommissionArcProps> = ({
   return (
     <div
       ref={containerRef}
-      className="w-full h-[322px] border border-[#D1D1D1] rounded-lg pt-3 px-3 pb-2 sm:px-4 sm:pb-3 md:p-5 text-center font-sans flex flex-col justify-between"
+      className="w-full h-[302px] border border-[#D1D1D1] rounded-lg p-[10px] text-center font-sans flex flex-col justify-between"
     >
       <div>
-        <h2 className="text-base sm:text-lg md:text-xl font-semibold text-gray-900 mt-1 mb-1">
+        <h2 className="text-base font-semibold text-gray-900 mt-1 mb-1">
           {title}
         </h2>
-        <h4 className="text-xs sm:text-sm text-gray-500 font-normal mb-2 sm:mb-4 px-2">
+        <h4 className="text-xs text-gray-500 font-normal mb-2 px-2">
           {subtitle}
         </h4>
       </div>
 
-      {/* Arc section with responsive height */}
       <div className="w-full flex justify-center overflow-hidden">
         <svg
           ref={svgRef}
           className="w-full h-auto max-w-full"
-          style={{ maxHeight: "200px" }} // ⬅ shrink this on small screens
+          style={{ maxHeight: "180px" }}
         />
       </div>
 
-      {/* Bottom text should always be visible */}
-      <p className="text-xs sm:text-sm text-gray-500 leading-relaxed px-2 sm:px-4 -mt-2">
+      <p className="text-xs text-gray-500 leading-relaxed px-2">
         You've done sales of{" "}
         <span className="text-gray-900 font-medium">{salesAmount}</span>, which
         is higher than last month. Keep up the good work.
       </p>
     </div>
   );
-  
 };
 
 export default CommissionArc;

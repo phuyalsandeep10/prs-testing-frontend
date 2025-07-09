@@ -23,41 +23,42 @@ const fetchInvoiceStatusOverview = async () => {
   return [
     {
       label: "Completed Deal",
-      count: data.paid_invoices?.toString() || "0",
+      count: Math.floor(data.paid_invoices || 0).toString(),
       color: "#C1EAD9",
       textColor: "#026C40",
     },
     {
       label: "Overdue Deal",
-      count: data.pending_invoices?.toString() || "0",
+      count: Math.floor(data.pending_invoices || 0).toString(),
       color: "#FBD0D0",
       textColor: "#A90101",
     },
     {
       label: "Pending Deal",
-      count: data.pending_invoices?.toString() || "0",
+      count: Math.floor(data.pending_invoices || 0).toString(),
       color: "#FFCA89",
       textColor: "#814804",
     },
     {
       label: "Refunded Deal",
-      count: data.refunded_invoices?.toString() || "0",
+      count: Math.floor(data.refunded_invoices || 0).toString(),
       color: "#C0C8FD",
       textColor: "#0E00D0",
     },
     {
       label: "Disputed Deal",
-      count: data.rejected_invoices?.toString() || "0",
+      count: Math.floor(data.rejected_invoices || 0).toString(),
       color: "#FBDAB1",
       textColor: "#666403",
     },
     {
       label: "Processing Deal",
-      count: data.pending_invoices?.toString() || "0",
+      count: Math.floor(data.pending_invoices || 0).toString(),
       color: "#C0C8FD",
       textColor: "#0E00D0",
     },
   ];
+  
 };
 
 const fetchPaymentMethodsBreakdown = async () => {
@@ -78,41 +79,42 @@ const fetchPaymentMethodsBreakdown = async () => {
   return [
     {
       label: "Credit Card",
-      count: data.credit_card?.toString() || "0",
+      count: Math.floor(data.credit_card || 0).toString(),
       color: "#C1EAD9",
       textColor: "#026C40",
     },
     {
       label: "Bank Transfer",
-      count: data.bank_transfer?.toString() || "0",
+      count: Math.floor(data.bank_transfer || 0).toString(),
       color: "#FBD0D0",
       textColor: "#A90101",
     },
     {
       label: "Mobile Wallet",
-      count: data.mobile_wallet?.toString() || "0",
+      count: Math.floor(data.mobile_wallet || 0).toString(),
       color: "#FFCA89",
       textColor: "#814804",
     },
     {
       label: "Cheque",
-      count: data.cheque?.toString() || "0",
+      count: Math.floor(data.cheque || 0).toString(),
       color: "#C0C8FD",
       textColor: "#0E00D0",
     },
     {
       label: "QR Payment",
-      count: data.qr_payment?.toString() || "0",
+      count: Math.floor(data.qr_payment || 0).toString(),
       color: "#FBDAB1",
       textColor: "#666403",
     },
     {
       label: "In-Hand Cash",
-      count: "5", // default
+      count: "5", // Already an integer string
       color: "#C0C8FD",
       textColor: "#0E00D0",
     },
   ];
+  
 };
 
 const fetchPaymentFailureReasons = async () => {

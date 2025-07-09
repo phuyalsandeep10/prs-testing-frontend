@@ -4,54 +4,38 @@ import { useQuery } from "@tanstack/react-query";
 import VerificationComponent from "@/components/dashboard/verifier/dashboard/VerificationComponent";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const VerificationSection = () => {
-  const fetchVerificationData = async () => {
-    return [
-      {
-        ID: "TXN 001",
-        client: "Yubesh Koirala",
-        amount: "$200.00",
-        status: "Pending",
-        actions: "Verify",
+const fetchVerificationData = async () => {
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/verifier/dashboard/verification-queue/`,
+    {
+      headers: {
+        Authorization: `Token ${localStorage.getItem("authToken") || ""}`,
+        "Content-Type": "application/json",
       },
-      {
-        ID: "TXN 002",
-        client: "Bhanu Raj Acharya",
-        amount: "$200.00",
-        status: "Pending",
-        actions: "Verify",
-      },
-      {
-        ID: "TXN 003",
-        client: "Kushal Rai",
-        amount: "$200.00",
-        status: "Pending",
-        actions: "Verify",
-      },
-      {
-        ID: "TXN 004",
-        client: "Pratigya Dhakal",
-        amount: "$200.00",
-        status: "Pending",
-        actions: "Verify",
-      },
-      {
-        ID: "TXN 005",
-        client: "Pankaj Gurung",
-        amount: "$200.00",
-        status: "Pending",
-        actions: "Verify",
-      },
-      {
-        ID: "TXN 006",
-        client: " Akhileshwor Magar",
-        amount: "$200.00",
-        status: "Pending",
-        actions: "Verify",
-      },
-    ];
-  };
+    }
+  );
 
+  if (!res.ok) throw new Error("Failed to fetch verification queue");
+
+  const data = await res.json();
+
+  const slicedData = Array.isArray(data) ? data.slice(0, 6) : [];
+
+  return slicedData.map((item: any) => ({
+    ID: item.invoice_id || "N/A",
+    client: item.client_name || "Unknown",
+    amount: item.payment_amount
+      ? `$${parseFloat(item.payment_amount).toFixed(2)}`
+      : "$0.00",
+    status:
+      item.invoice_status === "pending"
+        ? "Pending"
+        : item.invoice_status || "Unknown",
+    actions: "Verify", // Static for now
+  }));
+};
+
+const VerificationSection = () => {
   const { data, isLoading, isError } = useQuery({
     queryKey: ["verification-queue"],
     queryFn: fetchVerificationData,
@@ -60,14 +44,13 @@ const VerificationSection = () => {
   if (isLoading)
     return (
       <div className="space-y-3 w-fit rounded-[6px] p-4">
-        {/* Render skeleton rows resembling your verification data */}
         {Array.from({ length: 6 }).map((_, idx) => (
           <div key={idx} className="flex space-x-4 items-center">
-            <Skeleton className="w-20 h-6 rounded" /> {/* ID */}
-            <Skeleton className="w-32 h-6 rounded" /> {/* client */}
-            <Skeleton className="w-20 h-6 rounded" /> {/* amount */}
-            <Skeleton className="w-24 h-6 rounded" /> {/* status */}
-            <Skeleton className="w-20 h-6 rounded" /> {/* actions */}
+            <Skeleton className="w-20 h-6 rounded" />
+            <Skeleton className="w-32 h-6 rounded" />
+            <Skeleton className="w-20 h-6 rounded" />
+            <Skeleton className="w-24 h-6 rounded" />
+            <Skeleton className="w-20 h-6 rounded" />
           </div>
         ))}
       </div>

@@ -102,34 +102,30 @@ const TopClientSection = () => {
   };
 
   return (
-    <div
-      className={`w-full mx-auto p-4 rounded-md ${
-        !token ? "" : "border border-[#D1D1D1]"
-      }`}
-    >
+    <div className="w-full min-h-[260px] p-4 md:p-6 rounded-md border border-[#D1D1D1]">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-10 mb-4">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-4">
         {!token ? (
           <>
             <div className="space-y-2">
               <Skeleton className="h-6 w-48 rounded" />
               <Skeleton className="h-4 w-40 rounded" />
             </div>
-
-            <div className="w-30">
+            <div className="w-full md:w-40">
               <Skeleton className="h-8 w-full rounded-md" />
             </div>
           </>
         ) : (
           <>
             <div>
-              <h1 className="text-[18px] font-semibold mb-1">My Top Clients</h1>
+              <h1 className="text-[16px] md:text-[18px] font-semibold mb-1">
+                My Top Clients
+              </h1>
               <p className="text-[12px] text-[#7E7E7E] truncate">
                 {getSubheading()}
               </p>
             </div>
-
-            <div className="w-30">
+            <div className="w-full md:w-40">
               <select
                 value={view}
                 onChange={(e) =>
@@ -146,7 +142,7 @@ const TopClientSection = () => {
         )}
       </div>
 
-      {/* Dynamic content */}
+      {/* Chart Content */}
       <TopClientContent view={view} token={token} />
     </div>
   );

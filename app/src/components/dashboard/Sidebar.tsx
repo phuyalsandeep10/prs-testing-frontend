@@ -109,7 +109,6 @@ export default function Sidebar() {
 
   // Determine current role and navigation based on user role
   const getCurrentNavigation = () => {
-<<<<<<< HEAD
     const role = user?.role;
     if (role === 'super-admin') return superAdminNav;
     if (role === 'org-admin') return orgAdminNav;
@@ -117,7 +116,7 @@ export default function Sidebar() {
     if (role === 'salesperson') return salespersonNav;
     if (role === 'supervisor') return supervisorNav;
     if (role === 'team-member') return teamMemberNav;
-=======
+    
     if (pathname.startsWith("/super-admin")) return superAdminNav;
     if (pathname.startsWith("/org-admin")) return orgAdminNav;
     if (pathname.startsWith("/verifier")) return verifierNav;
@@ -125,7 +124,6 @@ export default function Sidebar() {
     if (pathname.startsWith("/supervisor")) return supervisorNav;
     if (pathname.startsWith("/senior-verifier")) return seniorverifierNav;
     if (pathname.startsWith("/team-member")) return teamMemberNav;
->>>>>>> Nishreyta
     return orgAdminNav; // Default fallback
   };
 
