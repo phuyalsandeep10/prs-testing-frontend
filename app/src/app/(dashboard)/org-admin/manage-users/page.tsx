@@ -27,6 +27,7 @@ import {
   useDeleteUserMutation, 
   useDeleteTeamMutation 
 } from "@/hooks/useIntegratedQuery";
+import { useAuth } from "@/stores";
 
 type TabType = "users" | "team";
 type ModalType =
@@ -100,6 +101,15 @@ export default function ManageUsersPage() {
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [deletingTeamId, setDeletingTeamId] = useState<string | null>(null);
   
+  // Get the current user's organization ID (supports multiple field names)
+  const { user: currentUser } = useAuth();
+  const organizationId =
+    (currentUser as any)?.organizationId ??
+    (currentUser as any)?.organization ??
+    (currentUser as any)?.organization_id ?? '';
+
+  const orgIdStr = organizationId ? String(organizationId) : '';
+
   // Pagination state
   const [usersPagination, setUsersPagination] = useState({
     page: 1,
@@ -118,7 +128,7 @@ export default function ManageUsersPage() {
     isLoading: usersLoading, 
     error: usersError,
     refetch: refetchUsers 
-  } = useUsersQuery();
+  } = useUsersQuery(orgIdStr);
   
   const { 
     data: teamsResponse, 
@@ -136,22 +146,20 @@ export default function ManageUsersPage() {
   const teams = Array.isArray(teamsResponse) ? teamsResponse : (teamsResponse?.data || []);
   const projects: Project[] = []; // This seems unused in the original, keeping for compatibility
 
-  // Debug logging
-  console.log('=== MANAGE USERS DEBUG ===');
-  console.log('usersResponse:', usersResponse);
-  console.log('extracted users:', users);
-  console.log('users length:', users.length);
-  console.log('teamsResponse:', teamsResponse);
-  console.log('extracted teams:', teams);
-  console.log('teams length:', teams.length);
+  // Debug logging for table update tracking
+  console.log('📊 [USER_TABLE_DEBUG] ManageUsersPage rendered');
+  console.log('📊 [USER_TABLE_DEBUG] Users count:', users.length);
+  console.log('📊 [USER_TABLE_DEBUG] Users loading:', usersLoading);
+  
+  // Manual refresh function for debugging
+  const handleManualRefresh = () => {
+    console.log('🔄 [USER_TABLE_DEBUG] Manual refresh triggered');
+    refetchUsers();
+    refetchTeams();
+  };
 
   // Computed values for filtering and pagination
   const filteredUsers = useMemo(() => {
-    console.log('=== FILTERING USERS ===');
-    console.log('users input:', users);
-    console.log('users array check:', Array.isArray(users));
-    console.log('searchTerm:', searchTerm);
-    
     if (!users) return [];
     const filtered = users.filter(user => {
       const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
@@ -160,17 +168,11 @@ export default function ManageUsersPage() {
       return fullName.includes(searchLower) || email.includes(searchLower);
     });
     
-    console.log('filtered users result:', filtered);
-    console.log('filtered users length:', filtered.length);
+    console.log('🔍 [USER_TABLE_DEBUG] Filtered users:', filtered.length, 'of', users.length);
     return filtered;
   }, [users, searchTerm]);
 
   const filteredTeams = useMemo(() => {
-    console.log('=== FILTERING TEAMS ===');
-    console.log('teams input:', teams);
-    console.log('teams array check:', Array.isArray(teams));
-    console.log('searchTerm:', searchTerm);
-    
     if (!teams) return [];
     const filtered = teams.filter(team => {
       const teamName = team.name?.toLowerCase() || '';
@@ -178,8 +180,6 @@ export default function ManageUsersPage() {
       return teamName.includes(searchLower);
     });
     
-    console.log('filtered teams result:', filtered);
-    console.log('filtered teams length:', filtered.length);
     return filtered;
   }, [teams, searchTerm]);
 
@@ -191,6 +191,14 @@ export default function ManageUsersPage() {
   useEffect(() => {
     setTeamsPagination(prev => ({ ...prev, total: filteredTeams.length }));
   }, [filteredTeams.length]);
+
+  // Track when users data changes
+  useEffect(() => {
+    console.log('🔄 [USER_TABLE_DEBUG] Users data changed! New count:', users.length);
+    if (users.length > 0) {
+      console.log('👥 [USER_TABLE_DEBUG] Current users:', users.map(u => `${u.first_name} ${u.last_name} (${u.email})`));
+    }
+  }, [users]);
 
   // Event handlers for form completion - React Query will auto-refresh
   const handleTeamCreated = () => {
@@ -216,18 +224,27 @@ export default function ManageUsersPage() {
 
   // Listen for custom events (keeping for compatibility)
   useEffect(() => {
+    // Force refresh handler
+    const handleForceUserTableRefresh = (event: any) => {
+      console.log('🔄 [USER_TABLE_DEBUG] Force refresh event received');
+      console.log('🔄 [USER_TABLE_DEBUG] Event detail:', event.detail);
+      refetchUsers();
+    };
+
     window.addEventListener("userCreated", handleUserCreated);
     window.addEventListener("userUpdated", handleUserUpdated);
     window.addEventListener("teamCreated", handleTeamCreated);
     window.addEventListener("teamUpdated", handleTeamUpdated);
+    window.addEventListener("forceUserTableRefresh", handleForceUserTableRefresh);
 
     return () => {
       window.removeEventListener("userCreated", handleUserCreated);
       window.removeEventListener("userUpdated", handleUserUpdated);
       window.removeEventListener("teamCreated", handleTeamCreated);
       window.removeEventListener("teamUpdated", handleTeamUpdated);
+      window.removeEventListener("forceUserTableRefresh", handleForceUserTableRefresh);
     };
-  }, []);
+  }, [refetchUsers]);
 
   const usersForForm = useMemo(() => users.map(u => ({
     id: u.id,
@@ -238,43 +255,25 @@ export default function ManageUsersPage() {
 
   // Get paginated data
   const paginatedUsers = useMemo(() => {
-    console.log('=== PAGINATING USERS ===');
-    console.log('filteredUsers:', filteredUsers);
-    console.log('usersPagination:', usersPagination);
-    
     const startIndex = (usersPagination.page - 1) * usersPagination.pageSize;
     const endIndex = startIndex + usersPagination.pageSize;
     const paginated = filteredUsers.slice(startIndex, endIndex);
     
-    console.log('startIndex:', startIndex, 'endIndex:', endIndex);
-    console.log('paginated users result:', paginated);
-    console.log('paginated users length:', paginated.length);
+    console.log('📄 [USER_TABLE_DEBUG] Paginated users:', paginated.length, 'on page', usersPagination.page);
     return paginated;
   }, [filteredUsers, usersPagination.page, usersPagination.pageSize]);
 
   const paginatedTeams = useMemo(() => {
-    console.log('=== PAGINATING TEAMS ===');
-    console.log('filteredTeams:', filteredTeams);
-    console.log('teamsPagination:', teamsPagination);
-    
     const startIndex = (teamsPagination.page - 1) * teamsPagination.pageSize;
     const endIndex = startIndex + teamsPagination.pageSize;
     const paginated = filteredTeams.slice(startIndex, endIndex);
     
-    console.log('startIndex:', startIndex, 'endIndex:', endIndex);
-    console.log('paginated teams result:', paginated);
-    console.log('paginated teams length:', paginated.length);
     return paginated;
   }, [filteredTeams, teamsPagination.page, teamsPagination.pageSize]);
 
   // Transform API data to table format
   const transformUsersForTable = useCallback((users: ApiUser[]): UserTableData[] => {
-    console.log('=== TRANSFORMING USERS FOR TABLE ===');
-    console.log('users input to transform:', users);
-    console.log('users length:', users.length);
-    
     const transformed = users.map((user) => {
-      console.log('transforming user:', user);
       const teamNames = Array.isArray(user.teams) && user.teams.length > 0
         ? user.teams.map((t) => typeof t === 'object' && t !== null ? t.name : t).join(", ")
         : "Not Assigned";
@@ -285,12 +284,17 @@ export default function ManageUsersPage() {
         fullName: `${user.first_name} ${user.last_name}`.trim() || user.email,
         email: user.email,
         phoneNumber: user.phoneNumber || user.contact_number || "N/A",
-        role: user.role?.name ? user.role.name.toLowerCase().replace(/[\s-]+/g, "-") : "user",
+        role: (
+          typeof user.role === 'string'
+            ? user.role
+            : (user.role as any)?.name || 'user'
+        )
+          .toString()
+          .toLowerCase()
+          .replace(/[\s-]+/g, '-'),
         assignedTeam: teamNames,
         status: user.is_active ? "active" : "inactive" as "active" | "inactive",
       };
-      
-      console.log('transformed user result:', transformedUser);
       return transformedUser;
     });
     
@@ -433,6 +437,17 @@ export default function ManageUsersPage() {
                 className="pl-12 pr-4 py-3 w-[320px] h-[44px] text-[14px] bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
               />
             </div>
+            {/* Debug: Manual Refetch Button */}
+            <Button
+              onClick={() => {
+                console.log('[ManageUsersPage] Manual refetch triggered');
+                refetchUsers();
+              }}
+              variant="outline"
+              className="h-[44px] px-4 text-[14px]"
+            >
+              🔄 Refresh
+            </Button>
             {/* Create Button - RIGHT SIDE as per Figma */}
             <Button
               onClick={() =>

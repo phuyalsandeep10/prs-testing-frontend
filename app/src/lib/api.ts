@@ -33,21 +33,7 @@ class ApiClient {
     this.timeout = timeout;
   }
 
-    // ✅ Add this
-  public setAuth(
-    token: string,
-    role: string,
-    permissions: string[],
-    orgId: string,
-    scope: Record<string, any>
-  ) {
-    this.token = token;
-  }
-
-  // ✅ Add this
-  public clearAuth() {
-    this.token = null;
-  }
+  // duplicate setAuth/clearAuth removed -- single implementation is defined later in the class
 
   private async request<T>(
     endpoint: string,
@@ -89,8 +75,9 @@ class ApiClient {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        // On 401/403 clear stored token to avoid poison for future auth attempts
-        if (response.status === 401 || response.status === 403) {
+        // On 401 clear stored token to avoid poison for future auth attempts.
+        // A 403 means the user is authenticated but lacks permissions, so we shouldn't clear the token.
+        if (response.status === 401) {
           localStorage.removeItem('authToken');
         }
 
@@ -102,11 +89,24 @@ class ApiClient {
         );
       }
 
-      const data = await response.json();
+      // Handle cases where the server returns 204 No Content or a non-JSON payload
+      let parsedData: any = null;
+      // Only attempt to parse JSON if the response is not empty and advertises JSON
+      if (response.status !== 204) {
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          parsedData = await response.json();
+        } else {
+          // Fallback: try to read as text (for plaintext success messages)
+          parsedData = await response.text().catch(() => null);
+        }
+      }
+
       return {
-        data,
+        data: parsedData as T,
         success: true,
-        message: data.message,
+        // If we parsed JSON and it had a message, use it, otherwise empty string
+        message: (parsedData as any)?.message ?? '',
       };
     } catch (error: any) {
       clearTimeout(timeoutId);

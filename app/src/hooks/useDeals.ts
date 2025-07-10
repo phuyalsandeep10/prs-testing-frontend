@@ -17,14 +17,19 @@ export const dealQueryKeys = {
 // Queries
 // -----------------------
 export const useDealsQuery = (filters?: Record<string, any>) => {
-  const { hasPermission, isAuthInitialized } = useAuth();
+  const { hasPermission, isAuthInitialized, user } = useAuth();
   const { addNotification } = useUI();
+  const organizationId = (user as any)?.organization;
 
   const query = useQuery<PaginatedResponse<Deal>, Error>({
     queryKey: dealQueryKeys.list(filters),
     queryFn: async () => {
+      const allFilters = { ...filters };
+      if (organizationId) {
+        allFilters.organization = organizationId;
+      }
       // Use apiClient directly to get deals data
-      const response = await apiClient.get<Deal[]>('/deals/', { params: filters });
+      const response = await apiClient.get<Deal[]>('/deals/', { params: allFilters });
       // Transform flat array to paginated structure
       return {
         data: response.data || [],
@@ -36,7 +41,7 @@ export const useDealsQuery = (filters?: Record<string, any>) => {
         },
       };
     },
-    enabled: isAuthInitialized, // Remove permission check for salesperson role
+    enabled: isAuthInitialized && !!organizationId, // Remove permission check for salesperson role
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 

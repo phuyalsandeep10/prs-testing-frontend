@@ -67,32 +67,14 @@ export default function NewAdminPage() {
 
   const onSubmit = async (values: AdminFormData) => {
     try {
-      // Step 1: Create or get the Org Admin role for the selected organization
-      let orgAdminRoleId = null;
-      
-      try {
-        // Create the Org Admin role for this organization
-        const roleData = {
-          name: "Org Admin",
-          organization: parseInt(values.organization),
-        };
-        
-        const newRole = await createRoleMutation.mutateAsync(roleData);
-        orgAdminRoleId = newRole.id;
-        
-      } catch (roleError: any) {
-        console.log('Role creation failed (might already exist):', roleError);
-        // If role creation fails, it might already exist - we'll proceed without it
-      }
-      
-      // Step 2: Create the admin user
+      // Create the admin user - the backend will handle role creation automatically
       const adminData = {
         first_name: values.first_name,
         last_name: values.last_name,
         email: values.email,
-        organization: values.organization,
+        organization: parseInt(values.organization), // Convert to integer
         is_active: values.is_active === "true",
-        role_id: orgAdminRoleId, // Include role if created
+        // No need to specify org_role - backend will create/get Org Admin role automatically
       };
       
       await createAdminMutation.mutateAsync(adminData);

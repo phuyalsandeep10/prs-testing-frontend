@@ -5,16 +5,13 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
+import { cacheKeys, CacheInvalidator } from '@/lib/cache';
 import type { Client } from '@/lib/types/roles';
+import { useAuth } from '@/stores';
 
 // ==================== QUERY KEYS ====================
-export const clientKeys = {
-  all: ['clients'] as const,
-  lists: () => [...clientKeys.all, 'list'] as const,
-  list: (filters: string) => [...clientKeys.lists(), { filters }] as const,
-  details: () => [...clientKeys.all, 'detail'] as const,
-  detail: (id: string) => [...clientKeys.details(), id] as const,
-};
+// Use unified cache keys from the cache system
+export const clientKeys = cacheKeys.clients;
 
 // ==================== TYPES ====================
 interface ClientsResponse {
@@ -49,8 +46,11 @@ interface ClientFilters {
  * Fetch all clients with optional filtering
  */
 export const useClients = (filters: ClientFilters = {}) => {
+  const { user } = useAuth();
+  const organizationId = (user as any)?.organization;
+
   return useQuery({
-    queryKey: clientKeys.list(JSON.stringify(filters)),
+    queryKey: clientKeys.list(filters),
     queryFn: async (): Promise<Client[]> => {
       const params = new URLSearchParams();
       
@@ -58,6 +58,7 @@ export const useClients = (filters: ClientFilters = {}) => {
       if (filters.status) params.append('status', filters.status);
       if (filters.page) params.append('page', filters.page.toString());
       if (filters.limit) params.append('limit', filters.limit.toString());
+      if (organizationId) params.append('organization', organizationId.toString());
 
       const response = await apiClient.get<ClientsResponse>(`/clients/?${params.toString()}`);
       
@@ -66,6 +67,7 @@ export const useClients = (filters: ClientFilters = {}) => {
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+    enabled: !!organizationId,
   });
 };
 
@@ -85,13 +87,19 @@ export const useClient = (clientId: string) => {
  * Fetch clients for dashboard/commission pages
  */
 export const useDashboardClients = () => {
+  const { user } = useAuth();
+  const organizationId = (user as any)?.organization;
   return useQuery({
     queryKey: [...clientKeys.all, 'dashboard'],
     queryFn: async (): Promise<Client[]> => {
+      const params = new URLSearchParams();
+      if (organizationId) {
+        params.append('organization', organizationId.toString());
+      }
       const response = await apiClient.get<{
         clients?: Client[];
         results?: Client[];
-      } | Client[]>('/dashboard/clients/');
+      } | Client[]>(`/dashboard/clients/?${params.toString()}`);
       
       // Handle different response formats
       if (Array.isArray(response)) {
@@ -101,6 +109,7 @@ export const useDashboardClients = () => {
       return (response as any).clients || (response as any).results || [];
     },
     staleTime: 2 * 60 * 1000, // 2 minutes for dashboard data
+    enabled: !!organizationId,
   });
 };
 
@@ -111,18 +120,23 @@ export const useDashboardClients = () => {
  */
 export const useCreateClient = () => {
   const queryClient = useQueryClient();
+  const invalidator = new CacheInvalidator(queryClient);
 
   return useMutation({
     mutationFn: (data: CreateClientData) => 
       apiClient.post<Client>('/clients/', data),
     
     onSuccess: (newClient) => {
-      // Invalidate and refetch client lists
-      queryClient.invalidateQueries({ queryKey: clientKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: [...clientKeys.all, 'dashboard'] });
+      // Use intelligent cache invalidation
+      invalidator.invalidateRelated('client', newClient.id.toString());
       
-      // Optionally set the new client data directly
+      // Optimistically set the new client data
       queryClient.setQueryData(clientKeys.detail(newClient.id.toString()), newClient);
+      
+      // Update client lists cache
+      queryClient.setQueryData(clientKeys.lists(), (oldData: Client[] | undefined) => {
+        return oldData ? [newClient, ...oldData] : [newClient];
+      });
     },
     
     onError: (error) => {
@@ -195,16 +209,27 @@ export const useClientCache = (clientId: string) => {
 };
 
 /**
- * Prefetch client data
+ * Enhanced prefetch client data with intelligent caching
  */
 export const usePrefetchClient = () => {
   const queryClient = useQueryClient();
   
-  return (clientId: string) => {
+  return (clientId: string, options?: { priority?: 'high' | 'medium' | 'low' }) => {
+    const staleTime = options?.priority === 'high' ? 2 * 60 * 1000 : 5 * 60 * 1000;
+    
     queryClient.prefetchQuery({
       queryKey: clientKeys.detail(clientId),
       queryFn: () => apiClient.get<Client>(`/clients/${clientId}/`),
-      staleTime: 5 * 60 * 1000,
+      staleTime,
     });
+    
+    // Also prefetch related data for high priority requests
+    if (options?.priority === 'high') {
+      queryClient.prefetchQuery({
+        queryKey: cacheKeys.deals.byClient(clientId),
+        queryFn: () => apiClient.get(`/deals/?client_id=${clientId}`),
+        staleTime: 5 * 60 * 1000,
+      });
+    }
   };
 }; 

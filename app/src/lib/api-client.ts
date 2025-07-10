@@ -87,16 +87,34 @@ export class StandardApiClient {
 
       clearTimeout(timeoutId);
 
-      // Handle auth errors consistently
-      if (response.status === 401 || response.status === 403) {
+      // Handle authentication failures (401). Keep token for 403 (permission error)
+      if (response.status === 401) {
         if (typeof window !== 'undefined') {
           localStorage.removeItem('authToken');
         }
-        throw new ApiError('Authentication failed', response.status, 'AUTH_ERROR');
+        throw new ApiError('Authentication required', response.status, 'AUTH_ERROR');
+      }
+
+      // For 403 we surface a permission error but do NOT clear the token — user is still authenticated
+      if (response.status === 403) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new ApiError(
+          errorData.detail || 'You do not have permission to perform this action.',
+          response.status,
+          'PERMISSION_DENIED',
+          errorData
+        );
       }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+
+        // Debug: surface the full error payload in the browser console
+        if (typeof window !== 'undefined') {
+          // eslint-disable-next-line no-console
+          console.error('[API ERROR]', response.status, url, errorData);
+        }
+
         throw new ApiError(
           errorData.message || `HTTP ${response.status}: ${response.statusText}`,
           response.status,

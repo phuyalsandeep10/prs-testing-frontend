@@ -54,7 +54,7 @@ interface CreateAdminData {
   first_name: string;
   last_name: string;
   email: string;
-  organization: string;
+  organization: string | number;
   is_active: boolean;
 }
 

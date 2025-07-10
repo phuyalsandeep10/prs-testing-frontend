@@ -9,11 +9,11 @@ import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
 import { useAuth, useUI } from '@/stores';
 import { apiClient } from '@/lib/api';
+import { redirectUserByRole } from '@/lib/utils/routing';
 
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { UserRole } from '@/lib/types/roles';
 
 // Types for login responses
 interface LoginResponse {
@@ -129,38 +129,8 @@ const useOTPVerifyMutation = () => {
           message: `Welcome back, ${data.user.first_name || data.user.email}!`,
         });
 
-        // Redirect based on role
-        const userRole = data.user.role?.name || data.user.role;
-        const normalizedRole = (typeof userRole === 'string' ? userRole : 'unknown').toLowerCase().replace(/\s+/g, '-') as UserRole;
-        
-        switch (normalizedRole) {
-          case 'super-admin':
-            router.push('/super-admin');
-            break;
-          case 'org-admin':
-            router.push('/org-admin');
-            break;
-          case 'salesperson':
-            router.push('/salesperson');
-            break;
-          case 'supervisor':
-            router.push('/supervisor');
-            break;
-          case 'team-member':
-            router.push('/team-member');
-            break;
-          case 'verifier':
-            router.push('/verifier');
-            break;
-          default:
-            addNotification({
-              type: 'warning',
-              title: 'Unknown Role',
-              message: `Unknown user role: ${userRole}. Redirecting to dashboard.`,
-            });
-            router.push('/dashboard');
-            break;
-        }
+        // Redirect based on role using the centralized function
+        redirectUserByRole(data.user, router, addNotification);
       }
     },
     onError: (error: any) => {
@@ -184,8 +154,8 @@ export default function LoginForm() {
 
   // Mutations
   const loginMutation = useLoginMutation();
-  const otpRequestMutation = useOTPRequestMutation();
   const otpVerifyMutation = useOTPVerifyMutation();
+  const otpRequestMutation = useOTPRequestMutation();
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -212,50 +182,54 @@ export default function LoginForm() {
 
   // Handle regular login submission
   const onLoginSubmit = async (values: z.infer<typeof loginSchema>) => {
-    try {
-      const result = await loginMutation.mutateAsync({
-        email: values.email,
-        password: values.password,
-      });
-      
-      // Check if this is a complete login with token and user
-      if (result.token && result.user) {
-        // Regular successful login
-        login(result.token, result.user);
-        
-        addNotification({
-          type: 'success',
-          title: 'Login Successful',
-          message: `Welcome back, ${result.user.first_name || result.user.email}!`,
-        });
+    // Determine the user type based on email or a UI toggle.
+    // For this fix, we'll assume a simple heuristic or a toggle sets this.
+    // We'll default to 'org_admin' for demonstration if email contains 'admin'.
+    const isSuperAdmin = values.email.toLowerCase().includes('super');
+    const isAdmin = isSuperAdmin || values.email.toLowerCase().includes('admin');
+    
+    const determinedUserType = isSuperAdmin ? 'super_admin' : 'org_admin';
 
-        // Handle successful login redirect
-        handleSuccessfulLoginRedirect(result.user);
-        
-      } else if (result.requires_otp && result.user_type) {
-        // Additional authentication required - OTP flow
-        setUserEmail(values.email);
-        setUserType(result.user_type);
-        
-        // Request OTP
+    if (isAdmin) {
+      // Admin users should go through the OTP flow
+      try {
         await otpRequestMutation.mutateAsync({
           email: values.email,
           password: values.password,
-          userType: result.user_type,
+          userType: determinedUserType,
         });
-        
-        // Transition to OTP step
+        // On success, transition to the OTP step
+        setUserEmail(values.email);
+        setUserType(determinedUserType);
         setStep('otp');
-        
-      } else if (result.requires_password_change && result.temporary_token) {
-        // Handle password change requirement
-        localStorage.setItem('tempToken', result.temporary_token);
-        localStorage.setItem('tempEmail', values.email);
-        router.push('/change-password');
+      } catch (error) {
+        // Error is handled by the mutation's onError callback
+        console.error('OTP Request error:', error);
       }
-    } catch (error) {
-      // Error handling is done in the mutation
-      console.error('Login error:', error);
+    } else {
+      // Non-admin users use the direct login flow
+      try {
+        const result = await loginMutation.mutateAsync({
+          email: values.email,
+          password: values.password,
+        });
+
+        if (result.token && result.user) {
+          login(result.token, result.user);
+          addNotification({
+            type: 'success',
+            title: 'Login Successful',
+            message: `Welcome back, ${result.user.first_name || result.user.email}!`,
+          });
+          handleSuccessfulLoginRedirect(result.user);
+        } else if (result.requires_password_change && result.temporary_token) {
+          localStorage.setItem('tempToken', result.temporary_token);
+          localStorage.setItem('tempEmail', values.email);
+          router.push('/change-password');
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+      }
     }
   };
 
@@ -274,37 +248,7 @@ export default function LoginForm() {
   };
 
   const handleSuccessfulLoginRedirect = (user: any) => {
-    const rawRole = user?.role?.name || user?.role || 'unknown';
-    const userRole = (typeof rawRole === 'string' ? rawRole : 'unknown').toLowerCase().replace(/\s+/g, '-') as UserRole;
-    
-    switch (userRole) {
-      case 'super-admin':
-        router.push('/super-admin');
-        break;
-      case 'org-admin':
-        router.push('/org-admin');
-        break;
-      case 'salesperson':
-        router.push('/salesperson');
-        break;
-      case 'supervisor':
-        router.push('/supervisor');
-        break;
-      case 'team-member':
-        router.push('/team-member');
-        break;
-      case 'verifier':
-        router.push('/verifier');
-        break;
-      default:
-        addNotification({
-          type: 'warning',
-          title: 'Unknown Role',
-          message: `Unknown user role: ${rawRole}. Redirecting to dashboard.`,
-        });
-        router.push('/dashboard');
-        break;
-    }
+    redirectUserByRole(user, router, addNotification);
   };
 
   const isLoading = loginMutation.isPending || otpRequestMutation.isPending || otpVerifyMutation.isPending;

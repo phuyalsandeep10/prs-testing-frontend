@@ -12,9 +12,15 @@ export const useSessions = () => {
 
   return useQuery({
     queryKey: SESSIONS_QUERY_KEY,
-    queryFn: async () => {
-      const response = await apiClient.getSessions();
-      return response.data;
+    queryFn: async (): Promise<UserSession[]> => {
+      const response = await apiClient.get<any>('/auth/sessions/');
+
+      // The backend returns a paginated response, so we need to extract the 'results' array.
+      // If the response is already an array, use it directly for backward compatibility.
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+      return response.data?.results || [];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,

@@ -53,6 +53,17 @@ export {
   dashboardKeys,
 } from './useDashboard';
 
+// Advanced prefetching and caching utilities
+export {
+  useHoverPrefetch,
+  useRoutePrefetch,
+  useIntelligentPrefetch,
+  useBackgroundRefresh,
+  usePrefetchUtils,
+  usePrefetchOnVisible,
+  useBulkPrefetch,
+} from './usePrefetching';
+
 // Re-export the standardized API client
 export { apiClient } from '@/lib/api-client'; 
 // Organization operations
