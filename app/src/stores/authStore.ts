@@ -9,6 +9,7 @@ export interface AuthState {
   isAuthInitialized: boolean;
   user: User | null;
   token: string | null;
+  organization: number | null;
   
   // Actions
   login: (token: string, userData: User) => void;
@@ -31,6 +32,7 @@ export const useAuthStore = create<AuthState>()(
       isAuthInitialized: false, // Start as false until hydrated
       user: null,
       token: null,
+      organization: null,
 
       // Actions
       login: (token: string, userData: User) => {
@@ -40,16 +42,24 @@ export const useAuthStore = create<AuthState>()(
         localStorage.removeItem('user');
 
         // Normalize the user role structure
+        const rawRole = (userData as any)?.role?.name || (userData as any)?.role || 'team-member';
+        const normalizedRole = typeof rawRole === 'string'
+          ? rawRole.toLowerCase().replace(/\s+/g, '-')
+          : 'team-member';
+
         const normalizedUser = {
           ...userData,
-          role: (userData.role as any)?.name || userData.role || 'team-member',
+          role: normalizedRole as UserRole,
         };
+        
+        const organizationId = (userData as any).organization || null;
 
         set({
           isAuthenticated: true,
           isAuthInitialized: true, // Ensure initialized on successful login
           user: normalizedUser,
           token,
+          organization: organizationId
         });
       },
 
@@ -63,6 +73,7 @@ export const useAuthStore = create<AuthState>()(
           isAuthInitialized: true, // Keep initialized to allow reuse without reload
           user: null,
           token: null,
+          organization: null,
         });
       },
 
@@ -108,6 +119,7 @@ export const useAuthStore = create<AuthState>()(
         isAuthenticated: state.isAuthenticated,
         user: state.user,
         token: state.token,
+        organization: state.organization,
       }),
       // Add hydration handler to properly set initialized state
       onRehydrateStorage: () => (state) => {

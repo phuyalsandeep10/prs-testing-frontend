@@ -6,6 +6,7 @@ import { apiClient } from '@/lib/api';
 import { useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { hasPermission as hasRolePermission } from '@/lib/auth/permissions';
+import { redirectUserByRole } from '@/lib/utils/routing';
 
 // Types
 interface Deal {
@@ -71,23 +72,75 @@ export const queryKeys = {
 } as const;
 
 // Users Management
-export const useUsersQuery = (filters?: Record<string, any>) => {
+export const useUsersQuery = (orgId: string, filters?: Record<string, any>) => {
   const { user, isAuthInitialized } = useAuth();
   const { addNotification } = useUI();
 
   const canManageUsers = user ? hasRolePermission(user.role, 'manage:users') : false;
-  console.log(`[useUsersQuery] Auth check: User role is "${user?.role}". Has "manage:users" permission: ${canManageUsers}`);
 
   const query = useQuery({
-    queryKey: [...queryKeys.users, filters],
+    queryKey: [...queryKeys.users, orgId, filters],
     queryFn: async (): Promise<PaginatedResponse<User>> => {
-      console.log('[useUsersQuery] Fetching users from API...');
-      const response = await apiClient.get<PaginatedResponse<User>>('/auth/users/', filters);
-      console.log('[useUsersQuery] Raw API response:', response);
-      return response.data!;
+      console.log('🔍 [USER_TABLE_DEBUG] Fetching users from API for orgId:', orgId);
+      
+      try {
+        const response = await apiClient.get<any>('/auth/users/', { ...filters, organization: orgId });
+        
+        // Handle DRF pagination format
+        if (response.data && typeof response.data === 'object' && 'results' in response.data) {
+          // DRF paginated response
+          const result = {
+            data: response.data.results || [],
+            pagination: {
+              page: 1,
+              limit: response.data.results?.length || 0,
+              total: response.data.count || 0,
+              totalPages: Math.ceil((response.data.count || 0) / (response.data.results?.length || 1)),
+            },
+          };
+          console.log('✅ [USER_TABLE_DEBUG] API returned', result.data.length, 'users');
+          console.log('👥 [USER_TABLE_DEBUG] Fetched user IDs:', result.data.map(u => u.id));
+          return result;
+        } else if (Array.isArray(response.data)) {
+          // Direct array response
+          const result = {
+            data: response.data,
+            pagination: {
+              page: 1,
+              limit: response.data.length,
+              total: response.data.length,
+              totalPages: 1,
+            },
+          };
+          console.log('✅ [USER_TABLE_DEBUG] API returned', result.data.length, 'users (direct array)');
+          console.log('👥 [USER_TABLE_DEBUG] Fetched user IDs:', result.data.map(u => u.id));
+          return result;
+        } else {
+          // Fallback for unexpected format
+          console.warn('⚠️ [USER_TABLE_DEBUG] Unexpected response format:', response.data);
+          return {
+            data: [],
+            pagination: {
+              page: 1,
+              limit: 0,
+              total: 0,
+              totalPages: 0,
+            },
+          };
+        }
+      } catch (error) {
+        console.error('❌ [USER_TABLE_DEBUG] API call failed:', error);
+        throw error;
+      }
     },
     enabled: isAuthInitialized && canManageUsers,
     staleTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    retry: (failureCount, error) => {
+      return failureCount < 3; // Retry up to 3 times
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   // Handle errors using React Query v5 pattern
@@ -109,40 +162,71 @@ export const useCreateUserMutation = () => {
   
   return useMutation({
     mutationFn: async (userData: CreateInput<User>): Promise<User> => {
+      console.log('🚀 [USER_TABLE_DEBUG] Creating user with data:', userData);
       const response = await apiClient.post<User>('/auth/users/', userData);
+      console.log('✅ [USER_TABLE_DEBUG] User created successfully:', response.data);
       return response.data!;
     },
     onMutate: async (newUser) => {
+      const rawOrg = (newUser as any).organization;
+      if (!rawOrg && rawOrg !== 0) return;
+      const orgId = String(rawOrg);
+
+      console.log('🔄 [USER_TABLE_DEBUG] Optimistic update for orgId:', orgId);
+      
+      // Match the exact query key used by useUsersQuery (includes filters parameter)
+      const queryKey = [...queryKeys.users, orgId, undefined];
+
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: queryKeys.users });
+      await queryClient.cancelQueries({ queryKey });
       
       // Snapshot the previous value
-      const previousUsers = queryClient.getQueryData(queryKeys.users);
+      const previousUsers = queryClient.getQueryData(queryKey);
+      console.log('📸 [USER_TABLE_DEBUG] Previous cache data:', previousUsers);
       
       // Optimistically update to the new value
-      queryClient.setQueryData(queryKeys.users, (old: PaginatedResponse<User> | undefined) => {
+      queryClient.setQueryData(queryKey, (old: PaginatedResponse<User> | undefined) => {
         if (!old) return old;
-        return {
+        
+        const newUserWithDefaults = {
+          id: `temp-${Date.now()}`,
+          username: (newUser as any).username || (newUser as any).email?.split('@')[0] || 'temp',
+          first_name: (newUser as any).first_name || '',
+          last_name: (newUser as any).last_name || '',
+          email: (newUser as any).email || '',
+          contact_number: (newUser as any).contact_number || '',
+          phoneNumber: (newUser as any).contact_number || '',
+          organization: (newUser as any).organization,
+          role: (newUser as any).role ? { id: (newUser as any).role, name: 'Loading...' } : null,
+          is_active: true,
+          teams: [],
+          status: 'pending' as const,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as unknown as User;
+        
+        const updatedData = {
           ...old,
-          data: [
-            {
-              id: `temp-${Date.now()}`,
-              ...newUser,
-              status: 'pending' as const,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-            } as User,
-            ...old.data,
-          ],
+          data: [newUserWithDefaults, ...old.data],
+          pagination: {
+            ...old.pagination,
+            total: old.pagination.total + 1,
+          },
         };
+        
+        console.log('🔄 [USER_TABLE_DEBUG] Optimistic update applied. New count:', updatedData.data.length);
+        return updatedData;
       });
       
       return { previousUsers };
     },
     onError: (err: any, newUser, context) => {
+      console.log('❌ [USER_TABLE_DEBUG] User creation failed, rolling back optimistic update');
+      
       // Rollback on error
-      if (context?.previousUsers) {
-        queryClient.setQueryData(queryKeys.users, context.previousUsers);
+      const orgId = String((newUser as any).organization ?? '');
+      if (context?.previousUsers && orgId) {
+        queryClient.setQueryData([...queryKeys.users, orgId, undefined], context.previousUsers);
       }
       
       addNotification({
@@ -152,8 +236,64 @@ export const useCreateUserMutation = () => {
       });
     },
     onSuccess: (data, variables) => {
-      // Invalidate and refetch
-      queryClient.invalidateQueries({ queryKey: queryKeys.users });
+      console.log('👤 [USER_TABLE_DEBUG] Created user details:', data);
+      console.log('🎉 [USER_TABLE_DEBUG] User creation succeeded! Starting cache invalidation...');
+      console.log('🔑 [USER_TABLE_DEBUG] Query key to invalidate:', [...queryKeys.users, String((data as any).organization ?? ''), undefined]);
+      
+      // Check current cache state before invalidation
+      const currentCache = queryClient.getQueryData([...queryKeys.users, String((data as any).organization ?? ''), undefined]);
+      console.log('💾 [USER_TABLE_DEBUG] Current cache before invalidation:', currentCache);
+      
+      if(String((data as any).organization ?? '')) {
+        // Invalidate and refetch the exact query
+        queryClient.invalidateQueries({ 
+          queryKey: [...queryKeys.users, String((data as any).organization ?? ''), undefined],
+          exact: true 
+        });
+        
+        queryClient.refetchQueries({ 
+          queryKey: [...queryKeys.users, String((data as any).organization ?? ''), undefined],
+          exact: true 
+        });
+        
+        console.log('🔄 [USER_TABLE_DEBUG] Cache invalidation and refetch triggered');
+        
+        // Check if refetch worked after a short delay
+        setTimeout(() => {
+          const updatedCache = queryClient.getQueryData([...queryKeys.users, String((data as any).organization ?? ''), undefined]);
+          console.log('💾 [USER_TABLE_DEBUG] Cache after refetch:', updatedCache);
+          
+          if (updatedCache) {
+            const userCount = (updatedCache as any).data?.length || 0;
+            console.log('📊 [USER_TABLE_DEBUG] User count in cache after refetch:', userCount);
+            
+            // Check if the new user is in the cache
+            const newUserInCache = (updatedCache as any).data?.find((u: any) => u.id === data.id);
+            if (newUserInCache) {
+              console.log('✅ [USER_TABLE_DEBUG] New user found in cache! Table should update.');
+            } else {
+              console.log('⚠️ [USER_TABLE_DEBUG] New user NOT found in cache. Manual cache update needed.');
+              
+              // Manual cache update as backup
+              queryClient.setQueryData([...queryKeys.users, String((data as any).organization ?? ''), undefined], (old: any) => {
+                if (!old) return old;
+                return {
+                  ...old,
+                  data: [data, ...old.data],
+                  pagination: {
+                    ...old.pagination,
+                    total: old.pagination.total + 1,
+                  },
+                };
+              });
+              
+              console.log('🔧 [USER_TABLE_DEBUG] Manual cache update applied');
+            }
+          } else {
+            console.log('❌ [USER_TABLE_DEBUG] No cache data found after refetch');
+          }
+        }, 1000);
+      }
       
       addNotification({
         type: 'success',
@@ -182,7 +322,7 @@ export const useUpdateUserMutation = () => {
       return response.data!;
     },
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.users });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users, type: 'all' });
       queryClient.invalidateQueries({ queryKey: queryKeys.user(data.id) });
       
       addNotification({
@@ -210,7 +350,7 @@ export const useDeleteUserMutation = () => {
       await apiClient.delete<void>(`/auth/users/${id}/`);
     },
     onSuccess: (data, id) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.users });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users, type: 'all' });
       
       addNotification({
         type: 'success',
@@ -565,9 +705,8 @@ export const useLoginMutation = () => {
         message: `Welcome back, ${data.user.first_name}!`,
       });
       
-      // Redirect based on role
-      const role = data.user.role;
-      router.push(`/${role}`);
+      // Use the centralized redirection logic
+      redirectUserByRole(data.user, router, addNotification);
     },
     onError: (err: any) => {
       addNotification({
@@ -670,18 +809,23 @@ export const useTableStateSync = (tableId: string) => {
 
 // Commission Management
 export const useCommissionQuery = (filters?: Record<string, any>) => {
-  const { hasPermission, isAuthInitialized } = useAuth();
+  const { hasPermission, isAuthInitialized, user } = useAuth();
   const { addNotification } = useUI();
+  const organizationId = (user as any)?.organization;
 
   const query = useQuery({
     queryKey: [...queryKeys.commission, filters],
     queryFn: async (): Promise<PaginatedResponse<Commission>> => {
+      const allFilters = { ...filters };
+      if (organizationId) {
+        allFilters.organization = organizationId;
+      }
       const response = await apiClient.get<PaginatedResponse<Commission>>('/commission/', {
-        params: filters,
+        params: allFilters,
       });
       return response.data!;
     },
-    enabled: isAuthInitialized && hasPermission('manage:deals'),
+    enabled: isAuthInitialized && !!organizationId && hasPermission('manage:deals'),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 

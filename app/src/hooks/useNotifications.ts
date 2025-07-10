@@ -27,7 +27,7 @@ interface NotificationHookReturn extends NotificationState {
   disconnect: () => void;
 }
 
-const WEBSOCKET_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080/ws';
+const WEBSOCKET_URL = process.env.NEXT_PUBLIC_WS_URL;
 const NOTIFICATIONS_ENDPOINT = '/api/notifications';
 
 /**
@@ -150,12 +150,19 @@ export function useNotifications(userId: string, userRole: UserRole, organizatio
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
+    // Check if WebSocket URL is configured
+    if (!WEBSOCKET_URL) {
+      console.log('🔌 WebSocket URL not configured. Real-time notifications disabled.');
+      setState(prev => ({ ...prev, isConnected: false }));
+      return;
+    }
+
     try {
       const wsUrl = `${WEBSOCKET_URL}?userId=${userId}&role=${userRole}${organizationId ? `&orgId=${organizationId}` : ''}`;
       wsRef.current = new WebSocket(wsUrl);
 
       wsRef.current.onopen = () => {
-        console.log('🔌 WebSocket connected');
+        console.log('🔌 WebSocket connected to:', wsUrl);
         setState(prev => ({ ...prev, isConnected: true }));
         reconnectAttempts.current = 0;
         
@@ -178,8 +185,8 @@ export function useNotifications(userId: string, userRole: UserRole, organizatio
         console.log('🔌 WebSocket disconnected:', event.code, event.reason);
         setState(prev => ({ ...prev, isConnected: false }));
         
-        // Reconnect with exponential backoff
-        if (reconnectAttempts.current < maxReconnectAttempts) {
+        // Only reconnect if WebSocket URL is configured and not a clean close
+        if (WEBSOCKET_URL && !event.wasClean && reconnectAttempts.current < maxReconnectAttempts) {
           const delay = Math.pow(2, reconnectAttempts.current) * 1000;
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectAttempts.current++;
@@ -189,11 +196,20 @@ export function useNotifications(userId: string, userRole: UserRole, organizatio
       };
 
       wsRef.current.onerror = (error) => {
-        console.error('🔌 WebSocket error:', error);
+        console.error('🔌 WebSocket connection error:', {
+          url: wsUrl,
+          error: error,
+          readyState: wsRef.current?.readyState,
+          timestamp: new Date().toISOString()
+        });
       };
 
     } catch (error) {
-      console.error('Failed to establish WebSocket connection:', error);
+      console.error('Failed to establish WebSocket connection:', {
+        url: WEBSOCKET_URL,
+        error: error,
+        message: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   }, [userId, userRole, organizationId]);
 
@@ -335,7 +351,11 @@ export function useNotifications(userId: string, userRole: UserRole, organizatio
 
   // Connect WebSocket on mount
   useEffect(() => {
-    connect();
+    if (WEBSOCKET_URL) {
+      connect();
+    } else {
+      console.log('🔌 WebSocket URL not configured. Real-time notifications disabled.');
+    }
     return () => {
       disconnect();
     };

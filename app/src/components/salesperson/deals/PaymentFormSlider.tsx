@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button"; 
-import DealPaymentForm from "@/components/paymentform/DealPaymentForm";
+import DealPaymentForm from "@/components/forms/DealPaymentForm";
 import { Plus } from "lucide-react"; 
 
 const PaymentFormSlider = () => {

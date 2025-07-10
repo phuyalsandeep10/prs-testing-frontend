@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api';
 import { NotificationPreferences } from '@/types';
 import { useAuth } from '@/stores';
+import { toast } from 'sonner';
 
 // Query Keys
 const NOTIFICATION_PREFERENCES_QUERY_KEY = ['notification-preferences'];
@@ -33,14 +34,21 @@ export const useUpdateNotificationPreferences = () => {
       return response.data;
     },
     onSuccess: (updatedPreferences) => {
-      // Update the preferences cache
+      // Update the preferences cache immediately for a responsive UI
       queryClient.setQueryData(NOTIFICATION_PREFERENCES_QUERY_KEY, updatedPreferences);
       
-      // Invalidate and refetch preferences
-      queryClient.invalidateQueries({ queryKey: NOTIFICATION_PREFERENCES_QUERY_KEY });
+      // Show success toast
+      toast.success('Notification preferences updated successfully!');
+      
+      // Optionally, you can still invalidate to ensure data is fresh,
+      // but setQueryData often makes this unnecessary for the immediate user experience.
+      // queryClient.invalidateQueries({ queryKey: NOTIFICATION_PREFERENCES_QUERY_KEY });
     },
     onError: (error) => {
       console.error('Notification preferences update failed:', error);
+      
+      // Show error toast
+      toast.error('Failed to update preferences. Please try again.');
     },
   });
 };

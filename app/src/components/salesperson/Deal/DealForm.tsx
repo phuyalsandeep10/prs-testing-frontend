@@ -4,92 +4,18 @@ import React, { useImperativeHandle, forwardRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, usePathname } from "next/navigation";
 import { DealSchema } from "./DealSchema";
 import InputField from "@/components/ui/clientForm/InputField";
 import SelectField from "@/components/ui/clientForm/SelectField";
 import TextAreaField from "@/components/ui/clientForm/TextAreaField";
 import Button from "@/components/ui/clientForm/Button";
-import { apiClient } from "@/lib/api";
+import { useClients, useCreateDeal } from "@/hooks/api";
 import { Client } from "@/types/deals";
 
 type DealFormData = z.infer<typeof DealSchema>;
 
-const toSnakeCase = (str: string) => {
-  return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
-};
-
-const transformDataForApi = (data: DealFormData) => {
-  const formData = new FormData();
-  const paymentData: { [key: string]: any } = {};
-
-  // Handle file upload separately
-  if (data.uploadReceipt && data.uploadReceipt.length > 0) {
-    formData.append("payments[0]receipt_file", data.uploadReceipt[0]);
-  }
-
-  const dealKeys = [
-    "clientName",
-    "dealName",
-    "payStatus",
-    "sourceType",
-    "dealValue",
-    "dealDate",
-    "dueDate",
-    "dealRemarks",
-  ];
-  const paymentKeys = [
-    "paymentDate",
-    "receivedAmount",
-    "chequeNumber",
-    "payMethod",
-    "paymentRemarks",
-  ];
-
-  for (const key in data) {
-    if (
-      Object.prototype.hasOwnProperty.call(data, key) &&
-      key !== "uploadReceipt"
-    ) {
-      const value = (data as any)[key];
-      if (value !== undefined && value !== null && value !== "") {
-        if (dealKeys.includes(key)) {
-          const snakeKey = toSnakeCase(key);
-          const apiValue =
-            key === "payStatus"
-              ? value === "Full Pay"
-                ? "full_payment"
-                : "partial_payment"
-              : value;
-          formData.append(snakeKey, apiValue);
-        } else if (paymentKeys.includes(key)) {
-          const snakeKey =
-            key === "payMethod" ? "payment_method" : toSnakeCase(key);
-          paymentData[snakeKey] = value;
-        }
-      }
-    }
-  }
-
-  // Append nested payment data
-  for (const key in paymentData) {
-    formData.append(`payments[0]${key}`, paymentData[key]);
-  }
-
-  return formData;
-};
-
-const fetchClients = async (): Promise<Client[]> => {
-  const response = await apiClient.get<Client[]>("/clients/");
-  return response.data || [];
-};
-
-const submitDealData = async (data: DealFormData) => {
-  const formData = transformDataForApi(data);
-  const response = await apiClient.postMultipart("/deals/", formData);
-  return response.data;
-};
+// Using standardized hooks - no manual API functions needed
 
 interface DealFormProps {
   onSave?: (data: DealFormData) => void;
@@ -105,14 +31,12 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
   ({ onSave, onCancel, mode = "add" }, ref) => {
     const router = useRouter();
     const pathname = usePathname();
-    const queryClient = useQueryClient();
     const isStandalonePage =
       pathname?.includes("/add") || pathname?.includes("/edit");
 
-    const { data: clients, isLoading: isLoadingClients } = useQuery<Client[]>({
-      queryKey: ["clients"],
-      queryFn: fetchClients,
-    });
+    // Use standardized hooks
+    const { data: clients = [], isLoading: isLoadingClients, error: clientsError } = useClients();
+    const createDealMutation = useCreateDeal();
 
     const {
       register,
@@ -129,25 +53,38 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
       resetForm: () => reset(),
     }));
 
-    const mutation = useMutation({
-      mutationFn: submitDealData,
-      onSuccess: (data) => {
-        console.log("Deal created successfully", data);
+    const onSubmit = async (data: DealFormData) => {
+      try {
+        const dealData = {
+          client: data.clientName,
+          deal_amount: parseFloat(data.dealValue.replace(/[$,]/g, '')),
+          deal_type: data.sourceType,
+          deal_details: data.dealRemarks,
+          expected_closing_date: data.dueDate,
+        };
+
+        await createDealMutation.mutateAsync(dealData);
+        
+        // Show success message
+        if (typeof window !== "undefined" && window.alert) {
+          window.alert("Deal created successfully!");
+        }
+        
         reset();
-        queryClient.invalidateQueries({ queryKey: ["deals"] });
+        
         if (onSave) {
-          onSave(data as DealFormData);
+          onSave(data);
         } else if (isStandalonePage) {
           router.push("/salesperson/deal");
         }
-      },
-      onError: (error: any) => {
+      } catch (error: any) {
         console.error("Failed to create deal:", error);
-      },
-    });
-
-    const onSubmit = (data: DealFormData) => {
-      mutation.mutate(data);
+        
+        // Show error message
+        if (typeof window !== "undefined" && window.alert) {
+          window.alert(`Failed to create deal: ${error.message || "Unknown error"}`);
+        }
+      }
     };
 
     const dealLabelClass =
@@ -506,7 +443,7 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
 
         {/* Fixed bottom button container */}
         <div className="flex-shrink-0 flex justify-end gap-4 bg-gradient-to-r from-[#0C29E3] via-[#929FF4] to-[#C6CDFA] p-4">
-          {mutation.isError && (
+          {createDealMutation.isError && (
             <p className="text-red-600 text-sm mr-auto">
               Error submitting form. Please try again.
             </p>
@@ -521,11 +458,11 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
 
           <Button
             type="submit"
-            disabled={isSubmitting}
+            disabled={createDealMutation.isPending}
             className="bg-[#009959] text-white w-[119px] p-2 h-[40px] rounded-[6px] text-[14px] font-semibold"
             onClick={handleSubmit(onSubmit)}
           >
-            {isSubmitting ? "Submitting..." : "Save Deal"}
+            {createDealMutation.isPending ? "Submitting..." : "Save Deal"}
           </Button>
         </div>
       </div>

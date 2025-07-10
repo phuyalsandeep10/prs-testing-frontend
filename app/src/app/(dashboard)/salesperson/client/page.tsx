@@ -12,7 +12,7 @@ import { ClientKanbanView } from './ClientKanbanView';
 import AddNewClientForm from './AddNewClientForm';
 import EditClientForm from './EditClientForm';
 import { useDebouncedSearch } from '@/hooks/useDebounce';
-import { createPortal } from 'react-dom';
+import SlideModal from '@/components/ui/SlideModal';
 import { useAuth } from '@/stores';
 import {
   AlertDialog,
@@ -26,7 +26,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { clientApi } from '@/lib/api';
+import { useClients, useDeleteClient } from "@/hooks/api";
 
 
 
@@ -73,53 +73,14 @@ const ClientsPage = React.memo(() => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   // Use debounced search hook for better performance
   const { searchValue, debouncedSearchValue, setSearchValue } = useDebouncedSearch('', 300);
 
-  useEffect(() => {
-    if (!isAuthInitialized) {
-      return;
-    }
-    
-    const fetchClients = async () => {
-      try {
-        setLoading(true);
-        const resp = await clientApi.getAll({ page: 1, limit: 100 });
-        
-        // clientApi.getAll() returns the array directly from getPaginated
-        let payload: any[] = [];
-        
-        if (Array.isArray(resp)) {
-          payload = resp;
-        } else {
-          console.error('Unexpected API response format:', resp);
-          setError('Invalid response structure from server');
-          return;
-        }
-        
-        const mapped = payload.map((c: any) => ({
-          ...c,
-          client_name: c.name || c.client_name,
-          phone_number: c.phoneNumber || c.phone_number,
-          created_at: c.createdAt || c.created_at,
-        }));
-        
-        setClients(mapped);
-      } catch (err: any) {
-        console.error('Failed to fetch clients:', err);
-        let msg = err.message || 'Failed to load clients';
-        setError(msg);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchClients();
-  }, [isAuthInitialized]);
+  // Use standardized client hooks
+  const { data: clients = [], isLoading: loading, error } = useClients();
+  const deleteClientMutation = useDeleteClient();
 
   // Memoized search function
   const searchAllClientColumns = useCallback((client: Client, query: string): boolean => {
@@ -127,7 +88,7 @@ const ClientsPage = React.memo(() => {
       client.client_name,
       client.email,
       client.id,
-      client.status,
+      client.payment_status,
       client.satisfaction,
       client.remarks,
       client.phone_number,
@@ -157,17 +118,12 @@ const ClientsPage = React.memo(() => {
 
   const confirmDelete = useCallback(async (clientId: string) => {
     try {
-      const response = await clientApi.delete(clientId);
-      if (response.success) {
-        setClients(prevClients => prevClients.filter(c => c.id !== clientId));
-        toast.success("Client deleted successfully!");
-      } else {
-        toast.error(response.message || 'Failed to delete client.');
-      }
+      await deleteClientMutation.mutateAsync(clientId);
+      toast.success("Client deleted successfully!");
     } catch (err: any) {
       toast.error(err.message || 'An error occurred while deleting the client.');
     }
-  }, []);
+  }, [deleteClientMutation]);
 
   const handleView = useCallback((client: Client) => {
     router.push(`/dashboard/salesperson/client/${client.id}/deals`);
@@ -198,10 +154,10 @@ const ClientsPage = React.memo(() => {
       ),
     },
     {
-      accessorKey: "status",
+      accessorKey: "payment_status",
       header: "Status",
       cell: ({ row }: any) => {
-        const status = row.getValue("status") as string;
+        const status = row.getValue("payment_status") as string;
         return (
           <span className={getStatusColor(status)}>
             {status ? status.charAt(0).toUpperCase() + status.slice(1) : 'N/A'}
@@ -289,7 +245,7 @@ const ClientsPage = React.memo(() => {
   }
 
   if (error) {
-    return <div>Error: {error}</div>;
+    return <div>Error: {error.message || 'Failed to load clients'}</div>;
   }
 
   return (
@@ -408,78 +364,42 @@ const ClientsPage = React.memo(() => {
         )}
       </div>
 
-      {/* Add Client Modal - Portal Rendered */}
-      {showAddModal && typeof window !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[99999]" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }}>
-          <AddNewClientForm
-            onClose={() => setShowAddModal(false)}
-                      onClientAdded={async (newClient) => {
-            // Refetch client data to ensure consistency
-            try {
-              const resp = await clientApi.getAll({ page: 1, limit: 100 });
-              
-              // clientApi.getAll() returns the array directly
-              if (Array.isArray(resp)) {
-                const mapped = resp.map((c: any) => ({
-                  ...c,
-                  client_name: c.name || c.client_name,
-                  phone_number: c.phoneNumber || c.phone_number,
-                  created_at: c.createdAt || c.created_at,
-                }));
-                setClients(mapped);
-              } else {
-                console.error('Unexpected API response format:', resp);
-                // Fallback to manual addition if refetch fails
-                setClients(prev => [newClient, ...prev]);
-              }
-            } catch (err) {
-              console.error('Failed to refresh client list:', err);
-              // Fallback to manual addition if refetch fails
-              setClients(prev => [newClient, ...prev]);
-            }
+      {/* Add Client Modal */}
+      <SlideModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        title="Add New Client"
+        width="lg"
+        showCloseButton={true}
+      >
+        <AddNewClientForm
+          onClose={() => setShowAddModal(false)}
+          onClientAdded={() => {
+            // React Query will automatically update the cache
             setShowAddModal(false);
           }}
-          />
-        </div>,
-        document.body
-      )}
+        />
+      </SlideModal>
 
-      {/* Edit Client Modal - Portal Rendered */}
-      {showEditModal && selectedClient && typeof window !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[99999]" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99999 }}>
+      {/* Edit Client Modal */}
+      <SlideModal
+        isOpen={showEditModal && selectedClient !== null}
+        onClose={() => setShowEditModal(false)}
+        title="Edit Client"
+        width="lg"
+        showCloseButton={true}
+      >
+        {selectedClient && (
           <EditClientForm
             client={selectedClient}
             onClose={() => setShowEditModal(false)}
-            onClientUpdated={async (updatedClient) => {
-              // Refetch client data to ensure consistency
-              try {
-                const resp = await clientApi.getAll({ page: 1, limit: 100 });
-                
-                // clientApi.getAll() returns the array directly
-                if (Array.isArray(resp)) {
-                  const mapped = resp.map((c: any) => ({
-                    ...c,
-                    client_name: c.name || c.client_name,
-                    phone_number: c.phoneNumber || c.phone_number,
-                    created_at: c.createdAt || c.created_at,
-                  }));
-                  setClients(mapped);
-                } else {
-                  console.error('Unexpected API response format:', resp);
-                  // Fallback to manual update if refetch fails
-                  setClients(prev => prev.map(c => c.id === updatedClient.id ? updatedClient : c));
-                }
-              } catch (err) {
-                console.error('Failed to refresh client list:', err);
-                // Fallback to manual update if refetch fails
-                setClients(prev => prev.map(c => c.id === updatedClient.id ? updatedClient : c));
-              }
+            onClientUpdated={() => {
+              // React Query will automatically update the cache
               setShowEditModal(false);
             }}
           />
-        </div>,
-        document.body
-      )}
+        )}
+      </SlideModal>
     </div>
   );
 });

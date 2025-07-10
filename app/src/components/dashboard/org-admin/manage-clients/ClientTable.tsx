@@ -68,10 +68,10 @@ const columns: ColumnDef<Client>[] = [
     cell: ({ row }) => formatDate(row.getValue("created_at")),
   },
   {
-    accessorKey: "status",
+    accessorKey: "payment_status",
     header: "Status",
     cell: ({ row }) => {
-      const status = row.getValue("status") as Client["status"];
+      const status = row.getValue("payment_status") as Client["payment_status"];
       if (!status) return 'N/A';
       const statusConfig = {
         clear: { label: "Clear", className: "text-green-600" },

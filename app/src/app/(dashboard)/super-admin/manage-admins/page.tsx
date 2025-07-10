@@ -36,12 +36,20 @@ export default function ManageAdminsPage() {
   // Load admins from API
   const loadAdmins = async () => {
     try {
-      const response = await apiClient.get<any[]>(
-        '/v1/auth/users/',
-        { role_name: 'Org Admin' }
-      );
+      const responses = await Promise.all([
+        apiClient.get<any>('/auth/users/', { role: 'Organization Admin' }),
+        apiClient.get<any>('/auth/users/', { role: 'Org Admin' }),
+      ]);
 
-      setAdmins(Array.isArray(response.data) ? response.data : response.data?.results || []);
+      const combined: any[] = [];
+      responses.forEach(res => {
+        const list = Array.isArray(res.data) ? res.data : res.data?.results || [];
+        combined.push(...list);
+      });
+
+      // Remove duplicates by user ID
+      const uniqueAdmins = Array.from(new Map(combined.map(a => [a.id, a])).values());
+      setAdmins(uniqueAdmins);
     } catch (error: any) {
       console.error('Error loading admins:', error);
       if (error instanceof ApiError) {

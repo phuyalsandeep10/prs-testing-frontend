@@ -6,9 +6,21 @@ import expand from "@/assets/icons/expand.svg";
 interface ExpandButtonProps {
   onToggle: () => void;
   isExpanded?: boolean;
+  variant?: 'org-admin' | 'verifier' | 'salesperson';
 }
 
-export default function ExpandButton({ onToggle, isExpanded = false }: ExpandButtonProps) {
+// Maintain exact current icon sizes for each variant
+const iconSizes = {
+  'org-admin': { width: 10, height: 1 },
+  'verifier': { width: 16, height: 16 },
+  'salesperson': { width: 10, height: 10 },
+};
+
+export default function ExpandButton({ 
+  onToggle, 
+  isExpanded = false, 
+  variant = 'org-admin' 
+}: ExpandButtonProps) {
   const btnRef = useRef<HTMLButtonElement | null>(null);
   const iconRef = useRef<HTMLDivElement | null>(null);
 
@@ -36,6 +48,8 @@ export default function ExpandButton({ onToggle, isExpanded = false }: ExpandBut
     onToggle();
   };
 
+  const size = iconSizes[variant];
+
   return (
     <button 
       ref={btnRef} 
@@ -51,8 +65,13 @@ export default function ExpandButton({ onToggle, isExpanded = false }: ExpandBut
           transition: 'transform 0.3s ease'
         }}
       >
-        <Image src={expand} alt={isExpanded ? "Collapse" : "Expand"} width={16} height={16} />
+        <Image 
+          src={expand} 
+          alt={isExpanded ? "Collapse" : "Expand"} 
+          width={size.width} 
+          height={size.height} 
+        />
       </div>
     </button>
   );
-}
+} 

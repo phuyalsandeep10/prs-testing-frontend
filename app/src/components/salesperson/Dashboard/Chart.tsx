@@ -21,8 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createApiStore } from "@/store/apiStore";
-import { DashboardResponse } from "@/store/types/Dashboard";
+import { useChartData } from "@/hooks/api";
+import { Loader2, AlertTriangle } from "lucide-react";
 import { format, subDays } from "date-fns";
 
 // Register ChartJS modules
@@ -58,28 +58,15 @@ type ChartDataPoint = {
   value: number;
 };
 
-const useDashboardStore = createApiStore<DashboardResponse>();
-
 export default function ChartDashboard() {
   const [selectedRange, setSelectedRange] = useState<
     "daily" | "weekly" | "monthly"
   >("daily");
 
-  const { data, sendRequest, loading, error } = useDashboardStore();
+  // Use standardized hook instead of createApiStore
+  const { data, isLoading, error } = useChartData(selectedRange);
   const apiData: ChartDataPoint[] =
-    data?.chart_data?.payment_verification_trend || [];
-
-  // 👇 Update the URL with selected period
-  useEffect(() => {
-    const fetchData = async () => {
-      const url = `${process.env.NEXT_PUBLIC_API_URL}/dashboard/dashboard/?period=${selectedRange}`;
-      await sendRequest("GET", url, undefined, undefined, {
-        getAuthToken: () => localStorage.getItem("authToken"),
-      });
-    };
-
-    fetchData();
-  }, [selectedRange, sendRequest]);
+    data?.data?.map(item => ({ label: item.date, value: item.sales })) || [];
 
   const { labels, values } = useMemo(() => {
     let labels: string[] = [];
@@ -212,10 +199,17 @@ export default function ChartDashboard() {
         </Select>
       </div>
 
-      {loading["/dashboard/dashboard/"] ? (
-        <div>Loading...</div>
+      {isLoading ? (
+        <div className="flex items-center justify-center h-48">
+          <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        </div>
       ) : error ? (
-        <div className="text-red-500">{error.displayMessage}</div>
+        <div className="flex items-center justify-center h-48">
+          <div className="text-center">
+            <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+            <p className="text-red-500">Failed to load chart data</p>
+          </div>
+        </div>
       ) : (
         <div className="w-full min-h-[200px] sm:min-h-[260px] aspect-[2/1]">
           <Line data={chartData} options={chartOptions} />

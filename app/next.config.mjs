@@ -41,7 +41,7 @@ const nextConfig = {
           {
             source: "/api/:path*",
             destination:
-              "https://1209-2404-7c00-41-310a-6431-5f3b-7466-2bfc.ngrok-free.app/api/:path*", // local backend
+              "http://localhost:8000/api/:path*", // local backend
           },
         ]
       : [];

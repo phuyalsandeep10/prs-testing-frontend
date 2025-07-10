@@ -4,11 +4,11 @@ import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
 import SelectField from "@/components/ui/clientForm/SelectField";
 import TextAreaField from "@/components/ui/clientForm/TextAreaField";
-import Button from "@/components/ui/clientForm/Button";
+import { Button } from "@/components/ui/button";
 import InputField from "@/components/ui/clientForm/InputField";
+import { useUpdatePaymentStatus } from "@/hooks/api";
 
 const createSchema = (action: "verify" | "deny" | "refund") =>
   z.object({
@@ -68,19 +68,12 @@ function getErrorMessage(error: any): string | null {
   return null;
 }
 
-const isValidActivityLog = (
-  log: any
-): log is { id: number; message: string; timestamp: string } =>
-  typeof log === "object" &&
-  log !== null &&
-  typeof log.id === "number" &&
-  typeof log.message === "string" &&
-  typeof log.timestamp === "string";
+// Using standardized hooks - no manual API functions needed
 
 const PaymentVerificationForm: React.FC<PaymentVerificationFormProps> = ({
   mode = "verification",
   invoiceData,
-  paymentId,
+  paymentId: invoiceId, // Renaming for clarity
   onSave,
   onCancel,
 }) => {
@@ -92,9 +85,12 @@ const PaymentVerificationForm: React.FC<PaymentVerificationFormProps> = ({
     "verify" | "deny" | "refund"
   >("verify");
   const [errorMessages, setErrorMessages] = useState<string[]>([]);
+  
+  const validationMode = mode; // Align with existing prop name
 
   const {
     register,
+    handleSubmit,
     formState: { errors },
     reset,
     watch,
@@ -107,264 +103,28 @@ const PaymentVerificationForm: React.FC<PaymentVerificationFormProps> = ({
     mode: "onSubmit",
   });
 
-  useEffect(() => {
-    if (paymentId) {
-      fetchPaymentData();
-    }
-  }, [paymentId]);
+  // Use standardized hook for payment verification
+  const updatePaymentStatusMutation = useUpdatePaymentStatus();
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
-  if (!apiUrl) {
-    console.error("NEXT_PUBLIC_API_URL is not defined");
-  }
-
-  const fetchPaymentData = async () => {
-    if (!paymentId || !apiUrl) return;
-
+  const onSubmit = async (data: PaymentVerificationData) => {
     try {
-      const token = localStorage.getItem("authToken");
-      if (!token) {
-        throw new Error("No authentication token found");
-      }
-
-      console.log("Fetching payment data for ID:", paymentId);
-      const res = await fetch(
-        `${apiUrl}/verifier/verifier-form/${paymentId}/`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Token ${token}`,
-          },
-        }
-      );
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Backend Error:", errorText);
-        if (res.status === 401) {
-          throw new Error("Unauthorized: Invalid or expired token");
-        }
-        if (res.status === 404) {
-          throw new Error(
-            "Payment not found: Verify the endpoint or payment ID"
-          );
-        }
-        throw new Error(
-          `Failed to fetch payment details: ${res.status} ${res.statusText}`
-        );
-      }
-
-      const contentType = res.headers.get("Content-Type");
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("Unexpected response format: Expected JSON");
-      }
-
-      const data = await res.json();
-      console.log("Fetched data:", data);
-
-      const activityLogs = Array.isArray(data.deal?.activity_logs)
-        ? data.deal.activity_logs.filter(isValidActivityLog)
-        : [];
-      setActivityLogs(activityLogs);
-
-      const deal = data?.deal;
-      const payment = data?.payment;
-
-      reset({
-        dealId: deal?.deal_id || "",
-        clientName: deal?.client?.client_name || "",
-        dealName: deal?.deal_name || "",
-        payMethod: deal?.payment_method || "",
-        paymentReceiptLink: payment?.receipt_file || "",
-        chequeNumber: payment?.cheque_number || "",
-        paymentDate: payment?.payment_date || "",
-        requestedBy: deal?.created_by?.username || "",
-        salesPersonRemarks: deal?.deal_remarks || "",
-        uploadInvoice: undefined,
-        paymentValue: payment?.received_amount || "",
-        amountInInvoice: "",
-        refundReason: "",
-        verifierRemarks: "",
+      // Extract payment ID from the deal ID or use a provided payment ID
+      const paymentId = invoiceId || data.dealId;
+      
+      await updatePaymentStatusMutation.mutateAsync({
+        paymentId: String(paymentId),
+        status: validationMode === "verification" ? "verified" : "rejected",
+        notes: data.verifierRemarks,
       });
-    } catch (error) {
-      console.error("Failed to fetch payment details:", error);
-    }
-  };
-
-  const submitPaymentVerification = async (
-    data: PaymentVerificationData & {
-      paymentId: string;
-      invoiceStatus: "verified" | "denied" | "refunded";
-    }
-  ) => {
-    if (!apiUrl) {
-      throw new Error("API URL is not defined");
-    }
-    const token = localStorage.getItem("authToken");
-    if (!token) {
-      throw new Error("No authentication token found");
-    }
-
-    const formData = new FormData();
-    formData.append("payment_id", data.paymentId);
-    formData.append("invoice_status", data.invoiceStatus);
-    if (data.uploadInvoice && data.uploadInvoice.length > 0) {
-      formData.append("invoice_file", data.uploadInvoice[0]);
-    }
-    if (data.amountInInvoice) {
-      formData.append("amount_in_invoice", data.amountInInvoice);
-    }
-    if (data.refundReason) {
-      formData.append("failure_reasons", data.refundReason);
-    }
-    if (data.verifierRemarks) {
-      formData.append("verifier_remarks", data.verifierRemarks);
-    }
-
-    const endpoint = `${apiUrl}/verifier/verifier-form/${data.paymentId}/`;
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        Authorization: `Token ${token}`,
-      },
-      body: formData,
-    });
-
-    if (!res.ok) {
-      const errorText = await res.text();
-      if (res.status === 404) {
-        throw new Error(
-          `Endpoint not found: Verify the URL ${endpoint} or check if paymentId ${data.paymentId} is valid`
-        );
-      }
-      throw new Error(`Submission failed: ${res.status} ${errorText}`);
-    }
-
-    return await res.json();
-  };
-
-  const mutation = useMutation<
-    any,
-    Error,
-    PaymentVerificationData & {
-      paymentId: string;
-      invoiceStatus: "verified" | "denied" | "refunded";
-    }
-  >({
-    mutationFn: submitPaymentVerification,
-    onSuccess: (response) => {
-      console.log(response.message);
+      
+      console.log("Payment verification submitted successfully");
       reset();
-      setErrorMessages([]);
+      
       if (onSave) {
-        onSave(mutation.variables);
+        onSave(data);
       }
-    },
-    onError: (error) => {
+    } catch (error) {
       console.error("Submission failed:", error);
-    },
-  });
-
-  const validateFormForAction = async (
-    action: "verify" | "deny" | "refund"
-  ) => {
-    setCurrentAction(action);
-    const data = getValues();
-    const schema = createSchema(action);
-
-    try {
-      await schema.parseAsync(data);
-      setErrorMessages([]);
-      return true;
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        clearErrors();
-        const uniqueErrors = new Set<string>();
-
-        error.errors.forEach((err) => {
-          if (err.message) {
-            uniqueErrors.add(err.message);
-            const path = err.path[0] as keyof PaymentVerificationData;
-            setError(path, { message: err.message });
-          }
-        });
-
-        setErrorMessages(Array.from(uniqueErrors));
-        await trigger();
-        return false;
-      }
-      return false;
-    }
-  };
-
-  const onVerifySubmit = async () => {
-    if (mode === "view") return;
-
-    setIsSubmitting(true);
-    const actionType = mode === "edit" ? "refund" : "verify";
-    await validateFormForAction(actionType);
-
-    try {
-      const isValid = await validateFormForAction(actionType);
-
-      if (!isValid) {
-        setIsSubmitting(false);
-        return;
-      }
-
-      const data = getValues();
-      console.log("Verify form data:", data);
-
-      if (!paymentId) {
-        throw new Error("Payment ID is required");
-      }
-
-      await mutation.mutateAsync({
-        ...data,
-        paymentId: String(paymentId),
-        invoiceStatus: mode === "edit" ? "refunded" : "verified",
-      });
-    } catch (error) {
-      console.error(
-        `${mode === "edit" ? "Refund" : "Verification"} failed:`,
-        error
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const onDenySubmit = async () => {
-    if (mode === "view") return;
-
-    setIsSubmitting(true);
-    await validateFormForAction("deny");
-
-    try {
-      const isValid = await validateFormForAction("deny");
-
-      if (!isValid) {
-        setIsSubmitting(false);
-        return;
-      }
-
-      const data = getValues();
-      console.log("Deny form data:", data);
-
-      if (!paymentId) {
-        throw new Error("Payment ID is required");
-      }
-
-      await mutation.mutateAsync({
-        ...data,
-        paymentId: String(paymentId),
-        invoiceStatus: "denied",
-      });
-    } catch (error) {
-      console.error("Denial failed:", error);
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -388,7 +148,7 @@ const PaymentVerificationForm: React.FC<PaymentVerificationFormProps> = ({
   const isViewMode = mode === "view";
 
   return (
-    <form className="h-full w-full flex flex-col overflow-hidden">
+    <form className="h-full w-full flex flex-col overflow-hidden" onSubmit={handleSubmit(onSubmit)}>
       <div className="flex-1 p-6 overflow-auto">
         <div className="flex flex-col gap-6 lg:gap-1 lg:flex-row lg:mt-3">
           <div className="div1 w-full flex-1">
@@ -724,49 +484,50 @@ const PaymentVerificationForm: React.FC<PaymentVerificationFormProps> = ({
                     required
                     registration={register("verifierRemarks")}
                     error={errors.verifierRemarks}
-                    placeholder="Add verification notes..."
+                    placeholder="Enter remarks"
                     width="w-full"
-                    height="h-[180px]"
+                    height="h-[105px]"
                     labelClassName={verificationLabelClass}
                     textareaClassName={verificationInputClass}
                     wrapperClassName="mb-0"
                     disabled={isViewMode}
                   />
-                
+                  
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      <div className="border-t border-gray-200 px-6 py-4 bg-gray-50 flex items-center justify-end gap-3">
-        {mode !== "edit" && (
-          <Button
-            type="button"
-            onClick={onDenySubmit}
-            className="px-6 py-2 border border-gray-300 text-gray-700 hover:bg-gray-100 bg-white"
-            disabled={isSubmitting || mutation.isPending || isViewMode}
-          >
-            {isSubmitting && currentAction === "deny"
-              ? "Processing..."
-              : "Deny Payment"}
-          </Button>
-        )}
+      <div className="flex justify-between p-4 bg-white border-t border-[#C3C3CB]">
         <Button
-          type="button"
-          onClick={onVerifySubmit}
-          className="px-6 py-2 bg-[#4F46E5] hover:bg-[#4F46E5]/90 text-white"
-          disabled={isSubmitting || mutation.isPending || isViewMode}
+          variant="secondary"
+          onClick={handleClear}
+          className="h-[48px] w-[142px]"
+          disabled={isViewMode || isSubmitting}
         >
-          {isSubmitting && currentAction === "verify"
-            ? "Processing..."
-            : mode === "edit"
-            ? "Refund"
-            : mode === "verification"
-            ? "Verify Payment"
-            : "Save Changes"}
+          Clear
         </Button>
+        <div className="flex gap-4">
+          <Button
+            variant="destructive"
+            onClick={() => setCurrentAction("deny")}
+            className="h-[48px] w-[142px]"
+            disabled={isViewMode || isSubmitting}
+            type="submit"
+          >
+            {isSubmitting ? "Denying..." : "Deny"}
+          </Button>
+          <Button
+            variant="default"
+            onClick={() => setCurrentAction("verify")}
+            className="h-[48px] w-[142px]"
+            disabled={isViewMode || isSubmitting}
+            type="submit"
+          >
+            {isSubmitting ? "Verifying..." : "Verify"}
+          </Button>
+        </div>
       </div>
     </form>
   );

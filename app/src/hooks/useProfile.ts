@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api';
 import { User } from '@/lib/types/roles';
-import { useAuth } from '@/stores';
+import { useAuth, useAuthStore } from '@/stores';
 
 // Query Keys
 const PROFILE_QUERY_KEY = ['profile'];
@@ -40,6 +40,10 @@ export const useUpdateProfile = () => {
       
       // Update the profile cache immediately
       queryClient.setQueryData(PROFILE_QUERY_KEY, updatedUser);
+      
+      // Sync the auth store so the latest user data persists across refreshes
+      const { updateUser } = useAuthStore.getState();
+      updateUser(updatedUser as User);
       
       // Invalidate and refetch profile to ensure fresh data
       queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY });

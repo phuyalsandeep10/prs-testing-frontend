@@ -48,7 +48,7 @@ export default function EditClientForm({ client, onClose, onClientUpdated }: Edi
       email: client.email || "",
       phone_number: client.phone_number || "",
       nationality: client.nationality || "",
-      status: client.status && ["clear", "pending", "bad_debt"].includes(client.status) ? client.status as "clear" | "pending" | "bad_debt" : "clear",
+      status: client.payment_status && ["clear", "pending", "bad_debt"].includes(client.payment_status) ? client.payment_status as "clear" | "pending" | "bad_debt" : "clear",
       satisfaction: client.satisfaction && ["excellent", "good", "average", "poor"].includes(client.satisfaction) ? client.satisfaction as "excellent" | "good" | "average" | "poor" : "average",
       remarks: client.remarks || "",
     },

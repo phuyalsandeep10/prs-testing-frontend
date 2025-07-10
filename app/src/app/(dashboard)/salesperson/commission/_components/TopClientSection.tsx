@@ -1,62 +1,29 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useState } from "react";
 import TopClientCard from "@/components/salesperson/commission/TopClientCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCommissionData } from "@/hooks/api";
 
 interface ClientData {
   name: string;
   value: number;
 }
 
-const fetchTopClients = async (
-  period: string,
-  token: string
-): Promise<ClientData[]> => {
-  const url = new URL(
-    `${process.env.NEXT_PUBLIC_API_URL}/dashboard/commission/`
-  );
-  url.searchParams.set("period", period);
-  url.searchParams.set("include_details", "true");
+// Using standardized hooks - no manual API functions needed
 
-  const res = await fetch(url.toString(), {
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Token ${token}`,
-    },
-  });
-
-  if (!res.ok) {
-    const errorText = await res.text();
-    console.error("API error:", errorText);
-    throw new Error("Failed to fetch top clients");
-  }
-
-  const json = await res.json();
-  const clientsRaw = json.top_clients_this_period ?? [];
-
-  return clientsRaw.map((client: any) => ({
+// 🔁 Dynamic content only
+const TopClientContent = ({ view }: { view: string }) => {
+  // Use standardized hook for commission data with period filtering
+  const { data: commissionResponse, isLoading, error } = useCommissionData(view);
+  
+  // Transform the data to match the expected format
+  const data = commissionResponse?.top_clients_this_period?.map(client => ({
     name: client.client_name,
     value: client.total_value,
-  }));
-};
+  })) || [];
 
-const TopClientContent = ({
-  view,
-  token,
-}: {
-  view: string;
-  token: string | null;
-}) => {
-  const { data, isLoading, error } = useQuery<ClientData[], Error>({
-    queryKey: ["topClients", view, token],
-    queryFn: () => fetchTopClients(view, token!),
-    enabled: !!token,
-    refetchOnWindowFocus: false,
-  });
-
-  if (isLoading || !token) {
+  if (isLoading) {
     return (
       <div className="space-y-3">
         {Array.from({ length: 5 }).map((_, index) => (
@@ -75,18 +42,13 @@ const TopClientContent = ({
     return <p className="text-red-500 text-sm">Error: {error.message}</p>;
   }
 
-  return data ? <TopClientCard data={data} /> : null;
+  return data.length > 0 ? <TopClientCard data={data} /> : null;
 };
 
 const TopClientSection = () => {
-  const [view, setView] = useState<"yearly" | "monthly" | "daily">("monthly");
-  const [token, setToken] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setToken(localStorage.getItem("authToken"));
-    }
-  }, []);
+  const [view, setView] = useState<"yearly" | "monthly" | "quarterly">(
+    "monthly"
+  );
 
   const getSubheading = () => {
     switch (view) {
@@ -94,8 +56,8 @@ const TopClientSection = () => {
         return "Yearly Top Clients";
       case "monthly":
         return "Monthly Top Clients";
-      case "daily":
-        return "Daily Top Clients";
+      case "quarterly":
+        return "Quarterly Top Clients";
       default:
         return "";
     }
@@ -105,18 +67,6 @@ const TopClientSection = () => {
     <div className="w-full min-h-[260px] p-4 md:p-6 rounded-md border border-[#D1D1D1]">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-4">
-        {!token ? (
-          <>
-            <div className="space-y-2">
-              <Skeleton className="h-6 w-48 rounded" />
-              <Skeleton className="h-4 w-40 rounded" />
-            </div>
-            <div className="w-full md:w-40">
-              <Skeleton className="h-8 w-full rounded-md" />
-            </div>
-          </>
-        ) : (
-          <>
             <div>
               <h1 className="text-[16px] md:text-[18px] font-semibold mb-1">
                 My Top Clients
@@ -129,21 +79,19 @@ const TopClientSection = () => {
               <select
                 value={view}
                 onChange={(e) =>
-                  setView(e.target.value as "yearly" | "monthly" | "daily")
+                  setView(e.target.value as "yearly" | "monthly" | "quarterly")
                 }
                 className="w-full px-3 py-1.5 border border-[#C3C3CB] rounded-md text-sm text-[#4B5563] shadow-sm focus:outline-none"
               >
                 <option value="yearly">Yearly</option>
                 <option value="monthly">Monthly</option>
-                <option value="daily">Daily</option>
+                <option value="quarterly">Quarterly</option>
               </select>
             </div>
-          </>
-        )}
       </div>
 
-      {/* Chart Content */}
-      <TopClientContent view={view} token={token} />
+      {/* Dynamic section (only this rerenders) */}
+      <TopClientContent view={view} />
     </div>
   );
 };
