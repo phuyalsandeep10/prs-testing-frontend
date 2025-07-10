@@ -7,6 +7,7 @@ import PaymentVerificationModal from "@/components/dashboard/verifier/PaymentVer
 import Image from "next/image";
 import Cancel from "@/assets/icons/Cancel.svg";
 import file from "@/assets/icons/file.svg";
+import Edit from "@/assets/icons/edit.svg";
 import { Skeleton } from "@/components/ui/skeleton";
 import Swal from "sweetalert2";
 import withReactContent from "sweetalert2-react-content";
@@ -100,7 +101,7 @@ const VerifyInvoice = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [modalState, setModalState] = useState({
     isOpen: false,
-    mode: "verification" as "verification" | "view",
+    mode: "verification" as "verification" | "view" | "edit",
     paymentId: null as string | null,
     invoiceData: null as InvoiceData | null,
   });
@@ -122,10 +123,13 @@ const VerifyInvoice = () => {
     refetchOnWindowFocus: false,
   });
 
-  const cancelMutation = useMutation({
+  const cancelMutation = useMutation<
+    string,
+    Error,
+    { token: string; invoiceId: string }
+  >({
     mutationFn: cancelInvoice,
     onSuccess: async () => {
-      // Optional delay if backend takes time to process deletion
       await new Promise((resolve) => setTimeout(resolve, 300));
       await queryClient.invalidateQueries({ queryKey: ["invoices", token] });
 
@@ -225,55 +229,83 @@ const VerifyInvoice = () => {
         id: "actions",
         header: "Action",
         size: 100,
-        cell: ({ row }: any) => (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() =>
-                setModalState({
-                  isOpen: true,
-                  mode: "verification",
-                  paymentId: row.original.payment_id,
-                  invoiceData: null,
-                })
-              }
-              className="text-white flex items-center justify-center"
-              title="Open Payment Verification Form"
-            >
-              <Image src={file} alt="file icon" />
-            </button>
-            <button
-              onClick={async () => {
-                if (!token) {
-                  MySwal.fire({
-                    icon: "error",
-                    title: "Authentication Required",
-                    text: "User not authenticated.",
-                  });
-                  return;
-                }
+        cell: ({ row }: any) => {
+          return (
+            <div className="flex items-center gap-2">
+              {activeTab === "pending" && (
+                <button
+                  onClick={() =>
+                    setModalState({
+                      isOpen: true,
+                      mode: "verification",
+                      paymentId: row.original.payment_id,
+                      invoiceData: null,
+                    })
+                  }
+                  className="text-white flex items-center justify-center"
+                  title="Open Payment Verification Form"
+                >
+                  <Image src={file} alt="file icon" />
+                </button>
+              )}
+              {activeTab === "completed" && (
+                <button
+                  onClick={() =>
+                    setModalState({
+                      isOpen: true,
+                      mode: "edit",
+                      paymentId: row.original.payment_id,
+                      invoiceData: null,
+                    })
+                  }
+                  className="text-white flex items-center justify-center"
+                  title="Edit Payment"
+                >
+                  <Image src={Edit} alt="edit icon" />
+                </button>
+              )}
+              {(activeTab === "all" ||
+                activeTab === "pending" ||
+                activeTab === "completed" ||
+                activeTab === "denied") && (
+                <button
+                  onClick={async () => {
+                    if (!token) {
+                      MySwal.fire({
+                        icon: "error",
+                        title: "Authentication Required",
+                        text: "User not authenticated.",
+                      });
+                      return;
+                    }
 
-                const result = await MySwal.fire({
-                  title: `Cancel invoice ${row.original.id}?`,
-                  text: "Are you sure you want to cancel this invoice?",
-                  icon: "warning",
-                  showCancelButton: true,
-                  confirmButtonColor: "#d33",
-                  cancelButtonColor: "#3085d6",
-                  confirmButtonText: "Yes, cancel it!",
-                });
+                    const result = await MySwal.fire({
+                      title: `Cancel invoice ${row.original.id}?`,
+                      text: "Are you sure you want to cancel this invoice?",
+                      icon: "warning",
+                      showCancelButton: true,
+                      confirmButtonColor: "#d33",
+                      cancelButtonColor: "#3085d6",
+                      confirmButtonText: "Yes, cancel it!",
+                    });
 
-                if (result.isConfirmed) {
-                  cancelMutation.mutate({ token, invoiceId: row.original.id });
-                }
-              }}
-              className="text-white flex items-center justify-center"
-              title="Cancel Invoice"
-              disabled={cancelMutation.isLoading}
-            >
-              <Image src={Cancel} alt="cancel icon" />
-            </button>
-          </div>
-        ),
+                    if (result.isConfirmed) {
+                      cancelMutation.mutate({
+                        token,
+                        invoiceId: row.original.id,
+                      });
+                    }
+                  }}
+                  className="text-white flex items-center justify-center"
+                  title="Cancel Invoice"
+                  disabled={cancelMutation.isLoading}
+                >
+                  <Image src={Cancel} alt="cancel icon" />
+                </button>
+              )}
+            </div>
+          );
+        },
       },
     ],
     [cancelMutation, token]
@@ -281,7 +313,6 @@ const VerifyInvoice = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-white border-b border-gray-200 px-8 py-6">
         <div className="flex justify-between items-center">
           <div>
@@ -305,7 +336,6 @@ const VerifyInvoice = () => {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="px-8 py-6">
         <div className="mb-6">
           <div className="flex gap-8 border-b border-gray-200">
@@ -360,7 +390,6 @@ const VerifyInvoice = () => {
           </div>
         </div>
 
-        {/* Table */}
         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
           {isLoading ? (
             <div className="p-4 space-y-2">
@@ -404,7 +433,6 @@ const VerifyInvoice = () => {
         }}
         mode={modalState.mode}
         paymentId={modalState.paymentId}
-        invoiceData={modalState.invoiceData}
       />
     </div>
   );

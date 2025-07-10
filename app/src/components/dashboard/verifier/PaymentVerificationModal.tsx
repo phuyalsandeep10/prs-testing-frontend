@@ -9,7 +9,7 @@ import PaymentVerificationForm from "./PaymentVerificationForm";
 interface PaymentVerificationModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  mode: "verification" | "view";
+  mode: "verification" | "view" | "edit";
   paymentId?: string | number;
 }
 
@@ -31,7 +31,7 @@ const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({
   }, [isOpen]);
 
   const handleSave = (data: any) => {
-    console.log(`Payment verification ${mode} saved:`, data);
+    console.log(`Payment ${mode} saved:`, data);
     onOpenChange(false);
   };
 
@@ -48,11 +48,17 @@ const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({
         </>
       );
     }
-
     if (mode === "view") {
       return <span className="text-[#31323A]">View Payment Details</span>;
     }
-
+    if (mode === "edit") {
+      return (
+        <>
+          <span className="text-[#31323A]">Edit Payment for </span>
+          <span className="text-[#465FFF]">PA - {paymentId}</span>
+        </>
+      );
+    }
     return <span className="text-[#31323A]">Payment Verification</span>;
   };
 
@@ -73,7 +79,7 @@ const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({
         bottom: 0,
         zIndex: 99999,
       }}
-      onClick={() => onOpenChange(false)} // <-- CLOSE modal on clicking outside
+      onClick={() => onOpenChange(false)}
     >
       <div
         className={`p-0 bg-white border shadow-xl ${getModalSize()} rounded-lg overflow-hidden flex flex-col z-[100000]`}
@@ -82,9 +88,8 @@ const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({
           zIndex: 100000,
           margin: 0,
         }}
-        onClick={(e) => e.stopPropagation()} // <-- PREVENT closing when clicking inside modal
+        onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 bg-white">
           <div className="flex items-center justify-between">
             <h1 className="text-[20px] font-bold">{getTitle()}</h1>
@@ -99,7 +104,6 @@ const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({
           </div>
         </div>
 
-        {/* Modal Content */}
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 overflow-auto">
             <PaymentVerificationForm
