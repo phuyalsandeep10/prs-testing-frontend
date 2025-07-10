@@ -164,7 +164,7 @@ const ClientDetailsSection: React.FC = () => {
 
   return (
     <>
-      <div className="pr-6 py-4">
+      <div className="pr-6 py-4 ml-6">
         {isLoading ? (
           <p className="text-center text-sm text-gray-500">
             Loading clients...

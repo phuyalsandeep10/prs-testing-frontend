@@ -1,4 +1,5 @@
 "use client";
+
 import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -123,7 +124,11 @@ const fetchPayments = async (): Promise<Payment[]> => {
   });
 };
 
-const PaymentTable = () => {
+interface PaymentTableProps {
+  role: "verifier" | "senior-verifier";
+}
+
+const PaymentTable: React.FC<PaymentTableProps> = ({ role }) => {
   const [paymentsData, setPaymentsData] = useState<Payment[]>([]);
 
   const { data, isLoading, isError, error } = useQuery<Payment[], Error>({
@@ -131,23 +136,28 @@ const PaymentTable = () => {
     queryFn: fetchPayments,
   });
 
-  // Update local state when data is fetched
   useEffect(() => {
     if (data) {
       setPaymentsData(data);
     }
   }, [data]);
 
-  // Function to update payment status
-  const updatePaymentStatus = (rowIndex: number, newStatus: string) => {
-    setPaymentsData((prev) =>
-      prev.map((payment, index) =>
-        index === rowIndex ? { ...payment, status: newStatus } : payment
-      )
-    );
-  };
+  // Only senior verifier can update status
+  const updatePaymentStatus =
+    role === "senior-verifier"
+      ? (rowIndex: number, newStatus: string) => {
+          setPaymentsData((prev) =>
+            prev.map((payment, index) =>
+              index === rowIndex ? { ...payment, status: newStatus } : payment
+            )
+          );
+        }
+      : undefined;
 
-  // Custom loading component to match original skeleton layout
+  // Create columns based on role
+  const rightColumns = createRightColumns(role, updatePaymentStatus);
+
+  // Custom loading skeleton component
   const customLoadingComponent = (
     <div className="mt-6 space-y-2">
       {[...Array(8)].map((_, i) => (
@@ -171,11 +181,11 @@ const PaymentTable = () => {
     <div className="mt-6">
       <UnifiedTable
         data={paymentsData as unknown[]}
-        columns={scrollableColumns as ColumnDef<unknown>[]}
-        scrollableColumns={scrollableColumns as ColumnDef<unknown>[]}
-        rightColumns={
-          createRightColumns(updatePaymentStatus) as ColumnDef<unknown>[]
+        columns={
+          [...scrollableColumns, ...rightColumns] as ColumnDef<unknown>[]
         }
+        scrollableColumns={scrollableColumns as ColumnDef<unknown>[]}
+        rightColumns={rightColumns as ColumnDef<unknown>[]}
         config={{
           features: {
             splitTable: true,

@@ -40,7 +40,7 @@ const fetchRegularClients = async (): Promise<ClientItem[]> => {
   const clients = json.regular_clients_all_time ?? [];
 
   return clients.map((client: any) => ({
-    name: client.client_name,
+    name: client.client__client_name,
     investedPrice: `$ ${Number(client.total_value).toLocaleString()}`,
   }));
 };
@@ -57,11 +57,9 @@ export default function RegularClientSection() {
     refetchOnWindowFocus: false,
   });
 
-  const responsiveHeight = "h-[220px] sm:h-[260px] md:h-[280px] lg:h-[300px]";
-
   if (isLoading) {
     return (
-      <div className={`p-6 pt-0 max-w-screen-xl mx-auto ${responsiveHeight}`}>
+      <div className="w-full h-[322px] p-[10px]">
         <div className="space-y-4">
           <div className="space-y-2">
             <Skeleton className="h-7 w-40" />
@@ -85,16 +83,14 @@ export default function RegularClientSection() {
 
   if (isError) {
     return (
-      <div
-        className={`p-6 pt-0 max-w-screen-xl mx-auto flex items-center justify-center text-red-500 ${responsiveHeight}`}
-      >
+      <div className="w-full h-[322px] p-[10px] flex items-center justify-center text-red-500">
         Error loading regular clients data
       </div>
     );
   }
 
   return (
-    <div className={`p-6 pt-0 max-w-screen-xl mx-auto ${responsiveHeight}`}>
+    <div className="w-full h-[322px] p-[10px]">
       <RegularClientCard
         title="Regular Clients"
         subtitle="Here are your top clients this period."

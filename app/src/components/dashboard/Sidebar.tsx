@@ -54,7 +54,27 @@ const verifierNav = [
     href: "/verifier/refund-chargeback",
     icon: RotateCcw,
   },
-  { name: "Payment Records", href: "/verifier/paymentRecords", icon: ClipboardMinus },
+  {
+    name: "Payment Records",
+    href: "/verifier/paymentRecords",
+    icon: ClipboardMinus,
+  },
+];
+
+const seniorverifierNav = [
+  { name: "Dashboard", href: "/senior-verifier", icon: LayoutDashboard },
+  { name: "Deals", href: "/senior-verifier/deals", icon: Heart },
+  { name: "Verify Invoice", href: "/senior-verifier/verify-invoice", icon: FileCheck },
+  {
+    name: "Refund / Chargeback",
+    href: "/senior-verifier/refund-chargeback",
+    icon: RotateCcw,
+  },
+  {
+    name: "Payment Records",
+    href: "/senior-verifier/paymentRecords",
+    icon: ClipboardMinus,
+  },
 ];
 
 const salespersonNav = [
@@ -96,6 +116,14 @@ export default function Sidebar() {
     if (role === 'salesperson') return salespersonNav;
     if (role === 'supervisor') return supervisorNav;
     if (role === 'team-member') return teamMemberNav;
+    
+    if (pathname.startsWith("/super-admin")) return superAdminNav;
+    if (pathname.startsWith("/org-admin")) return orgAdminNav;
+    if (pathname.startsWith("/verifier")) return verifierNav;
+    if (pathname.startsWith("/salesperson")) return salespersonNav;
+    if (pathname.startsWith("/supervisor")) return supervisorNav;
+    if (pathname.startsWith("/senior-verifier")) return seniorverifierNav;
+    if (pathname.startsWith("/team-member")) return teamMemberNav;
     return orgAdminNav; // Default fallback
   };
 

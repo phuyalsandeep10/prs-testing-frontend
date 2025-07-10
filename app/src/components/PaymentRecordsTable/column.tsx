@@ -56,7 +56,7 @@ const getStatusColor = (status: string) => {
   }
 };
 
-// Component for the comments cell with popover
+// Comments cell with popover
 const CommentsCell = ({ row }: { row: any }) => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const comment = row.original.comments;
@@ -90,58 +90,83 @@ const CommentsCell = ({ row }: { row: any }) => {
 };
 
 export const createRightColumns = (
-  updatePaymentStatus: (rowIndex: number, newStatus: string) => void
-): ColumnDef<Payment>[] => [
-  {
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => (
-      <Select
-        value={row.original.status}
-        onValueChange={(value: string) => {
-          updatePaymentStatus(row.index, value);
-        }}
-      >
-        <SelectTrigger
-          className={`border-none bg-transparent p-0 h-6 text-[12px] focus:ring-0 shadow-none ${getStatusColor(
-            row.original.status
-          )}`}
-        >
-          <SelectValue placeholder="Select status" className="text-[12px]" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="Pending" className="text-[#FD8B00]">
-            Pending
-          </SelectItem>
-          <Separator className="my-1" />
-          <SelectItem value="Approved" className="text-green-600">
-            Approved
-          </SelectItem>
-          <Separator className="my-1" />
-          <SelectItem value="Rejected" className="text-red-600">
-            Rejected
-          </SelectItem>
-        </SelectContent>
-      </Select>
-    ),
-  },
-  { accessorKey: "approvedBy", header: "Approved By" },
-  {
-    accessorKey: "comments",
-    header: "Comments",
-    cell: ({ row }) => <CommentsCell row={row} />,
-  },
-  {
-    id: "actions",
-    header: "Action",
-    cell: ({ row }) => (
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="h-6 w-6 p-1">
-          <Image src={editicon} alt="Edit" className="w-4 h-4" />
-        </Button>
-      </div>
-    ),
-  },
-];
+  role: "verifier" | "senior-verifier",
+  updatePaymentStatus?: (rowIndex: number, newStatus: string) => void
+): ColumnDef<Payment>[] => {
+  const isVerifier = role === "verifier";
+  const isSeniorVerifier = role === "senior-verifier";
 
-export const rightColumns: ColumnDef<Payment>[] = createRightColumns(() => {});
+  return [
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        if (isSeniorVerifier && updatePaymentStatus) {
+          return (
+            <Select
+              value={row.original.status}
+              onValueChange={(value: string) =>
+                updatePaymentStatus(row.index, value)
+              }
+            >
+              <SelectTrigger
+                className={`border-none bg-transparent p-0 h-6 text-[12px] focus:ring-0 shadow-none ${getStatusColor(
+                  row.original.status
+                )}`}
+              >
+                <SelectValue
+                  placeholder="Select status"
+                  className="text-[12px]"
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Pending" className="text-[#FD8B00]">
+                  Pending
+                </SelectItem>
+                <Separator className="my-1" />
+                <SelectItem value="Approved" className="text-green-600">
+                  Approved
+                </SelectItem>
+                <Separator className="my-1" />
+                <SelectItem value="Rejected" className="text-red-600">
+                  Rejected
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          );
+        }
+
+        if (isVerifier) {
+          return (
+            <span className={`text-xs ${getStatusColor(row.original.status)}`}>
+              {row.original.status}
+            </span>
+          );
+        }
+
+        return <span>{row.original.status}</span>;
+      },
+    },
+    { accessorKey: "approvedBy", header: "Approved By" },
+    {
+      accessorKey: "comments",
+      header: "Comments",
+      cell: ({ row }) => <CommentsCell row={row} />,
+    },
+    ...(isVerifier
+      ? [
+          {
+            id: "actions",
+            header: "Action",
+            cell: ({ row }) => (
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="icon" className="h-6 w-6 p-1">
+                  <Image src={editicon} alt="Edit" className="w-4 h-4" />
+                </Button>
+              </div>
+            ),
+          },
+        ]
+      : []),
+  ];
+};

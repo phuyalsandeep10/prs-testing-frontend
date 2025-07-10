@@ -16,6 +16,7 @@ interface TextAreaFieldProps {
   textareaClassName?: string;
   wrapperClassName?: string;
   readOnly?: boolean;
+  disabled?: boolean;
 }
 
 const TextAreaField: React.FC<TextAreaFieldProps> = ({

@@ -16,123 +16,79 @@ import { Client } from "@/types/deals";
 
 type DealFormData = z.infer<typeof DealSchema>;
 
-// Removed toSnakeCase function as it's no longer needed
-
-// Removed transformDataForApi function as we now handle data transformation directly in submitDealData
-
-const fetchClients = async (): Promise<Client[]> => {
-  try {
-    // Try to fetch from deals endpoint first (backend manages clients through deals)
-    const response = await apiClient.get<Client[]>("/deals/");
-    console.log("Fetched clients from /deals/:", response.data);
-    return response.data || [];
-  } catch (error) {
-    console.error("Failed to fetch clients:", error);
-    // Fallback to empty array if API fails
-    return [];
-  }
+const toSnakeCase = (str: string) => {
+  return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
 };
 
-const submitDealData = async (data: DealFormData, clientsData?: Client[]) => {
-  try {
-    // Check if client already exists
-    let clientId: string | null = null;
-    
-    // Find existing client by name
-    if (clientsData && clientsData.length > 0) {
-      const existingClient = clientsData.find(c => c.client_name === data.clientName);
-      if (existingClient) {
-        clientId = existingClient.id;
+const transformDataForApi = (data: DealFormData) => {
+  const formData = new FormData();
+  const paymentData: { [key: string]: any } = {};
+
+  // Handle file upload separately
+  if (data.uploadReceipt && data.uploadReceipt.length > 0) {
+    formData.append("payments[0]receipt_file", data.uploadReceipt[0]);
+  }
+
+  const dealKeys = [
+    "clientName",
+    "dealName",
+    "payStatus",
+    "sourceType",
+    "dealValue",
+    "dealDate",
+    "dueDate",
+    "dealRemarks",
+  ];
+  const paymentKeys = [
+    "paymentDate",
+    "receivedAmount",
+    "chequeNumber",
+    "payMethod",
+    "paymentRemarks",
+  ];
+
+  for (const key in data) {
+    if (
+      Object.prototype.hasOwnProperty.call(data, key) &&
+      key !== "uploadReceipt"
+    ) {
+      const value = (data as any)[key];
+      if (value !== undefined && value !== null && value !== "") {
+        if (dealKeys.includes(key)) {
+          const snakeKey = toSnakeCase(key);
+          const apiValue =
+            key === "payStatus"
+              ? value === "Full Pay"
+                ? "full_payment"
+                : "partial_payment"
+              : value;
+          formData.append(snakeKey, apiValue);
+        } else if (paymentKeys.includes(key)) {
+          const snakeKey =
+            key === "payMethod" ? "payment_method" : toSnakeCase(key);
+          paymentData[snakeKey] = value;
+        }
       }
     }
-
-    // Step 1: Create or update the client/deal
-    // Backend expects form data, not JSON
-    console.log("Creating client form data with:", data);
-    
-    const clientFormData = new FormData();
-    clientFormData.append("client_name", data.clientName);
-    clientFormData.append("email", `${data.clientName.toLowerCase().replace(/\s+/g, '.')}@example.com`);
-    clientFormData.append("phone_number", "+977-9841234567"); // Default phone number
-    clientFormData.append("value", data.dealValue);
-    clientFormData.append("status", data.payStatus === "Full Pay" ? "active" : "pending");
-    clientFormData.append("satisfaction", "neutral");
-    clientFormData.append("category", "occasional");
-    clientFormData.append("remarks", data.dealRemarks || "");
-    clientFormData.append("expected_close", data.dueDate);
-    clientFormData.append("last_contact", new Date().toISOString());
-    
-    // Add deal-specific fields
-    clientFormData.append("deal_name", data.dealName);
-    clientFormData.append("source_type", data.sourceType);
-    clientFormData.append("deal_date", data.dealDate);
-    clientFormData.append("due_date", data.dueDate);
-
-    // Debug: log form data contents
-    console.log("Client form data contents:");
-    for (const [key, value] of clientFormData.entries()) {
-      console.log(`  ${key}: ${value}`);
-    }
-
-    let clientResponse;
-    if (clientId) {
-      // Update existing client
-      console.log(`Updating existing client ${clientId} with form data...`);
-      clientResponse = await apiClient.putMultipart(`/deals/${clientId}/`, clientFormData);
-    } else {
-      // Create new client  
-      console.log("Creating new client with form data...");
-      clientResponse = await apiClient.postMultipart("/deals/", clientFormData);
-    }
-    
-    console.log("Client API response:", clientResponse);
-    
-    if (!clientResponse.success || !clientResponse.data) {
-      throw new Error("Failed to save deal");
-    }
-
-    const savedClient = clientResponse.data as any;
-
-    // Step 2: Create the payment
-    const paymentData = {
-      client: savedClient.id,
-      amount: parseFloat(data.receivedAmount),
-      currency: "NPR", 
-      payment_method: data.payMethod,
-      sequence_number: 1,
-    };
-
-    // Create FormData for payment with file upload
-    const paymentFormData = new FormData();
-    for (const [key, value] of Object.entries(paymentData)) {
-      paymentFormData.append(key, value.toString());
-    }
-
-    // Add payment remarks if provided
-    if (data.paymentRemarks) {
-      paymentFormData.append("remarks", data.paymentRemarks);
-    }
-
-    // Add the receipt file if provided
-    if (data.uploadReceipt && data.uploadReceipt.length > 0) {
-      paymentFormData.append("receipt_file", data.uploadReceipt[0]);
-    }
-
-    const paymentResponse = await apiClient.postMultipart("/payments/", paymentFormData);
-    
-    if (!paymentResponse.success) {
-      console.warn("Payment creation failed:", paymentResponse);
-      // Don't throw error for payment failure, just log it
-    }
-
-    return {
-      deal: savedClient,
-      payment: paymentResponse.data,
-    };
-  } catch (error) {
-    console.error("Error in submitDealData:", error);
-    throw error;
   }
+
+  // Append nested payment data
+  for (const key in paymentData) {
+    formData.append(`payments[0]${key}`, paymentData[key]);
+  }
+
+  return formData;
+};
+
+const fetchClients = async (): Promise<Client[]> => {
+  const response = await apiClient.get<Client[]>("/clients/");
+  return response.data || [];
+};
+
+const submitDealData = async (data: DealFormData) => {
+  const formData = transformDataForApi(data);
+  const response = await apiClient.postMultipart("/deals/", formData);
+  return response.data;
 };
 
 interface DealFormProps {
@@ -153,17 +109,9 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
     const isStandalonePage =
       pathname?.includes("/add") || pathname?.includes("/edit");
 
-    const { data: clients, isLoading: isLoadingClients, error: clientsError } = useQuery<Client[]>({
+    const { data: clients, isLoading: isLoadingClients } = useQuery<Client[]>({
       queryKey: ["clients"],
       queryFn: fetchClients,
-    });
-
-    // Debug logging
-    console.log("Clients query state:", {
-      clients,
-      isLoadingClients,
-      clientsError,
-      clientsCount: clients?.length || 0,
     });
 
     const {
@@ -181,37 +129,22 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
       resetForm: () => reset(),
     }));
 
-      const mutation = useMutation({
-    mutationFn: (data: DealFormData) => submitDealData(data, clients),
-    onSuccess: (data) => {
-      console.log("Deal created successfully", data);
-      reset();
-      
-      // Invalidate all deal-related queries to refresh the table
-      queryClient.invalidateQueries({ queryKey: ["deals"] });
-      queryClient.invalidateQueries({ queryKey: ["clients"] });
-      queryClient.invalidateQueries({ queryKey: ["payments"] });
-      
-      // Show success message
-      if (typeof window !== "undefined" && window.alert) {
-        window.alert("Deal created successfully!");
-      }
-      
-      if (onSave) {
-        onSave(data as DealFormData);
-      } else if (isStandalonePage) {
-        router.push("/salesperson/deal");
-      }
-    },
-    onError: (error: any) => {
-      console.error("Failed to create deal:", error);
-      
-      // Show error message
-      if (typeof window !== "undefined" && window.alert) {
-        window.alert(`Failed to create deal: ${error.message || "Unknown error"}`);
-      }
-    },
-  });
+    const mutation = useMutation({
+      mutationFn: submitDealData,
+      onSuccess: (data) => {
+        console.log("Deal created successfully", data);
+        reset();
+        queryClient.invalidateQueries({ queryKey: ["deals"] });
+        if (onSave) {
+          onSave(data as DealFormData);
+        } else if (isStandalonePage) {
+          router.push("/salesperson/deal");
+        }
+      },
+      onError: (error: any) => {
+        console.error("Failed to create deal:", error);
+      },
+    });
 
     const onSubmit = (data: DealFormData) => {
       mutation.mutate(data);
@@ -264,29 +197,14 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                       selectClassName={dealInputClass}
                       wrapperClassName={dealWrapperClass}
                       disabled={isLoadingClients}
-                      options={(() => {
-                        if (isLoadingClients) {
-                          return [{ value: "", label: "Loading clients..." }];
-                        }
-                        
-                        const options = clients && Array.isArray(clients)
-                          ? clients.map((c) => {
-                              console.log("Client data:", c);
-                              return {
-                                value: c.client_name || c.id,
-                                label: c.client_name || c.id,
-                              };
-                            })
-                          : [];
-                        
-                        console.log("Generated dropdown options:", options);
-                        
-                        if (options.length === 0) {
-                          return [{ value: "", label: "No clients found" }];
-                        }
-                        
-                        return options;
-                      })()}
+                      options={
+                        clients && Array.isArray(clients)
+                          ? clients.map((c) => ({
+                              value: c.client_name,
+                              label: c.client_name,
+                            }))
+                          : []
+                      }
                     />
                   </div>
                 </div>
@@ -384,11 +302,10 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                       selectClassName={dealInputClass}
                       wrapperClassName={dealWrapperClass}
                       options={[
-                        { value: "Mobile Wallet", label: "Mobile Wallet" },
-                        { value: "Bank Transfer", label: "Bank Transfer" },
-                        { value: "QR Payment", label: "QR Payment" },
-                        { value: "Credit Card", label: "Credit Card" },
-                        { value: "Cash", label: "Cash" },
+                        { value: "wallet", label: "Mobile Wallet" },
+                        { value: "cash", label: "Cash" },
+                        { value: "cheque", label: "Cheque" },
+                        { value: "bank", label: "Bank Transfer" },
                       ]}
                     />
                   </div>

@@ -88,7 +88,6 @@ const SelectField: React.FC<SelectFieldProps> = ({
           );
         })}
       </select>
-      
     </InputWrapper>
   );
 };

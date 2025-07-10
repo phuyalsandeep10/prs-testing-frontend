@@ -1,3 +1,4 @@
+"use client"
 import React from "react";
 
 type AuditQueue = {
@@ -21,7 +22,7 @@ const AuditComponents: React.FC<AuditComponentProps> = ({ data }) => {
             <th className="py-3 px-4 min-w-[140px]">Time Stamp</th>
             <th className="py-3 px-4 min-w-[120px]">Verifier</th>
             <th className="py-3 px-4 min-w-[180px]">Actions</th>
-            <th className="py-3 px-4 min-w-[90px]">TXN ID</th>
+            <th className="py-3 px-4 min-w-[100px]">TXN ID</th>
           </tr>
         </thead>
         <tbody>
@@ -43,7 +44,7 @@ const AuditComponents: React.FC<AuditComponentProps> = ({ data }) => {
                   ({row.status})
                 </span>
               </td>
-              <td className="py-3 px-4 text-[#465FFF] break-words">
+              <td className="py-3 px-4 pr-6 text-[#465FFF] break-words">
                 {row.txnid}
               </td>
             </tr>

@@ -17,7 +17,6 @@ const fetchCommissionData = async (token: string): Promise<CommissionData> => {
   const url = new URL(
     `${process.env.NEXT_PUBLIC_API_URL}/dashboard/commission/`
   );
-
   const res = await fetch(url.toString(), {
     headers: {
       "Content-Type": "application/json",
@@ -62,14 +61,14 @@ const CommissionSection: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="w-full">
-        <div className="space-y-4">
-          <Skeleton className="h-6 w-20" />
-          <Skeleton className="h-[174px] w-[300px] rounded-lg" />
-          <div className="flex justify-between items-center">
+      <div className="w-full h-[322px] flex flex-col p-[10px]">
+        <div className="space-y-3">
+          <Skeleton className="h-5 w-16" />
+          <Skeleton className="h-32 w-full rounded-lg" />
+          <div className="flex justify-between items-center px-2">
             <div className="space-y-2">
-              <Skeleton className="h-4 w-10" />
-              <Skeleton className="h-6 w-10" />
+              <Skeleton className="h-3 w-8" />
+              <Skeleton className="h-5 w-8" />
             </div>
           </div>
         </div>
@@ -78,11 +77,17 @@ const CommissionSection: React.FC = () => {
   }
 
   if (error) {
-    return <p className="text-red-500 text-sm">Error: {error.message}</p>;
+    return (
+      <div className="w-full h-[322px] flex items-center justify-center p-[10px]">
+        <p className="text-red-500 text-xs text-center">
+          Error: {error.message}
+        </p>
+      </div>
+    );
   }
 
   return (
-    <div style={{ maxWidth: 480, width: "100%" }}>
+    <div className="w-full h-[322px] p-[10px]">
       <CommissionArc
         achieved={data?.achieved ?? 0}
         total={data?.total ?? 1}
@@ -90,8 +95,6 @@ const CommissionSection: React.FC = () => {
         salesAmount={data?.salesAmount ?? "$0"}
         title="Company Goal"
         subtitle={data?.subtitle ?? ""}
-        width={420}
-        height={174}
       />
     </div>
   );

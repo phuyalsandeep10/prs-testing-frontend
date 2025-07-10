@@ -2,7 +2,6 @@
 import React, { useRef, useState } from "react";
 import * as d3 from "d3";
 import gsap from "gsap";
-import { useQuery } from "@tanstack/react-query";
 
 type Slice = {
   label: string;
@@ -14,6 +13,13 @@ type Slice = {
   color: string;
   fontSize?: number;
 };
+
+interface PaymentDistributionProps {
+  chartData: {
+    label: string;
+    value: number;
+  }[];
+}
 
 const constantSlices: Omit<Slice, "value" | "outerRadius">[] = [
   {
@@ -67,21 +73,9 @@ const constantSlices: Omit<Slice, "value" | "outerRadius">[] = [
   },
 ];
 
-const fetchChartData = async (): Promise<
-  { label: string; value: number }[]
-> => {
-  return [
-    { label: "Processing", value: 70 },
-    { label: "Success", value: 50 },
-    { label: "Failed", value: 40 },
-    { label: "Pending", value: 30 },
-    { label: "Initiated", value: 20 },
-    { label: "Refunded", value: 20 },
-    { label: "Chargeback", value: 5 },
-  ];
-};
-
-const PaymentDistribution: React.FC = () => {
+const PaymentDistribution: React.FC<PaymentDistributionProps> = ({
+  chartData,
+}) => {
   const [selected, setSelected] = useState<{
     text: string;
     color: string;
@@ -91,26 +85,10 @@ const PaymentDistribution: React.FC = () => {
     color: "#009959",
     fontSize: 20,
   });
+
   const sliceRefs = useRef<(SVGPathElement | null)[]>([]);
 
-  const {
-    data: chartData,
-    isLoading,
-    isError,
-  } = useQuery({
-    queryKey: ["payment-chart"],
-    queryFn: fetchChartData,
-  });
-
-  if (isLoading)
-    return (
-      <p className="text-center text-sm text-gray-600">Loading chart...</p>
-    );
-  if (isError || !chartData)
-    return (
-      <p className="text-center text-sm text-red-500">Failed to load chart</p>
-    );
-
+  // Map values from props into constant slice structure
   const valueMap = Object.fromEntries(chartData.map((d) => [d.label, d.value]));
   const values = constantSlices.map((slice) => valueMap[slice.label] || 0);
 
@@ -198,4 +176,4 @@ const PaymentDistribution: React.FC = () => {
   );
 };
 
-export default  PaymentDistribution;
+export default PaymentDistribution;

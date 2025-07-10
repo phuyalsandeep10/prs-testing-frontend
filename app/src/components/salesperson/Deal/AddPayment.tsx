@@ -143,7 +143,9 @@ const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => 
                 className="w-full h-[48px] px-4 border-2 border-[#4F46E5] rounded-lg text-[16px] focus:outline-none focus:border-[#4338CA] bg-white"
               />
               {errors.paymentDate && (
-                <p className="text-red-500 text-sm mt-1">{String(errors.paymentDate.message)}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {String(errors.paymentDate.message)}
+                </p>
               )}
             </div>
 
@@ -158,7 +160,9 @@ const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => 
                 className="w-full h-[48px] px-4 border border-gray-300 rounded-lg text-[16px] focus:outline-none focus:border-gray-400 bg-white"
               />
               {errors.receivedAmount && (
-                <p className="text-red-500 text-sm mt-1">{String(errors.receivedAmount.message)}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {String(errors.receivedAmount.message)}
+                </p>
               )}
             </div>
 
@@ -173,7 +177,9 @@ const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => 
                 className="w-full h-[48px] px-4 border border-gray-300 rounded-lg text-[16px] focus:outline-none focus:border-gray-400 bg-white"
               />
               {errors.chequeNo && (
-                <p className="text-red-500 text-sm mt-1">{String(errors.chequeNo.message)}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {String(errors.chequeNo.message)}
+                </p>
               )}
             </div>
 
@@ -190,16 +196,20 @@ const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => 
                   accept=".png,.jpg,.jpeg,.pdf"
                   id="attachReceipt"
                 />
-                <div 
+                <div
                   className="w-full h-[48px] px-4 border border-gray-300 rounded-lg text-[16px] bg-white cursor-pointer flex items-center justify-between hover:border-gray-400 transition-colors"
-                  onClick={() => document.getElementById('attachReceipt')?.click()}
+                  onClick={() =>
+                    document.getElementById("attachReceipt")?.click()
+                  }
                 >
                   <span className="text-gray-900">Receipt.png</span>
                   <Paperclip className="h-4 w-4 text-gray-400" />
                 </div>
               </div>
               {errors.attachReceipt && (
-                <p className="text-red-500 text-sm mt-1">{String(errors.attachReceipt.message)}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {String(errors.attachReceipt.message)}
+                </p>
               )}
             </div>
 
@@ -213,21 +223,25 @@ const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => 
                 onClick={() => setShowDropdown(!showDropdown)}
               >
                 <span className="text-gray-900">{selectedPaymentType}</span>
-                <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+                <ChevronDown
+                  className={`h-4 w-4 text-gray-400 transition-transform ${
+                    showDropdown ? "rotate-180" : ""
+                  }`}
+                />
               </div>
-              
+
               {/* Dropdown - only show when state is true */}
               {showDropdown && (
-                <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-hidden">
+                <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-y-auto max-h-[150px]">
                   {paymentTypes.map((type, index) => (
                     <div
                       key={type.value}
                       className={`px-4 py-3 cursor-pointer text-[16px] border-b border-gray-100 last:border-b-0 transition-colors ${
-                        type.label === selectedPaymentType 
-                          ? 'bg-gray-50 text-gray-900' 
+                        type.label === selectedPaymentType
+                          ? "bg-gray-50 text-gray-900"
                           : type.label === "Partial Payment"
-                            ? 'text-[#4F46E5] hover:bg-blue-50' // Blue text for Partial Payment as in screenshot
-                            : 'text-gray-900 hover:bg-gray-50'
+                          ? "text-[#4F46E5] hover:bg-blue-50" // Blue text for Partial Payment as in screenshot
+                          : "text-gray-900 hover:bg-gray-50"
                       }`}
                       onClick={() => handlePaymentTypeSelect(type)}
                     >
@@ -237,7 +251,9 @@ const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => 
                 </div>
               )}
               {errors.paymentType && (
-                <p className="text-red-500 text-sm mt-1">{String(errors.paymentType.message)}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {String(errors.paymentType.message)}
+                </p>
               )}
             </div>
 
@@ -252,7 +268,9 @@ const AddPayment: React.FC<AddPaymentProps> = ({ dealId, onSave, onCancel }) => 
                 placeholder=""
               />
               {errors.remarks && (
-                <p className="text-red-500 text-sm mt-1">{String(errors.remarks.message)}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {String(errors.remarks.message)}
+                </p>
               )}
             </div>
           </div>

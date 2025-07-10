@@ -1,119 +1,171 @@
 "use client";
+
 import React from "react";
 import PaymentOverview from "@/components/dashboard/verifier/dashboard/PaymentOverview";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const fetchInvoiceStatusOverview = async () => {
-  await new Promise((res) => setTimeout(res, 800));
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/verifier/dashboard/invoice-status/`,
+    {
+      headers: {
+        Authorization: `Token ${localStorage.getItem("authToken") || ""}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  if (!res.ok) throw new Error("Failed to fetch invoice status");
+
+  const data = await res.json();
+
   return [
     {
       label: "Completed Deal",
-      count: "5",
+      count: Math.floor(data.paid_invoices || 0).toString(),
       color: "#C1EAD9",
       textColor: "#026C40",
     },
     {
       label: "Overdue Deal",
-      count: "5",
+      count: Math.floor(data.pending_invoices || 0).toString(),
       color: "#FBD0D0",
       textColor: "#A90101",
     },
     {
       label: "Pending Deal",
-      count: "5",
+      count: Math.floor(data.pending_invoices || 0).toString(),
       color: "#FFCA89",
       textColor: "#814804",
     },
     {
       label: "Refunded Deal",
-      count: "5",
+      count: Math.floor(data.refunded_invoices || 0).toString(),
       color: "#C0C8FD",
       textColor: "#0E00D0",
     },
     {
       label: "Disputed Deal",
-      count: "5",
+      count: Math.floor(data.rejected_invoices || 0).toString(),
       color: "#FBDAB1",
       textColor: "#666403",
     },
     {
       label: "Processing Deal",
-      count: "5",
+      count: Math.floor(data.pending_invoices || 0).toString(),
       color: "#C0C8FD",
       textColor: "#0E00D0",
     },
   ];
+  
 };
 
 const fetchPaymentMethodsBreakdown = async () => {
-  await new Promise((res) => setTimeout(res, 800));
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/verifier/dashboard/payment-methods/`,
+    {
+      headers: {
+        Authorization: `Token ${localStorage.getItem("authToken") || ""}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  if (!res.ok) throw new Error("Failed to fetch payment methods");
+
+  const data = await res.json();
+
   return [
     {
       label: "Credit Card",
-      count: "5",
+      count: Math.floor(data.credit_card || 0).toString(),
       color: "#C1EAD9",
       textColor: "#026C40",
     },
     {
       label: "Bank Transfer",
-      count: "5",
+      count: Math.floor(data.bank_transfer || 0).toString(),
       color: "#FBD0D0",
       textColor: "#A90101",
     },
     {
       label: "Mobile Wallet",
-      count: "5",
+      count: Math.floor(data.mobile_wallet || 0).toString(),
       color: "#FFCA89",
       textColor: "#814804",
     },
-    { label: "Cheque", count: "5", color: "#C0C8FD", textColor: "#0E00D0" },
-    { label: "QR Payment", count: "5", color: "#FBDAB1", textColor: "#666403" },
+    {
+      label: "Cheque",
+      count: Math.floor(data.cheque || 0).toString(),
+      color: "#C0C8FD",
+      textColor: "#0E00D0",
+    },
+    {
+      label: "QR Payment",
+      count: Math.floor(data.qr_payment || 0).toString(),
+      color: "#FBDAB1",
+      textColor: "#666403",
+    },
     {
       label: "In-Hand Cash",
-      count: "5",
+      count: "5", // Already an integer string
       color: "#C0C8FD",
       textColor: "#0E00D0",
     },
   ];
+  
 };
 
 const fetchPaymentFailureReasons = async () => {
-  await new Promise((res) => setTimeout(res, 800));
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/verifier/dashboard/payment-failure-reasons/`,
+    {
+      headers: {
+        Authorization: `Token ${localStorage.getItem("authToken") || ""}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  if (!res.ok) throw new Error("Failed to fetch failure reasons");
+
+  const data = await res.json();
+
   return [
     {
       label: "Insufficient Funds",
-      count: "5",
+      count: data.insufficient_funds?.toString() || "0",
       color: "#C1EAD9",
       textColor: "#026C40",
     },
     {
       label: "Invalid Card",
-      count: "5",
+      count: data.invalid_card?.toString() || "0",
       color: "#FBD0D0",
       textColor: "#A90101",
     },
     {
       label: "Bank Decline",
-      count: "5",
+      count: data.bank_decline?.toString() || "0",
       color: "#FFCA89",
       textColor: "#814804",
     },
     {
       label: "Technical Error",
-      count: "5",
+      count: data.technical_error?.toString() || "0",
       color: "#C0C8FD",
       textColor: "#0E00D0",
     },
     {
       label: "Cheque Bounce",
-      count: "5",
+      count: data.cheque_bounce?.toString() || "0",
       color: "#FBDAB1",
       textColor: "#666403",
     },
     {
       label: "Payment Received but Not Reflected",
-      count: "5",
+      count: data.payment_received_not_reflected?.toString() || "0",
       color: "#C0C8FD",
       textColor: "#0E00D0",
     },
@@ -186,7 +238,6 @@ const PaymentSection = () => {
       </div>
     </div>
   );
-  
 };
 
 export default PaymentSection;
