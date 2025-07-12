@@ -13,9 +13,12 @@ import { useRoleBasedColumns } from "@/hooks/useRoleBasedColumns";
 
 // Fetch deals function for verifier (gets deals that need verification)
 const fetchDeals = async (searchTerm: string): Promise<Deal[]> => {
-  const response = await apiClient.get<Deal[]>("/deals/", {
-    search: searchTerm,
-  });
+      const response = await apiClient.get<Deal[]>("/deals/deals/", {
+      search: searchTerm,
+      page: 1,
+      limit: 25, // Use the actual limit that works
+      ordering: "-created_at", // Sort by creation date descending to get newest first
+    });
   return response.data || [];
 };
 

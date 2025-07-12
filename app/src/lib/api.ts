@@ -11,11 +11,13 @@ import {
   DashboardStats,
   Notification,
 } from "@/types";
+import { Deal } from "@/types/deals";
 
 // ==================== API CONFIGURATION ====================
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 const API_TIMEOUT = 10000;
+
 
 class ApiClient {
   private baseURL: string;
@@ -123,7 +125,6 @@ class ApiClient {
     try {
       const authToken = localStorage.getItem("authToken");
       const headers: HeadersInit = {
-        "ngrok-skip-browser-warning": "true", // Skip ngrok browser warning
         ...(authToken && { Authorization: `Token ${authToken}` }),
       };
 
@@ -214,6 +215,13 @@ class ApiClient {
 // ==================== API CLIENT INSTANCE ====================
 export const apiClient = new ApiClient();
 
+// Add missing methods to apiClient instance
+(apiClient as any).getDealsByClientId = (clientId: string) =>
+  apiClient.get<Deal[]>(`/deals/deals/?client_id=${clientId}`);
+
+(apiClient as any).getClients = () =>
+  apiClient.get<Client[]>("/clients/");
+
 // ==================== USER API ====================
 export const userApi = {
   getAll: (params?: {
@@ -286,6 +294,38 @@ export const teamApi = {
 
   removeMember: (teamId: string, userId: string) =>
     apiClient.delete<Team>(`/teams/${teamId}/members/${userId}`),
+};
+
+// ==================== DEALS API ====================
+export const dealsApi = {
+  getAll: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    pay_status?: string;
+    source_type?: string;
+  }) =>
+    apiClient.getPaginated<Deal>(
+      "/deals/deals",
+      params?.page,
+      params?.limit,
+      params
+    ),
+
+  getById: (id: string) => apiClient.get<Deal>(`/deals/deals/${id}`),
+
+  create: (data: any) => apiClient.post<Deal>("/deals/deals", data),
+
+  update: (id: string, data: any) =>
+    apiClient.put<Deal>(`/deals/deals/${id}`, data),
+
+  delete: (id: string) => apiClient.delete<void>(`/deals/deals/${id}`),
+
+  getByClientId: (clientId: string) =>
+    apiClient.get<Deal[]>(`/deals/deals/?client_id=${clientId}`),
+
+  updateStatus: (id: string, status: string, remarks?: string) =>
+    apiClient.patch<Deal>(`/deals/deals/${id}/update_status/`, { status, remarks }),
 };
 
 export class ApiError extends Error {

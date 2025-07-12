@@ -6,6 +6,7 @@ export const DealSchema = z.object({
   dealName: z.string().min(1, { message: 'Deal Name is required' }),
   payStatus: z.string().min(1, { message: 'Payment Status is required' }),
   sourceType: z.string().min(1, { message: 'Source Type is required' }),
+  currency: z.string().min(1, { message: 'Currency is required' }),
   dealValue: z.string().min(1, { message: 'Deal Value is required' }),
   dealDate: z.string().min(1, { message: 'Deal Date is required' }),
   dueDate: z.string().min(1, { message: 'Due Date is required' }),

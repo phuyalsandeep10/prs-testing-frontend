@@ -22,7 +22,7 @@ interface DealsTableProps {
 }
 
 const fetchDeals = async (): Promise<Deal[]> => {
-  const response = await apiClient.get<{ results: Deal[] }>("/deals/");
+  const response = await apiClient.get<{ results: Deal[] }>("/deals/deals/");
   return response.data.results;
 };
 

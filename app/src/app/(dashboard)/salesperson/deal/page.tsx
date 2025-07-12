@@ -8,15 +8,19 @@ import DealsTable from "@/components/dashboard/salesperson/deals/DealsTable";
 import DealModal from "@/components/salesperson/Deal/DealModal";
 
 const DealsPage = () => {
+  // State for controlling the Add/Edit/Payment modal
   const [modalState, setModalState] = useState({
     isOpen: false,
     mode: "add" as "add" | "edit" | "payment",
     dealId: null as string | null,
     dealData: null as any,
   });
+  // State for search input
   const [searchTerm, setSearchTerm] = useState("");
+  // Ref for focusing the Add New Deal button
   const actionButtonRef = useRef<HTMLButtonElement>(null);
 
+  // Open the modal in the given mode (add/edit/payment)
   const openModal = (
     mode: "add" | "edit" | "payment",
     dealId?: string,
@@ -30,19 +34,28 @@ const DealsPage = () => {
     });
   };
 
+  // Close the modal
   const closeModal = () => {
     setModalState((prev) => ({ ...prev, isOpen: false }));
   };
 
+  // Handler for editing a deal (opens modal in edit mode)
   const handleEditDeal = (dealId: string) => {
     // In a real app, you would fetch the deal data here
     const dealData = { id: dealId }; // Mock data
     openModal("edit", dealId, dealData);
   };
 
+  // Handler for adding payment (opens modal in payment mode)
   const handleAddPayment = (dealId: string) => {
     openModal("payment", dealId);
   };
+
+  // Handler for when a deal is saved (modal handles cache update)
+  // const handleDealSaved = (data: any) => {
+  //   console.log("Deal saved from page:", data);
+  //   // The modal will handle the success message and table refresh
+  // };
 
   return (
     <div className="min-h-screen bg-gray-50 font-outfit">
@@ -54,32 +67,34 @@ const DealsPage = () => {
               Deal Management
             </h1>
             <p className="text-sm text-gray-600 mt-1">
-              Manage your user base, teams and access all the details of each
-              user.
+              Manage your deals, track payments and monitor your sales pipeline.
             </p>
           </div>
           <div className="flex items-center gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Search"
+                placeholder="Search deals..."
                 className="pl-10 w-[320px] h-[40px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5]"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+            {/* Button to open Add Deal modal */}
             <Button
               ref={actionButtonRef}
               onClick={() => openModal("add")}
               className="bg-[#4F46E5] hover:bg-[#4F46E5]/90 text-white px-6 py-2 h-[40px] flex items-center gap-2"
             >
+              <Plus className="h-4 w-4" />
               Add New Deal
             </Button>
+            {/* Test Update button was here, now removed for production */}
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main Content: Deals Table */}
       <div className="px-8 py-6">
         <DealsTable
           onEditDeal={handleEditDeal}
@@ -88,7 +103,7 @@ const DealsPage = () => {
         />
       </div>
 
-      {/* Unified Deal Modal */}
+      {/* Unified Deal Modal for Add/Edit/Payment */}
       <DealModal
         isOpen={modalState.isOpen}
         onOpenChange={closeModal}

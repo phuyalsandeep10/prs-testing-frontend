@@ -12,6 +12,7 @@ import Image from "next/image";
 import Edit from "@/assets/icons/edit.svg";
 import Add from "@/assets/icons/add.svg";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useRouter } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -22,16 +23,26 @@ import {
 } from "@/components/ui/table";
 
 interface ApiResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
   results: Deal[];
 }
 
 // Fetch deals function
 const fetchDeals = async (searchTerm: string): Promise<Deal[]> => {
   try {
+    // Add pagination parameters to get more deals and ensure we get the latest ones
     const response = await apiClient.get<ApiResponse>("/deals/deals/", {
       search: searchTerm,
+      page: 1,
+      limit: 25, // Use the actual limit that works
+      ordering: "-created_at", // Sort by creation date descending to get newest first
     });
-    console.log("response", response.data.results);
+    console.log("Full API response:", response.data);
+    console.log("Deals results:", response.data.results);
+    console.log("Total deals count:", response.data.results?.length);
+    console.log("Total deals in DB:", response.data.count);
     const dealsData = response.data.results;
     return dealsData || []; // Return the data array from the response
   } catch (error) {
@@ -93,20 +104,6 @@ PaymentTooltip.displayName = "PaymentTooltip";
 //   nestedData?: NestedDealData[];
 // }
 
-interface NestedDealData {
-  id: string;
-  Payment: number;
-  "Payment Date": string;
-  "Payment Created": string;
-  "Payment Value": number;
-  "Payment Version": string;
-  "Payment Status": string;
-  "Receipt Link": string;
-  "Verified By": string;
-  Remarks: string;
-  "Verification Remarks": string;
-}
-
 interface DealsTableProps {
   onEditDeal?: (dealId: string) => void;
   onAddPayment?: (dealId: string) => void;
@@ -126,14 +123,20 @@ const DealsTable: React.FC<DealsTableProps> = ({
   expandedRows: externalExpandedRows,
   onExpandedRowsChange,
 }) => {
+  const router = useRouter();
   // const roleConfig = useRoleBasedColumns();
 
-  const { data, isLoading, isError, error } = useQuery<Deal[], Error>({
+  const { data, isLoading, isError, error, refetch } = useQuery<Deal[], Error>({
     queryKey: ["deals", searchTerm],
     queryFn: () => fetchDeals(searchTerm),
+    refetchOnWindowFocus: true, // Table always renders from cache, so optimistic updates are shown instantly
+    refetchOnMount: true,
   });
 
-  useEffect(() => {}, [isLoading, isError, error, data]);
+  useEffect(() => {
+    // Refetch data when component mounts or search term changes
+    refetch();
+  }, [refetch, searchTerm]);
 
   // Filter data based on search term
   const filteredData = useMemo(() => {
@@ -175,6 +178,8 @@ const DealsTable: React.FC<DealsTableProps> = ({
       );
 
       const NestedData = response.data;
+
+      console.log("NestedData", NestedData);
 
       // Transform the data: extract payment_history and merge with parent data
       let transformedData = [];
@@ -371,7 +376,13 @@ const DealsTable: React.FC<DealsTableProps> = ({
         cell: ({ row }: any) => (
           <div className="flex items-center justify-center gap-1">
             <button
-              onClick={() => onEditDeal?.(row.original.id)}
+              onClick={() => {
+                if (onEditDeal) {
+                  onEditDeal(row.original.deal_id);
+                } else {
+                  router.push(`/salesperson/deal/edit/${row.original.deal_id}`);
+                }
+              }}
               className="w-6 h-6 rounded-full text-[#4F46E5]  flex items-center justify-center htransition-colors"
               title="Edit Deal"
             >
@@ -536,7 +547,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
                   <TableRow>
                     {[...Array(12)].map((_, i) => (
                       <TableHead key={i}>
-                        <Skeleton className="h-4 w-[100px]" />
+                        <Skeleton className="h-[24px] w-[100px]" />
                       </TableHead>
                     ))}
                   </TableRow>
@@ -546,7 +557,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
                     <TableRow key={rowIndex}>
                       {[...Array(12)].map((_, colIndex) => (
                         <TableCell key={colIndex}>
-                          <Skeleton className="h-4 w-[80px]" />
+                          <Skeleton className="h-[32px] w-[100px]" />
                         </TableCell>
                       ))}
                     </TableRow>
@@ -616,21 +627,21 @@ const DealsTable: React.FC<DealsTableProps> = ({
     return (
       <div className="border rounded-lg">
         <Table>
-          <TableHeader>
+          <TableHeader className="h-[51px] w-[100px]">
             <TableRow>
-              {[...Array(8)].map((_, i) => (
+              {[...Array(10)].map((_, i) => (
                 <TableHead key={i}>
-                  <Skeleton className="h-4 w-[100px]" />
+                  <Skeleton className="h-[32px] w-[100px]" />
                 </TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {[...Array(6)].map((_, rowIndex) => (
-              <TableRow key={rowIndex}>
+            {[...Array(10)].map((_, rowIndex) => (
+              <TableRow key={rowIndex} className="h-[63px] w-[80px]">
                 {[...Array(14)].map((_, colIndex) => (
                   <TableCell key={colIndex}>
-                    <Skeleton className="h-4 w-[80px]" />
+                    <Skeleton className="h-[32px] w-[80px]" />
                   </TableCell>
                 ))}
               </TableRow>
@@ -668,8 +679,8 @@ const DealsTable: React.FC<DealsTableProps> = ({
             }
           });
         }}
-        getRowProps={(row: Row<Deal>) => ({
-          className: getRowClassName(row),
+        getRowProps={(row: Row<unknown>) => ({
+          className: getRowClassName(row as Row<Deal>),
         })}
         config={{
           features: {

@@ -58,7 +58,7 @@ export default function LoginForm() {
       console.log('🔍 Attempting login for:', values.email);
       
       // Try regular login first - the backend will tell us what to do
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/auth/login/`;
+      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/auth/login/direct/`;
       console.log('🌐 Making login request to:', apiUrl);
       
       const response = await fetch(apiUrl, {

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useImperativeHandle, forwardRef, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -11,13 +11,51 @@ import InputField from "@/components/ui/clientForm/InputField";
 import SelectField from "@/components/ui/clientForm/SelectField";
 import TextAreaField from "@/components/ui/clientForm/TextAreaField";
 import Button from "@/components/ui/clientForm/Button";
+import { Combobox } from "@/components/ui/combobox";
 import { apiClient } from "@/lib/api";
 import { Client } from "@/types/deals";
+import { toast } from "sonner";
 
 type DealFormData = z.infer<typeof DealSchema>;
 
 const toSnakeCase = (str: string) => {
   return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+};
+
+// Currency formatter function
+const formatCurrency = (amount: string | number, currency: string = "USD") => {
+  const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
+  if (isNaN(numAmount)) return amount;
+
+  const currencySymbols: { [key: string]: string } = {
+    USD: "$",
+    EUR: "€",
+    GBP: "£",
+    NPR: "Nrs.",
+    INR: "₹",
+  };
+
+  const symbol = currencySymbols[currency] || currency;
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(numAmount);
+};
+
+// Function to get currency symbol for placeholder
+const getCurrencySymbol = (currency: string = "USD") => {
+  const currencySymbols: { [key: string]: string } = {
+    USD: "$",
+    EUR: "€",
+    GBP: "£",
+    NPR: "Nrs.",
+    INR: "₹",
+  };
+
+  return currencySymbols[currency] || currency;
 };
 
 const transformDataForApi = (data: DealFormData) => {
@@ -81,20 +119,20 @@ const transformDataForApi = (data: DealFormData) => {
 };
 
 const fetchClients = async (): Promise<Client[]> => {
-  const response = await apiClient.get<Client[]>("/clients/");
-  return response.data || [];
-};
-
-const submitDealData = async (data: DealFormData) => {
-  const formData = transformDataForApi(data);
-  const response = await apiClient.postMultipart("/deals/", formData);
-  return response.data;
+  try {
+    const response = await apiClient.get<{ results: Client[] }>("/clients/");
+    return response.data.results || [];
+  } catch (error) {
+    throw error;
+  }
 };
 
 interface DealFormProps {
   onSave?: (data: DealFormData) => void;
   onCancel?: () => void;
   mode?: "add" | "edit";
+  dealId?: string;
+  isSubmitting?: boolean;
 }
 
 export interface DealFormHandle {
@@ -102,25 +140,141 @@ export interface DealFormHandle {
 }
 
 const DealForm = forwardRef<DealFormHandle, DealFormProps>(
-  ({ onSave, onCancel, mode = "add" }, ref) => {
+  ({ onSave, onCancel, mode = "add", dealId, isSubmitting = false }, ref) => {
     const router = useRouter();
     const pathname = usePathname();
     const queryClient = useQueryClient();
     const isStandalonePage =
       pathname?.includes("/add") || pathname?.includes("/edit");
 
+    // Fetch clients for combobox
     const { data: clients, isLoading: isLoadingClients } = useQuery<Client[]>({
-      queryKey: ["clients"],
+      queryKey: ["clients", "clientsName"],
       queryFn: fetchClients,
     });
+
+    // Fetch deal data for edit mode
+    const fetchDealById = async (id: string): Promise<any> => {
+      try {
+        const response = await apiClient.get<any>(`/deals/deals/${id}/`);
+        return response.data;
+      } catch (error) {
+        throw error;
+      }
+    };
+
+    const { data: dealData, isLoading: isLoadingDeal } = useQuery({
+      queryKey: ["deal", dealId],
+      queryFn: () => fetchDealById(dealId!),
+      enabled: mode === "edit" && !!dealId,
+    });
+
+    // const TestActivity = dealData.activity_logs.map((activityData: any) => {
+    //   return <div key={activityData.id}>{activityData.message}</div>;
+    // });
+
+    // console.log("dealData fetched to display", TestActivity);
+
+    const submitDealData = async (data: DealFormData) => {
+      try {
+        // Validate dealId for edit mode
+        if (mode === "edit" && !dealId) {
+          throw new Error("Deal ID is required for editing");
+        }
+
+        // Get client ID from client name
+        const selectedClient = clients?.find(
+          (client) => client.client_name === data.clientName
+        );
+        if (!selectedClient) {
+          throw new Error("Selected client not found");
+        }
+
+        // Prepare deal data (no payment fields)
+        const dealPayload = {
+          client_id: selectedClient.id,
+          client_name: data.clientName,
+          deal_name: data.dealName,
+          payment_status:
+            data.payStatus === "Full Pay" ? "full_payment" : "partial_payment",
+          source_type: data.sourceType,
+          currency: data.currency,
+          deal_value: data.dealValue,
+          deal_date: data.dealDate,
+          due_date: data.dueDate,
+          deal_remarks: data.dealRemarks || "",
+          payment_method: data.payMethod,
+        };
+
+        // Use PUT for edit mode, POST for add mode
+        const endpoint =
+          mode === "edit"
+            ? `/deals/deals/${dealData?.deal_id || dealId}/`
+            : "/deals/deals/";
+        const method = mode === "edit" ? "put" : "post";
+
+        // 1. Create or update the deal
+        const dealResponse = await apiClient[method](endpoint, dealPayload);
+        const dealResult = dealResponse.data as import("@/types/deals").Deal;
+        // Get the deal id for payment association
+        const dealIdentifier = dealResult.deal_id || dealResult.id || dealId;
+
+        // 2. If payment fields are present, post payment to /deals/payments/
+        if (
+          data.paymentDate ||
+          data.receivedAmount ||
+          data.chequeNumber ||
+          data.paymentRemarks ||
+          (data.uploadReceipt && data.uploadReceipt.length > 0)
+        ) {
+          const paymentPayload = new FormData();
+          paymentPayload.append("deal_id", dealIdentifier);
+          if (data.paymentDate)
+            paymentPayload.append("payment_date", data.paymentDate);
+          if (data.receivedAmount)
+            paymentPayload.append("received_amount", data.receivedAmount);
+          if (data.chequeNumber)
+            paymentPayload.append("cheque_number", data.chequeNumber);
+          if (data.payMethod)
+            paymentPayload.append("payment_method", data.payMethod);
+          if (data.paymentRemarks)
+            paymentPayload.append("payment_remarks", data.paymentRemarks);
+          if (data.uploadReceipt && data.uploadReceipt.length > 0) {
+            paymentPayload.append("receipt_file", data.uploadReceipt[0]);
+          }
+          await apiClient.post("/deals/payments/", paymentPayload);
+        }
+
+        return dealResult;
+      } catch (error: any) {
+        console.error("API Error:", error);
+        if (error.details) {
+          console.error("Error details:", error.details);
+        }
+        if (error.message?.includes("400")) {
+          throw new Error(
+            `Bad Request: ${
+              error.details?.message || error.message || "Invalid data format"
+            }`
+          );
+        } else if (error.message?.includes("timeout")) {
+          throw new Error("Request timed out. Please try again.");
+        } else {
+          throw new Error(
+            error.message || `Failed to ${mode} deal. Please try again.`
+          );
+        }
+      }
+    };
 
     const {
       register,
       handleSubmit,
-      formState: { errors, isSubmitting },
+      formState: { errors, isSubmitting: formIsSubmitting },
       reset,
       setValue,
       watch,
+      control,
     } = useForm<DealFormData>({
       resolver: zodResolver(DealSchema),
     });
@@ -129,25 +283,96 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
       resetForm: () => reset(),
     }));
 
+    React.useEffect(() => {
+      if (
+        mode === "edit" &&
+        dealData &&
+        !isLoadingDeal &&
+        clients &&
+        clients.length > 0
+      ) {
+        console.log("Populating form with deal data:", dealData);
+
+        // Always set the client name from deal data in edit mode
+        const clientNameToSet = dealData.client?.client_name || "";
+
+        setValue("dealId", dealData.deal_id);
+        setValue("clientName", clientNameToSet);
+        setValue("dealName", dealData.deal_name);
+        setValue(
+          "payStatus",
+          dealData.pay_status === "full_payment" ? "Full Pay" : "Partial Pay"
+        );
+        setValue("sourceType", dealData.source_type);
+        setValue("currency", dealData.currency || "USD");
+        setValue(
+          "dealValue",
+          formatCurrency(dealData.deal_value, dealData.currency) as string
+        );
+        setValue("dealDate", dealData.deal_date);
+        setValue("dueDate", dealData.due_date);
+        setValue("payMethod", dealData.payment_method);
+        setValue(
+          "dealRemarks",
+          dealData.deal_remarks || dealData.deal_remarks || ""
+        );
+        setValue("paymentDate", dealData.payments?.[0]?.payment_date || "");
+        setValue(
+          "receivedAmount",
+          dealData.payments?.[0]?.received_amount
+            ? (formatCurrency(
+                dealData.payments[0].received_amount,
+                dealData.currency
+              ) as string)
+            : ""
+        );
+        setValue("chequeNumber", dealData.payments?.[0]?.cheque_number || "");
+        setValue(
+          "paymentRemarks",
+          dealData.payments?.[0]?.payment_remarks || ""
+        );
+      }
+    }, [mode, dealData, isLoadingDeal, clients]);
+
     const mutation = useMutation({
       mutationFn: submitDealData,
       onSuccess: (data) => {
-        console.log("Deal created successfully", data);
         reset();
-        queryClient.invalidateQueries({ queryKey: ["deals"] });
-        if (onSave) {
-          onSave(data as DealFormData);
-        } else if (isStandalonePage) {
+
+        // Only invalidate queries if this is a standalone form (not in modal)
+        // In modal, let DealModal handle cache updates for optimistic UI
+        if (isStandalonePage) {
+          queryClient.invalidateQueries({ queryKey: ["deals"] });
+          queryClient.invalidateQueries({ queryKey: ["deals"], exact: false });
+          toast.success(
+            mode === "edit"
+              ? "Deal updated successfully!"
+              : "Deal created successfully!"
+          );
           router.push("/salesperson/deal");
+        } else {
+          // In modal: just call onSave, modal will update cache
+          if (onSave) {
+            onSave(data as DealFormData);
+          }
         }
       },
+      // Show error toast on failure
       onError: (error: any) => {
-        console.error("Failed to create deal:", error);
+        console.error(`Failed to ${mode} deal:`, error);
+        toast.error(
+          error.message || `Failed to ${mode} deal. Please try again.`
+        );
       },
     });
 
     const onSubmit = (data: DealFormData) => {
       mutation.mutate(data);
+    };
+
+    const handleClear = () => {
+      reset();
+      toast.info("Form cleared");
     };
 
     const dealLabelClass =
@@ -156,55 +381,123 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
       "border border-[#C3C3CB] shadow-none focus:outline-none focus:border-[#C3C3CB] focus:ring-0";
     const dealWrapperClass = "mb-4";
 
+    const isLoading =
+      formIsSubmitting || mutation.isPending || isSubmitting || isLoadingDeal;
+
+    // Show loading state when fetching deal data in edit mode
+    if (mode === "edit" && isLoadingDeal) {
+      return (
+        <div className="h-full w-full flex flex-col overflow-hidden">
+          <div className="flex-1 p-6 pb-4 overflow-auto grid">
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading deal data...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <form
         onSubmit={handleSubmit(onSubmit)}
         className="h-full w-full flex flex-col overflow-hidden"
       >
-        <div className="flex-1 p-6 pb-4 overflow-auto">
+        <div className="flex-1 p-6 pb-4 overflow-auto grid ">
           <div className="flex flex-col gap-6 lg:gap-1 lg:flex-row">
             {/* Left section */}
             <div className="div1 space-y-3 w-full flex-1">
               <div className="flex flex-col sm:flex-row gap-4 lg:flex-row lg:gap-5 mb-2">
                 <div className="w-full lg:w-[133px]">
-                  <InputField
-                    id="dealId"
-                    label="Deal ID"
-                    registration={register("dealId")}
-                    error={errors.dealId}
-                    placeholder="Auto-generated"
-                    width="w-full"
-                    height="h-[48px]"
-                    labelClassName={dealLabelClass}
-                    inputClassName={dealInputClass}
-                    wrapperClassName={dealWrapperClass}
-                    disabled
-                  />
+                  {mode === "edit" ? (
+                    <InputField
+                      id="dealId"
+                      label="Deal ID"
+                      registration={register("dealId")}
+                      error={errors.dealId}
+                      placeholder={dealData?.deal_id || "Deal ID"}
+                      width="w-full"
+                      height="h-[48px]"
+                      labelClassName={dealLabelClass}
+                      inputClassName={dealInputClass}
+                      wrapperClassName={dealWrapperClass}
+                      disabled
+                    />
+                  ) : (
+                    <InputField
+                      id="dealId"
+                      label="Deal ID"
+                      registration={register("dealId")}
+                      error={errors.dealId}
+                      placeholder="Auto-generated"
+                      width="w-full"
+                      height="h-[48px]"
+                      labelClassName={dealLabelClass}
+                      inputClassName={dealInputClass}
+                      wrapperClassName={dealWrapperClass}
+                      disabled
+                    />
+                  )}
                 </div>
 
                 <div className="w-full lg:w-[240px]">
-                  <SelectField
-                    id="clientName"
-                    label="Client Name"
-                    required
-                    registration={register("clientName")}
-                    error={errors.clientName}
-                    placeholder="Select Client"
-                    width="w-full"
-                    height="h-[48px]"
-                    labelClassName={dealLabelClass}
-                    selectClassName={dealInputClass}
-                    wrapperClassName={dealWrapperClass}
-                    disabled={isLoadingClients}
-                    options={
-                      clients && Array.isArray(clients)
-                        ? clients.map((c) => ({
-                            value: c.client_name,
-                            label: c.client_name,
-                          }))
-                        : []
-                    }
+                  <label htmlFor="clientName" className={dealLabelClass}>
+                    Client Name<span className="text-[#F61818]">*</span>
+                  </label>
+                  <Controller
+                    name="clientName"
+                    control={control}
+                    render={({ field }) => {
+                      let options =
+                        clients?.map((client: Client) => ({
+                          value: client.client_name,
+                          label: client.client_name,
+                        })) || [];
+
+                      // In edit mode, ensure the current deal's client name is in the options
+                      if (
+                        mode === "edit" &&
+                        dealData?.client?.client_name &&
+                        !options.some(
+                          (opt) => opt.value === dealData.client.client_name
+                        )
+                      ) {
+                        options = [
+                          {
+                            value: dealData.client.client_name,
+                            label: dealData.client.client_name + " (current)",
+                          },
+                          ...options,
+                        ];
+                      }
+
+                      return (
+                        <Combobox
+                          options={options}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          placeholder={
+                            mode === "edit"
+                              ? dealData?.client?.client_name || "Select Client"
+                              : isLoadingClients
+                              ? "Loading..."
+                              : "Select Client"
+                          }
+                          searchPlaceholder="Search clients..."
+                          emptyText="No clients found."
+                          disabled={isLoadingClients || isLoading}
+                          className="mt-1"
+                        />
+                      );
+                    }}
                   />
+                  {errors.clientName && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.clientName.message}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -222,6 +515,7 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                     labelClassName={dealLabelClass}
                     selectClassName={dealInputClass}
                     wrapperClassName={dealWrapperClass}
+                    disabled={isLoading}
                     options={[
                       { value: "Full Pay", label: "Full Pay" },
                       { value: "Partial Pay", label: "Partial Pay" },
@@ -242,6 +536,7 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                     labelClassName={dealLabelClass}
                     selectClassName={dealInputClass}
                     wrapperClassName={dealWrapperClass}
+                    disabled={isLoading}
                     options={[
                       { value: "linkedin", label: "LinkedIn" },
                       { value: "instagram", label: "Instagram" },
@@ -268,6 +563,7 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                     labelClassName={dealLabelClass}
                     inputClassName={dealInputClass}
                     wrapperClassName={dealWrapperClass}
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -284,6 +580,7 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                     labelClassName={dealLabelClass}
                     inputClassName={dealInputClass}
                     wrapperClassName={dealWrapperClass}
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -300,6 +597,7 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                     labelClassName={dealLabelClass}
                     selectClassName={dealInputClass}
                     wrapperClassName={dealWrapperClass}
+                    disabled={isLoading}
                     options={[
                       { value: "wallet", label: "Mobile Wallet" },
                       { value: "cash", label: "Cash" },
@@ -320,6 +618,7 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                     labelClassName={dealLabelClass}
                     textareaClassName={dealInputClass}
                     wrapperClassName={dealWrapperClass}
+                    readOnly={isLoading}
                   />
                 </div>
               </div>
@@ -339,21 +638,45 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                 labelClassName={dealLabelClass}
                 inputClassName={dealInputClass}
                 wrapperClassName={dealWrapperClass}
+                disabled={isLoading}
               />
 
-              <InputField
-                id="dealValue"
-                label="Deal Value"
-                required
-                registration={register("dealValue")}
-                error={errors.dealValue}
-                placeholder="Nrs. 250,000"
-                width="w-full"
-                height="h-[48px]"
-                labelClassName={dealLabelClass}
-                inputClassName={dealInputClass}
-                wrapperClassName={dealWrapperClass}
-              />
+              <div className={dealWrapperClass}>
+                <label htmlFor="dealValue" className={dealLabelClass}>
+                  Deal Value<span className="text-[#F61818]">*</span>
+                </label>
+                <div className="flex">
+                  <div className="w-24">
+                    <select
+                      {...register("currency")}
+                      className={`${dealInputClass} w-full h-[48px] rounded-r-none border-r-0`}
+                      disabled={isLoading}
+                    >
+                      <option value="">Select</option>
+                      <option value="USD">USD</option>
+                      <option value="EUR">EUR</option>
+                      <option value="GBP">GBP</option>
+                      <option value="NPR">NPR</option>
+                      <option value="INR">INR</option>
+                    </select>
+                  </div>
+                  <div className="flex-1">
+                    <input
+                      id="dealValue"
+                      type="text"
+                      {...register("dealValue")}
+                      placeholder="0.00"
+                      className={`${dealInputClass} w-full h-[48px] rounded-l-none`}
+                      disabled={isLoading}
+                    />
+                  </div>
+                </div>
+                {(errors.currency || errors.dealValue) && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.currency?.message || errors.dealValue?.message}
+                  </p>
+                )}
+              </div>
 
               <div>
                 <label className="block text-[13px] font-semibold mb-2">
@@ -361,16 +684,16 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                 </label>
                 <div className="relative p-2 pt-5 border w-full h-[150px] lg:h-[285px] rounded-[6px] border-[#C3C3CB] text-[12px] text-gray-600 overflow-auto">
                   {mode === "edit" && (
-                    <div className="flex border border-[#EDEEEFEF]">
+                    <div className="flex flex-col ">
                       <div className="w-1 bg-[#465FFF] mr-2"></div>
-                      <div>
-                        <p className="text-[12px] text-black">
-                          Changes done due date in DLID3421.
-                        </p>
-                        <p className="text-[12px] text-[#7E7E7E]">
-                          Jan 02, 2020
-                        </p>
-                      </div>
+                      {dealData.activity_logs.map((activityData: any) => (
+                        <div key={activityData.id} className="mb-2">
+                          <p className="font-medium">{activityData.message}</p>
+                          <p className="text-sm text-gray-500">
+                            {new Date(activityData.timestamp).toLocaleString()}
+                          </p>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -402,20 +725,44 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                     labelClassName={dealLabelClass}
                     inputClassName={dealInputClass}
                     wrapperClassName={dealWrapperClass}
+                    disabled={isLoading}
                   />
-                  <InputField
-                    id="receivedAmount"
-                    label="Received Amount"
-                    required
-                    registration={register("receivedAmount")}
-                    error={errors.receivedAmount}
-                    placeholder="Enter Amount"
-                    width="w-full"
-                    height="h-[33px]"
-                    labelClassName={dealLabelClass}
-                    inputClassName={dealInputClass}
-                    wrapperClassName={dealWrapperClass}
-                  />
+                  <div className={dealWrapperClass}>
+                    <label htmlFor="receivedAmount" className={dealLabelClass}>
+                      Received Amount<span className="text-[#F61818]">*</span>
+                    </label>
+                    <div className="flex">
+                      <div className="w-24">
+                        <select
+                          {...register("currency")}
+                          className={`${dealInputClass} w-full h-[33px] rounded-r-none border-r-0`}
+                          disabled={isLoading}
+                        >
+                          <option value="">Select</option>
+                          <option value="USD">USD</option>
+                          <option value="EUR">EUR</option>
+                          <option value="GBP">GBP</option>
+                          <option value="NPR">NPR</option>
+                          <option value="INR">INR</option>
+                        </select>
+                      </div>
+                      <div className="flex-1">
+                        <input
+                          id="receivedAmount"
+                          type="text"
+                          {...register("receivedAmount")}
+                          placeholder="0.00"
+                          className={`${dealInputClass} w-full h-[33px] rounded-l-none`}
+                          disabled={isLoading}
+                        />
+                      </div>
+                    </div>
+                    {errors.receivedAmount && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {errors.receivedAmount.message}
+                      </p>
+                    )}
+                  </div>
                   <InputField
                     id="chequeNumber"
                     label="Cheque Number"
@@ -428,6 +775,7 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                     labelClassName={dealLabelClass}
                     inputClassName={dealInputClass}
                     wrapperClassName={dealWrapperClass}
+                    disabled={isLoading}
                   />
 
                   <div>
@@ -446,19 +794,20 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                           isPdf: (fileList) =>
                             fileList?.[0]?.name
                               ?.toLowerCase()
-                              .endsWith(".pdf") ||
-                            "Only PDF files are allowed",
+                              .endsWith(".pdf") || "Only PDF files are allowed",
                         },
                       })}
                       className="hidden"
+                      disabled={isLoading}
                     />
                     <label
                       htmlFor="uploadReceipt"
-                      className="mt-1 flex items-center justify-between w-full h-[33px] p-2 text-[12px] font-normal border rounded-[6px] border-[#C3C3CB] cursor-pointer bg-white"
+                      className={`mt-1 flex items-center justify-between w-full h-[33px] p-2 text-[12px] font-normal  cursor-pointer bg-white ${
+                        isLoading ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
                     >
                       <span className="underline">
-                        {watch("uploadReceipt")?.[0]?.name ||
-                          "Upload Receipt"}
+                        {watch("uploadReceipt")?.[0]?.name || "Upload Receipt"}
                       </span>
 
                       <svg
@@ -495,6 +844,7 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                     labelClassName={dealLabelClass}
                     textareaClassName={dealInputClass}
                     wrapperClassName={dealWrapperClass}
+                    readOnly={isLoading}
                   />
                 </div>
               </div>
@@ -509,16 +859,22 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
             )}
             <Button
               type="button"
-              className="bg-[#F61818] text-white w-[83px] p-2 h-[40px] rounded-[6px] text-[14px] font-semibold"
+              onClick={handleClear}
+              disabled={isLoading}
+              className="bg-[#F61818] text-white w-[83px] p-2 h-[40px] rounded-[6px] text-[14px] font-semibold disabled:opacity-50"
             >
               Clear
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting}
-              className="bg-[#009959] text-white w-[119px] p-2 h-[40px] rounded-[6px] text-[14px] font-semibold"
+              disabled={isLoading}
+              className="bg-[#009959] text-white w-[119px] p-2 h-[40px] rounded-[6px] text-[14px] font-semibold disabled:opacity-50"
             >
-              {isSubmitting ? "Submitting..." : "Save Client"}
+              {isLoading
+                ? "Submitting..."
+                : mode === "edit"
+                ? "Update Deal"
+                : "Save Deal"}
             </Button>
           </div>
         </div>
