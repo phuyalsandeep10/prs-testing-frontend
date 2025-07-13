@@ -42,7 +42,7 @@ interface DealModalProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   anchorRef?: React.RefObject<HTMLElement>;
-  mode: 'add' | 'edit' | 'payment';
+  mode: "add" | "edit" | "payment";
   dealId?: string;
   dealData?: any;
 }
@@ -76,35 +76,44 @@ const DealModal: React.FC<DealModalProps> = ({
       const transformedDeal = {
         ...data,
         client: {
-          client_name: data.client_name || (data.client?.client_name) || 'Unknown Client'
+          client_name:
+            data.client_name || data.client?.client_name || "Unknown Client",
         },
-        payment_status: data.payment_status || data.pay_status || 'partial_payment',
-        pay_status: data.pay_status || data.payment_status || 'partial_payment',
+        payment_status:
+          data.payment_status || data.pay_status || "partial_payment",
+        pay_status: data.pay_status || data.payment_status || "partial_payment",
         payments: data.payments || [],
         version: data.version || 1,
-        deal_remarks: data.deal_remarks || data.remarks || '',
-        client_name: data.client_name || (data.client?.client_name) || 'Unknown Client',
+        deal_remarks: data.deal_remarks || data.remarks || "",
+        client_name:
+          data.client_name || data.client?.client_name || "Unknown Client",
         deal_id: data.deal_id || data.id,
-        organization: data.organization || '',
-        created_by: data.created_by || { id: '', full_name: '', email: '' },
+        organization: data.organization || "",
+        created_by: data.created_by || { id: "", full_name: "", email: "" },
         activity_logs: data.activity_logs || [],
       };
 
       // Optimistically update all deals queries in cache (show new deal at top)
       const queryCache = queryClient.getQueryCache();
-      const dealsQueries = queryCache.getAll().filter(query => query.queryKey[0] === 'deals');
-      dealsQueries.forEach(query => {
+      const dealsQueries = queryCache
+        .getAll()
+        .filter((query) => query.queryKey[0] === "deals");
+      dealsQueries.forEach((query) => {
         const currentData = query.state.data as any[];
         if (Array.isArray(currentData)) {
-          const filteredData = currentData.filter((deal: any) => deal.id !== transformedDeal.id);
+          const filteredData = currentData.filter(
+            (deal: any) => deal.id !== transformedDeal.id
+          );
           const updatedData = [transformedDeal, ...filteredData].slice(0, 25);
           queryClient.setQueryData(query.queryKey, updatedData);
         }
       });
       //  update the empty search query
-      queryClient.setQueryData(['deals', ''], (oldData: any) => {
+      queryClient.setQueryData(["deals", ""], (oldData: any) => {
         if (!oldData) return [transformedDeal];
-        const filtered = oldData.filter((deal: any) => deal.id !== transformedDeal.id);
+        const filtered = oldData.filter(
+          (deal: any) => deal.id !== transformedDeal.id
+        );
         return [transformedDeal, ...filtered].slice(0, 25);
       });
 
@@ -115,10 +124,13 @@ const DealModal: React.FC<DealModalProps> = ({
 
       // After backend refetch, merge new deal at top if not present (ensures visibility)
       setTimeout(async () => {
-        await queryClient.invalidateQueries({ queryKey: ["deals"], exact: false });
-        queryClient.setQueryData(['deals', ''], (oldData: any[]) => {
+        await queryClient.invalidateQueries({
+          queryKey: ["deals"],
+          exact: false,
+        });
+        queryClient.setQueryData(["deals", ""], (oldData: any[]) => {
           if (!oldData) return [transformedDeal];
-          if (!oldData.some(deal => deal.id === transformedDeal.id)) {
+          if (!oldData.some((deal) => deal.id === transformedDeal.id)) {
             return [transformedDeal, ...oldData.slice(0, 24)];
           }
           return oldData;
@@ -126,6 +138,42 @@ const DealModal: React.FC<DealModalProps> = ({
       }, 2000);
     } catch (error: any) {
       toast.error(error.message || "Failed to save. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handlePaymentSave = async (data: any) => {
+    try {
+      setIsSubmitting(true);
+      
+      // For payments, we need to invalidate the deals query to refresh the data
+      // This will show the new payment in the nested payments table
+      await queryClient.invalidateQueries({
+        queryKey: ["deals"],
+        exact: false,
+      });
+
+      // This ensures the expanded payment column shows fresh data
+      if (dealId) {
+        // Remove the specific deal's nested data from cache
+        queryClient.removeQueries({
+          queryKey: ["deals", dealId, "payments"],
+          exact: false,
+        });
+        
+        // Also clear any cached expand data for this deal
+        queryClient.removeQueries({
+          queryKey: ["deals", dealId, "expand"],
+          exact: false,
+        });
+      }
+
+      // Close modal and show success message
+      onOpenChange(false);
+      toast.success("Payment added successfully!");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to add payment. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -182,7 +230,6 @@ const DealModal: React.FC<DealModalProps> = ({
             margin: 0,
           }}
         >
- 
           <div className="px-6 py-4 bg-white border-b border-gray-100">
             <div className="flex items-center justify-between">
               <h1 className="text-[24px] font-semibold text-[#4F46E5]">
@@ -203,7 +250,7 @@ const DealModal: React.FC<DealModalProps> = ({
           <div className="flex-1">
             <AddPayment
               dealId={dealId}
-              onSave={handleSave}
+              onSave={handlePaymentSave}
               onCancel={handleCancel}
             />
           </div>

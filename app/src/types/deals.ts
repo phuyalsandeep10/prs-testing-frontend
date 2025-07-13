@@ -6,7 +6,7 @@ export interface Payment {
   received_amount: string;
   cheque_number: string;
   payment_method: string;
-  status: 'pending' | 'verified' | 'rejected';
+  status: "pending" | "verified" | "rejected";
   verified_by: {
     id: string;
     full_name: string;
@@ -33,7 +33,7 @@ export interface Deal {
     full_name: string;
     email: string;
   };
-  pay_status: 'partial_payment' | 'full_payment';
+  pay_status: "partial_payment" | "full_payment";
   source_type: string;
   deal_value: string;
   deal_date: string;
@@ -47,4 +47,4 @@ export interface Deal {
 export interface Client {
   id: string;
   client_name: string;
-} 
+}

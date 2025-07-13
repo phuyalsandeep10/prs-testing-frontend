@@ -12,9 +12,13 @@ import SelectField from "@/components/ui/clientForm/SelectField";
 import TextAreaField from "@/components/ui/clientForm/TextAreaField";
 import Button from "@/components/ui/clientForm/Button";
 import { Combobox } from "@/components/ui/combobox";
+import CurrencySelector from "./CurrencySelector";
 import { apiClient } from "@/lib/api";
 import { Client } from "@/types/deals";
 import { toast } from "sonner";
+
+// currency flag list
+import US from "country-flag-icons/react/3x2/US";
 
 type DealFormData = z.infer<typeof DealSchema>;
 
@@ -22,41 +26,59 @@ const toSnakeCase = (str: string) => {
   return str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
 };
 
+// currency list
+const currencies = [
+  {
+    code: "USD",
+    name: "US Dollar",
+    symbol: "$",
+  },
+  { code: "EUR", name: "Euro", symbol: "€" },
+  { code: "GBP", name: "British Pound", symbol: "£" },
+  { code: "NPR", name: "Nepalese Rupee", symbol: "Nrs." },
+  { code: "INR", name: "Indian Rupee", symbol: "₹" },
+  { code: "CAD", name: "Canadian Dollar", symbol: "C$" },
+  { code: "AUD", name: "Australian Dollar", symbol: "A$" },
+  { code: "JPY", name: "Japanese Yen", symbol: "¥" },
+  { code: "CHF", name: "Swiss Franc", symbol: "CHF" },
+  { code: "CNY", name: "Chinese Yuan", symbol: "¥" },
+];
+
 // Currency formatter function
-const formatCurrency = (amount: string | number, currency: string = "USD") => {
-  const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
-  if (isNaN(numAmount)) return amount;
+// const formatCurrency = (amount: string | number, currency: string = "USD") => {
+//   const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
+//   if (isNaN(numAmount)) return amount;
 
-  const currencySymbols: { [key: string]: string } = {
-    USD: "$",
-    EUR: "€",
-    GBP: "£",
-    NPR: "Nrs.",
-    INR: "₹",
-  };
+//   const currencySymbols: { [key: string]: string } = {
+//     USD: "$",
+//     EUR: "€",
+//     GBP: "£",
+//     NPR: "Nrs.",
+//     INR: "₹",
+//   };
 
-  const symbol = currencySymbols[currency] || currency;
+//   const symbol = currencySymbols[currency] || currency;
 
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(numAmount);
-};
+//   return new Intl.NumberFormat("en-US", {
+//     style: "currency",
+//     currency: currency,
+//     minimumFractionDigits: 2,
+//     maximumFractionDigits: 2,
+//   }).format(numAmount);
+// };
 
 // Function to get currency symbol for placeholder
-const getCurrencySymbol = (currency: string = "USD") => {
-  const currencySymbols: { [key: string]: string } = {
-    USD: "$",
-    EUR: "€",
-    GBP: "£",
-    NPR: "Nrs.",
-    INR: "₹",
-  };
+// const getCurrencySymbol = (currency: string = "USD") => {
+//   const currencySymbols: { [key: string]: string } = {
+//     USD: "$",
+//     EUR: "€",
+//     GBP: "£",
+//     NPR: "Nrs.",
+//     INR: "₹",
+//   };
 
-  return currencySymbols[currency] || currency;
-};
+//   return currencySymbols[currency] || currency;
+// };
 
 const transformDataForApi = (data: DealFormData) => {
   const formData = new FormData();
@@ -163,7 +185,11 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
       }
     };
 
-    const { data: dealData, isLoading: isLoadingDeal } = useQuery({
+    const {
+      data: dealData,
+      isLoading: isLoadingDeal,
+      error: dealError,
+    } = useQuery({
       queryKey: ["deal", dealId],
       queryFn: () => fetchDealById(dealId!),
       enabled: mode === "edit" && !!dealId,
@@ -214,21 +240,26 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
         const method = mode === "edit" ? "put" : "post";
 
         // 1. Create or update the deal
+
         const dealResponse = await apiClient[method](endpoint, dealPayload);
         const dealResult = dealResponse.data as import("@/types/deals").Deal;
+
         // Get the deal id for payment association
         const dealIdentifier = dealResult.deal_id || dealResult.id || dealId;
 
-        // 2. If payment fields are present, post payment to /deals/payments/
+        // 2. If payment fields are present AND we're in add mode, post payment to /deals/payments/
+        // In edit mode, don't create new payments since they already exist
         if (
-          data.paymentDate ||
-          data.receivedAmount ||
-          data.chequeNumber ||
-          data.paymentRemarks ||
-          (data.uploadReceipt && data.uploadReceipt.length > 0)
+          mode === "add" &&
+          (data.paymentDate ||
+            data.receivedAmount ||
+            data.chequeNumber ||
+            data.paymentRemarks ||
+            (data.uploadReceipt && data.uploadReceipt.length > 0))
         ) {
+          console.log("Creating new payment in add mode");
           const paymentPayload = new FormData();
-          paymentPayload.append("deal_id", dealIdentifier);
+          paymentPayload.append("deal_id", dealIdentifier.toString());
           if (data.paymentDate)
             paymentPayload.append("payment_date", data.paymentDate);
           if (data.receivedAmount)
@@ -242,14 +273,34 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
           if (data.uploadReceipt && data.uploadReceipt.length > 0) {
             paymentPayload.append("receipt_file", data.uploadReceipt[0]);
           }
-          await apiClient.post("/deals/payments/", paymentPayload);
+
+          // Log FormData contents for debugging
+          for (let [key, value] of paymentPayload.entries()) {
+          }
+
+          try {
+            const paymentResponse = await apiClient.postMultipart(
+              "/deals/payments/",
+              paymentPayload
+            );
+          } catch (paymentError: any) {
+            throw new Error(`Payment creation failed: ${paymentError.message}`);
+          }
+        } else {
+          if (mode === "edit") {
+            console.log(
+              "Edit mode: Skipping payment creation - payment already exists"
+            );
+          } else {
+            console.log(
+              "Add mode: No payment fields present, skipping payment creation"
+            );
+          }
         }
 
         return dealResult;
       } catch (error: any) {
-        console.error("API Error:", error);
         if (error.details) {
-          console.error("Error details:", error.details);
         }
         if (error.message?.includes("400")) {
           throw new Error(
@@ -279,6 +330,9 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
       resolver: zodResolver(DealSchema),
     });
 
+    // Watch form values to debug population
+    const watchedValues = watch();
+
     useImperativeHandle(ref, () => ({
       resetForm: () => reset(),
     }));
@@ -291,8 +345,6 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
         clients &&
         clients.length > 0
       ) {
-        console.log("Populating form with deal data:", dealData);
-
         // Always set the client name from deal data in edit mode
         const clientNameToSet = dealData.client?.client_name || "";
 
@@ -305,10 +357,7 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
         );
         setValue("sourceType", dealData.source_type);
         setValue("currency", dealData.currency || "USD");
-        setValue(
-          "dealValue",
-          formatCurrency(dealData.deal_value, dealData.currency) as string
-        );
+        setValue("dealValue", dealData.deal_value?.toString() || "");
         setValue("dealDate", dealData.deal_date);
         setValue("dueDate", dealData.due_date);
         setValue("payMethod", dealData.payment_method);
@@ -319,26 +368,41 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
         setValue("paymentDate", dealData.payments?.[0]?.payment_date || "");
         setValue(
           "receivedAmount",
-          dealData.payments?.[0]?.received_amount
-            ? (formatCurrency(
-                dealData.payments[0].received_amount,
-                dealData.currency
-              ) as string)
-            : ""
+          dealData.payments?.[0]?.received_amount?.toString() || ""
         );
         setValue("chequeNumber", dealData.payments?.[0]?.cheque_number || "");
         setValue(
           "paymentRemarks",
           dealData.payments?.[0]?.payment_remarks || ""
         );
+
+        // Handle uploadReceipt - create a FileList-like object for existing receipt
+        if (dealData.payments?.[0]?.receipt_file) {
+          // Create a mock FileList object for the existing file
+          const mockFileList = {
+            0: {
+              name:
+                dealData.payments[0].receipt_file.split("/").pop() ||
+                "receipt.pdf",
+              type: "application/pdf",
+              size: 0,
+              lastModified: Date.now(),
+            },
+            length: 1,
+            item: (index: number) => mockFileList[index],
+            [Symbol.iterator]: function* () {
+              yield mockFileList[0];
+            },
+          } as unknown as FileList;
+
+          setValue("uploadReceipt", mockFileList);
+        }
       }
-    }, [mode, dealData, isLoadingDeal, clients]);
+    }, [mode, dealData, isLoadingDeal, clients, dealId]);
 
     const mutation = useMutation({
       mutationFn: submitDealData,
       onSuccess: (data) => {
-        reset();
-
         // Only invalidate queries if this is a standalone form (not in modal)
         // In modal, let DealModal handle cache updates for optimistic UI
         if (isStandalonePage) {
@@ -359,7 +423,6 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
       },
       // Show error toast on failure
       onError: (error: any) => {
-        console.error(`Failed to ${mode} deal:`, error);
         toast.error(
           error.message || `Failed to ${mode} deal. Please try again.`
         );
@@ -371,8 +434,33 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
     };
 
     const handleClear = () => {
-      reset();
-      toast.info("Form cleared");
+      if (mode === "edit") {
+        // In edit mode, preserve payment fields and only clear deal fields
+        const currentValues = watch();
+        const paymentFields = {
+          paymentDate: currentValues.paymentDate,
+          receivedAmount: currentValues.receivedAmount,
+          chequeNumber: currentValues.chequeNumber,
+          uploadReceipt: currentValues.uploadReceipt,
+          paymentRemarks: currentValues.paymentRemarks,
+        };
+
+        // Reset the form
+        reset();
+
+        // Restore payment fields
+        setValue("paymentDate", paymentFields.paymentDate || "");
+        setValue("receivedAmount", paymentFields.receivedAmount || "");
+        setValue("chequeNumber", paymentFields.chequeNumber || "");
+        setValue("uploadReceipt", paymentFields.uploadReceipt || null);
+        setValue("paymentRemarks", paymentFields.paymentRemarks || "");
+
+        toast.info("Deal fields cleared");
+      } else {
+        // In add mode, clear everything
+        reset();
+        toast.info("Form cleared");
+      }
     };
 
     const dealLabelClass =
@@ -408,8 +496,8 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
         <div className="flex-1 p-6 pb-4 overflow-auto grid ">
           <div className="flex flex-col gap-6 lg:gap-1 lg:flex-row">
             {/* Left section */}
-            <div className="div1 space-y-3 w-full flex-1">
-              <div className="flex flex-col sm:flex-row gap-4 lg:flex-row lg:gap-5 mb-2">
+            <div className="div1  w-full flex-1">
+              <div className="flex flex-col sm:flex-row gap-4 lg:flex-row lg:gap-5 mb-0">
                 <div className="w-full lg:w-[133px]">
                   {mode === "edit" ? (
                     <InputField
@@ -501,7 +589,7 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-4 lg:flex-row lg:gap-5 pb-1">
+              <div className="flex flex-col sm:flex-row gap-4 lg:flex-row lg:gap-5">
                 <div className="w-full lg:w-[133px]">
                   <SelectField
                     id="payStatus"
@@ -645,35 +733,49 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                 <label htmlFor="dealValue" className={dealLabelClass}>
                   Deal Value<span className="text-[#F61818]">*</span>
                 </label>
-                <div className="flex">
-                  <div className="w-24">
-                    <select
-                      {...register("currency")}
-                      className={`${dealInputClass} w-full h-[48px] rounded-r-none border-r-0`}
-                      disabled={isLoading}
-                    >
-                      <option value="">Select</option>
-                      <option value="USD">USD</option>
-                      <option value="EUR">EUR</option>
-                      <option value="GBP">GBP</option>
-                      <option value="NPR">NPR</option>
-                      <option value="INR">INR</option>
-                    </select>
-                  </div>
+                <div className="flex relative">
+                  <Controller
+                    name="currency"
+                    control={control}
+                    defaultValue="USD"
+                    render={({ field }) => (
+                      <div className="flex items-center  bg-gray-50 border border-[#C3C3CB] border-r-0 rounded-l-md text-sm font-medium text-gray-700 px-2">
+                        {currencies.find((curr) => curr.code === field.value)
+                          ?.code || "USD"}
+                      </div>
+                    )}
+                  />
                   <div className="flex-1">
                     <input
                       id="dealValue"
                       type="text"
                       {...register("dealValue")}
                       placeholder="0.00"
-                      className={`${dealInputClass} w-full h-[48px] rounded-l-none`}
+                      className={`${dealInputClass} w-full h-[48px] border-l-0 border-r-0 rounded-none`}
                       disabled={isLoading}
                     />
                   </div>
+                  <Controller
+                    name="currency"
+                    control={control}
+                    defaultValue="USD"
+                    render={({ field }) => (
+                      <CurrencySelector
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={isLoading}
+                      />
+                    )}
+                  />
                 </div>
-                {(errors.currency || errors.dealValue) && (
+                {errors.dealValue && (
                   <p className="mt-1 text-sm text-red-600">
-                    {errors.currency?.message || errors.dealValue?.message}
+                    {errors.dealValue.message}
+                  </p>
+                )}
+                {errors.currency && (
+                  <p className="mt-1 text-sm text-red-600">
+                    {errors.currency.message}
                   </p>
                 )}
               </div>
@@ -683,7 +785,7 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                   Recent Activities
                 </label>
                 <div className="relative p-2 pt-5 border w-full h-[150px] lg:h-[285px] rounded-[6px] border-[#C3C3CB] text-[12px] text-gray-600 overflow-auto">
-                  {mode === "edit" && (
+                  {mode === "edit" && dealData?.activity_logs && (
                     <div className="flex flex-col ">
                       <div className="w-1 bg-[#465FFF] mr-2"></div>
                       {dealData.activity_logs.map((activityData: any) => (
@@ -725,35 +827,33 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                     labelClassName={dealLabelClass}
                     inputClassName={dealInputClass}
                     wrapperClassName={dealWrapperClass}
-                    disabled={isLoading}
+                    disabled={isLoading || mode === "edit"}
                   />
                   <div className={dealWrapperClass}>
                     <label htmlFor="receivedAmount" className={dealLabelClass}>
                       Received Amount<span className="text-[#F61818]">*</span>
                     </label>
                     <div className="flex">
-                      <div className="w-24">
-                        <select
-                          {...register("currency")}
-                          className={`${dealInputClass} w-full h-[33px] rounded-r-none border-r-0`}
-                          disabled={isLoading}
-                        >
-                          <option value="">Select</option>
-                          <option value="USD">USD</option>
-                          <option value="EUR">EUR</option>
-                          <option value="GBP">GBP</option>
-                          <option value="NPR">NPR</option>
-                          <option value="INR">INR</option>
-                        </select>
-                      </div>
-                      <div className="flex-1">
+                      <div className="flex-1 flex relative">
                         <input
                           id="receivedAmount"
                           type="text"
                           {...register("receivedAmount")}
                           placeholder="0.00"
-                          className={`${dealInputClass} w-full h-[33px] rounded-l-none`}
-                          disabled={isLoading}
+                          className={`${dealInputClass} w-full h-[33px] border-r-0 pl-2`}
+                          disabled={isLoading || mode === "edit"}
+                        />
+                        <Controller
+                          name="currency"
+                          control={control}
+                          defaultValue="USD"
+                          render={({ field }) => (
+                            <CurrencySelector
+                              value={field.value}
+                              onValueChange={field.onChange}
+                              disabled={isLoading || mode === "edit"}
+                            />
+                          )}
                         />
                       </div>
                     </div>
@@ -775,7 +875,7 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                     labelClassName={dealLabelClass}
                     inputClassName={dealInputClass}
                     wrapperClassName={dealWrapperClass}
-                    disabled={isLoading}
+                    disabled={isLoading || mode === "edit"}
                   />
 
                   <div>
@@ -786,28 +886,24 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                       id="uploadReceipt"
                       type="file"
                       accept=".pdf"
-                      {...register("uploadReceipt", {
-                        validate: {
-                          required: (fileList) =>
-                            fileList?.length > 0 ||
-                            "Upload Receipt is required",
-                          isPdf: (fileList) =>
-                            fileList?.[0]?.name
-                              ?.toLowerCase()
-                              .endsWith(".pdf") || "Only PDF files are allowed",
-                        },
-                      })}
+                      {...register("uploadReceipt")}
                       className="hidden"
-                      disabled={isLoading}
+                      disabled={isLoading || mode === "edit"}
                     />
                     <label
                       htmlFor="uploadReceipt"
-                      className={`mt-1 flex items-center justify-between w-full h-[33px] p-2 text-[12px] font-normal  cursor-pointer bg-white ${
-                        isLoading ? "opacity-50 cursor-not-allowed" : ""
+                      className={`mt-1 flex items-center justify-between w-full h-[33px] p-2 text-[12px] font-normal bg-white ${
+                        isLoading || mode === "edit"
+                          ? "opacity-50 cursor-not-allowed"
+                          : "cursor-pointer"
                       }`}
                     >
                       <span className="underline">
-                        {watch("uploadReceipt")?.[0]?.name || "Upload Receipt"}
+                        {watch("uploadReceipt")?.[0]?.name ||
+                          (mode === "edit" &&
+                          dealData?.payments?.[0]?.receipt_file
+                            ? dealData.payments[0].receipt_file.split("/").pop()
+                            : "Upload Receipt")}
                       </span>
 
                       <svg
@@ -844,7 +940,7 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                     labelClassName={dealLabelClass}
                     textareaClassName={dealInputClass}
                     wrapperClassName={dealWrapperClass}
-                    readOnly={isLoading}
+                    readOnly={isLoading || mode === "edit"}
                   />
                 </div>
               </div>

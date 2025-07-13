@@ -39,10 +39,6 @@ const fetchDeals = async (searchTerm: string): Promise<Deal[]> => {
       limit: 25, // Use the actual limit that works
       ordering: "-created_at", // Sort by creation date descending to get newest first
     });
-    console.log("Full API response:", response.data);
-    console.log("Deals results:", response.data.results);
-    console.log("Total deals count:", response.data.results?.length);
-    console.log("Total deals in DB:", response.data.count);
     const dealsData = response.data.results;
     return dealsData || []; // Return the data array from the response
   } catch (error) {
@@ -138,6 +134,17 @@ const DealsTable: React.FC<DealsTableProps> = ({
     refetch();
   }, [refetch, searchTerm]);
 
+  // Clear nested data cache when main deals data changes
+  // This ensures expanded payment columns show fresh data after adding payments
+  useEffect(() => {
+    if (data) {
+      // Clear all cached nested data when main data changes
+      setNestedData({});
+      setNestedLoading({});
+      setNestedError({});
+    }
+  }, [data]);
+
   // Filter data based on search term
   const filteredData = useMemo(() => {
     if (!data || !searchTerm.trim()) return data || [];
@@ -179,8 +186,6 @@ const DealsTable: React.FC<DealsTableProps> = ({
 
       const NestedData = response.data;
 
-      console.log("NestedData", NestedData);
-
       // Transform the data: extract payment_history and merge with parent data
       let transformedData = [];
       if (
@@ -203,7 +208,6 @@ const DealsTable: React.FC<DealsTableProps> = ({
         return newData;
       });
     } catch (err: any) {
-      console.error("API Error:", err);
       setNestedError((prev) => ({
         ...prev,
         [dealId]: err.message || "Error fetching nested data",
@@ -220,20 +224,15 @@ const DealsTable: React.FC<DealsTableProps> = ({
       const newExpandedRows = { ...expandedRows };
       const isExpanded = !newExpandedRows[dealId];
 
-      console.log("DealsTable: handleExpand", {
-        dealId,
-        isExpanded,
-        currentExpanded: newExpandedRows[dealId],
-      });
-
-      if (isExpanded && !nestedData[dealId]) {
+      if (isExpanded) {
+        // Always fetch fresh nested data when expanding to ensure latest payments
         fetchNestedPayments(dealId);
       }
 
       newExpandedRows[dealId] = isExpanded;
       setExpandedRows(newExpandedRows);
     },
-    [expandedRows, nestedData, setExpandedRows]
+    [expandedRows, setExpandedRows]
   );
 
   // Parent table column configuration
@@ -304,11 +303,30 @@ const DealsTable: React.FC<DealsTableProps> = ({
       {
         accessorKey: "deal_date",
         header: "Deal Date",
-        cell: ({ row }) => (
-          <div className="text-[12px] text-gray-700">
-            {format(new Date(row.original.deal_date), "MMM d, yyyy")}
-          </div>
-        ),
+        cell: ({ row }) => {
+          const dealDate = row.original.deal_date;
+          if (!dealDate) {
+            return <div className="text-[12px] text-gray-700">N/A</div>;
+          }
+
+          try {
+            const date = new Date(dealDate);
+            if (isNaN(date.getTime())) {
+              return (
+                <div className="text-[12px] text-gray-700">Invalid Date</div>
+              );
+            }
+            return (
+              <div className="text-[12px] text-gray-700">
+                {format(date, "MMM d, yyyy")}
+              </div>
+            );
+          } catch (error) {
+            return (
+              <div className="text-[12px] text-gray-700">Invalid Date</div>
+            );
+          }
+        },
       },
       {
         accessorKey: "payments",
@@ -357,15 +375,16 @@ const DealsTable: React.FC<DealsTableProps> = ({
         header: "Version",
         cell: ({ row }: any) => {
           const version = row.original.version;
+          const versionText = version > 1 ? "Edited" : "Original";
           return (
             <span
               className={`px-2 py-1 text-[12px] font-medium rounded ${
-                version.toLowerCase() === "edited"
+                versionText === "Edited"
                   ? "bg-blue-100 text-blue-700"
                   : "bg-gray-100 text-gray-600"
               }`}
             >
-              {version}
+              {versionText}
             </span>
           );
         },
@@ -389,7 +408,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
               <Image src={Edit} alt="edit" className="w-6 h-6" />
             </button>
             <button
-              onClick={() => onAddPayment?.(row.original.id)}
+              onClick={() => onAddPayment?.(row.original.deal_id)}
               className="w-6 h-6 rounded-full text-[#22C55E]  flex items-center justify-center transition-colors"
               title="Add Payment"
             >
