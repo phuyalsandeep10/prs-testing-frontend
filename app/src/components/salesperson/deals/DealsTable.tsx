@@ -22,8 +22,8 @@ interface DealsTableProps {
 }
 
 const fetchDeals = async (): Promise<Deal[]> => {
-  const response = await apiClient.get<Deal[]>("/deals/");
-  return response.data;
+  const response = await apiClient.get<{ results: Deal[] }>("/deals/deals/");
+  return response.data.results;
 };
 
 const DealsTable = ({ setTogglePaymentForm }: DealsTableProps) => {

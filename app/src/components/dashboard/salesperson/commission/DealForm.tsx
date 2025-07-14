@@ -1,13 +1,14 @@
 "use client";
 
 import React from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DealSchema } from "../../../salesperson/Deal/DealSchema";
 import { apiClient } from "@/lib/api";
 import { Client } from "@/types/deals";
+import { Combobox } from "@/components/ui/combobox";
 
 type DealFormData = z.infer<typeof DealSchema>;
 
@@ -19,13 +20,14 @@ const transformDataForApi = (data: DealFormData) => {
   console.log('Starting transform with data:', data);
   const transformed: { [key: string]: any } = {};
   for (const key in data) {
-    if (!Object.prototype.hasOwnProperty.call(data, key)) continue;
-    console.log(`Processing key: ${key}, value:`, (data as any)[key]);
-
-    if (key === 'clientName') {
-      console.log('Mapping clientName to client_id:', (data as any)[key]);
-      transformed['client_id'] = (data as any)[key];
-      continue;
+    if (Object.prototype.hasOwnProperty.call(data, key)) {
+      const snakeKey = toSnakeCase(key);
+      if (key === "payStatus") {
+        transformed[snakeKey] =
+          data[key] === "Full Pay" ? "full_payment" : "partial_payment";
+      } else {
+        transformed[snakeKey] = (data as any)[key];
+      }
     }
 
     if (key === 'payStatus') {
@@ -56,8 +58,7 @@ const fetchClients = async (): Promise<Client[]> => {
 const submitDealData = async (data: DealFormData) => {
   console.log('Raw form data:', data);
   const transformedData = transformDataForApi(data);
-  console.log('Transformed data for API:', transformedData);
-  const response = await apiClient.post('/deals/deals/', transformedData);
+  const response = await apiClient.post("/deals/deals/", transformedData);
   return response.data;
 };
 
@@ -71,6 +72,7 @@ const DealForm = () => {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors, isSubmitting },
     reset,
   } = useForm<DealFormData>({
@@ -163,19 +165,27 @@ const DealForm = () => {
                   >
                     Client Name<span className="text-[#F61818]">*</span>
                   </label>
-                  <select
-                    id="clientName"
-                    {...register("clientName")}
-                    className="mt-1 block w-full p-2 border rounded-[6px] h-[48px] text-[12px] font-normal border-[#C3C3CB] outline-none bg-white"
-                    disabled={isLoadingClients}
-                  >
-                    <option value="">{isLoadingClients ? 'Loading...' : 'Select Client'}</option>
-                    {clients?.map((client) => (
-                      <option key={client.id} value={client.id}>
-                        {client.client_name}
-                      </option>
-                    ))}
-                  </select>
+                  <Controller
+                    name="clientName"
+                    control={control}
+                    render={({ field }) => (
+                      <Combobox
+                        options={
+                          clients?.map((client) => ({
+                            value: client.client_name,
+                            label: client.client_name,
+                          })) || []
+                        }
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        placeholder={isLoadingClients ? "Loading..." : "Select Client"}
+                        searchPlaceholder="Search clients..."
+                        emptyText="No clients found."
+                        disabled={isLoadingClients}
+                        className="mt-1"
+                      />
+                    )}
+                  />
                   {errors.clientName && (
                     <p className="mt-1 text-sm text-red-600">
                       {errors.clientName.message}
@@ -212,7 +222,7 @@ const DealForm = () => {
                     className="block text-[13px] font-semibold"
                   >
                     Pay Status<span className="text-[#F61818]">*</span>
-                  </label>      
+                  </label>
                   <select
                     id="payStatus"
                     {...register("payStatus")}

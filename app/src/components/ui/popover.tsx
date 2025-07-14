@@ -16,9 +16,15 @@ const PopoverContent = React.forwardRef<React.ElementRef<typeof PopoverPrimitive
       align={align}
       sideOffset={sideOffset}
       className={cn(
-        "z-50 w-72 rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        "z-[100000] w-72 rounded-md border bg-white p-4 text-black shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         className
       )}
+      style={{ 
+        zIndex: 100000,
+        backgroundColor: 'white',
+        border: '1px solid #e5e7eb',
+        boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
+      }}
       {...props}
     />
   </PopoverPrimitive.Portal>

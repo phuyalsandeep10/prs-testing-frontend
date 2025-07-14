@@ -1,23 +1,15 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
-import { Search, Plus, Edit, Trash2, Filter, LayoutGrid, List, RotateCcw, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ErrorBoundary } from '@/components/common/ErrorBoundary';
-import { UnifiedTable } from '@/components/core/UnifiedTable';
-import { PermissionGate } from '@/components/common/PermissionGate';
-import { useClientsQuery, useDeleteClientMutation, useUpdateClientMutation } from '@/hooks/useIntegratedQuery';
-import { useTableStateSync } from '@/hooks/useIntegratedQuery';
-import { useUI } from '@/stores';
-import { exportToCSV } from '@/lib/utils/export';
-import { ClientKanbanView } from '@/app/(dashboard)/salesperson/client/ClientKanbanView';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { toast } from 'sonner';
-import type { ColumnDef } from '@tanstack/react-table';
-import { useAuth } from '@/stores';
-import type { Client } from '@/lib/types/roles';
+import * as React from "react";
+import { Search, LayoutGrid, List } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ClientTable } from "./ClientTable";
+import { ClientKanbanView } from "./ClientKanbanView";
+import { apiClient } from "@/lib/api";
+import { type Client } from "@/lib/types/roles";
+import { toast } from "sonner";
 
 export function ManageClientsClient() {
   const { addNotification } = useUI();
@@ -231,18 +223,19 @@ export function ManageClientsClient() {
     exportToCSV('clients.csv', clients as any);
   };
 
-  const handleRefreshClick = () => {
-    void refetch();
-  };
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">Error loading clients: {error.message}</p>
-          <Button onClick={() => { void refetch(); }}>Try Again</Button>
-        </div>
-      </div>
+  const filteredClients = React.useMemo(() => {
+    if (!searchTerm) return clients;
+    return clients.filter(
+      (client) =>
+        (client.client_name?.toLowerCase() || "").includes(
+          searchTerm.toLowerCase()
+        ) ||
+        (client.email?.toLowerCase() || "").includes(
+          searchTerm.toLowerCase()
+        ) ||
+        (client.phone_number?.toLowerCase() || "").includes(
+          searchTerm.toLowerCase()
+        )
     );
   }
 

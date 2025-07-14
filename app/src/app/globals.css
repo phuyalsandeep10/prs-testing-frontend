@@ -673,3 +673,390 @@
 [data-state="open"] {
   z-index: 10000 !important;
 }
+
+/* Chrome-specific anti-flickering optimizations */
+@supports (-webkit-appearance: none) {
+  /* Chrome-specific table optimizations */
+  .chrome-table-optimized {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+    will-change: auto;
+  }
+  
+  .chrome-table-optimized * {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+  
+  /* Chrome-specific row optimizations */
+  .chrome-row-optimized {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    contain: layout;
+  }
+  
+  /* Chrome-specific expansion optimizations */
+  .chrome-expansion-optimized {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    contain: layout style;
+    will-change: transform;
+  }
+  
+  /* Chrome-specific transition optimizations */
+  .chrome-transition-optimized {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+  
+  /* Prevent Chrome flickering during hover states */
+  .chrome-hover-optimized:hover {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+  }
+  
+  /* Chrome-specific table border optimizations */
+  .chrome-table-border-optimized {
+    border-collapse: separate;
+    border-spacing: 0;
+    transform: translateZ(0);
+  }
+  
+  /* Chrome-specific overflow optimizations */
+  .chrome-overflow-optimized {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    contain: layout;
+  }
+}
+
+/* Additional Chrome-specific fixes */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  .chrome-render-optimized {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+  
+  .chrome-table-cell-optimized {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    contain: layout;
+  }
+}
+
+/* Chrome-specific animation optimizations */
+@keyframes chrome-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateZ(0) translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateZ(0) translateY(0);
+  }
+}
+
+.chrome-fade-in {
+  animation: chrome-fade-in 0.2s ease-out forwards;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Chrome-specific expansion animation */
+@keyframes chrome-expand {
+  0% {
+    max-height: 0;
+    opacity: 0;
+    transform: translateZ(0) scaleY(0.8);
+  }
+  100% {
+    max-height: 500px;
+    opacity: 1;
+    transform: translateZ(0) scaleY(1);
+  }
+}
+
+.chrome-expand {
+  animation: chrome-expand 0.3s ease-out forwards;
+  transform-origin: top;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Chrome-specific collapse animation */
+@keyframes chrome-collapse {
+  0% {
+    max-height: 500px;
+    opacity: 1;
+    transform: translateZ(0) scaleY(1);
+  }
+  100% {
+    max-height: 0;
+    opacity: 0;
+    transform: translateZ(0) scaleY(0.8);
+  }
+}
+
+.chrome-collapse {
+  animation: chrome-collapse 0.2s ease-in forwards;
+  transform-origin: top;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Chrome-specific table rendering optimizations */
+.chrome-table-render-optimized {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  contain: layout style;
+}
+
+.chrome-table-render-optimized table {
+  border-collapse: separate;
+  border-spacing: 0;
+  transform: translateZ(0);
+}
+
+.chrome-table-render-optimized tr {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.chrome-table-render-optimized td,
+.chrome-table-render-optimized th {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout;
+}
+
+/* Chrome-specific expansion optimizations */
+.chrome-expansion-optimized {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style;
+  will-change: transform;
+}
+
+/* Chrome-specific row optimizations */
+.chrome-row-optimized {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout;
+  will-change: auto;
+}
+
+/* Chrome-specific cell optimizations */
+.chrome-table-cell-optimized {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout;
+}
+
+/* Chrome-specific transition optimizations */
+.chrome-transition-optimized {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Chrome-specific hover optimizations */
+.chrome-hover-optimized:hover {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Chrome-specific table border optimizations */
+.chrome-table-border-optimized {
+  border-collapse: separate;
+  border-spacing: 0;
+  transform: translateZ(0);
+}
+
+/* Chrome-specific overflow optimizations */
+.chrome-overflow-optimized {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout;
+}
+
+/* Chrome-specific animation optimizations */
+@keyframes chrome-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateZ(0) translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateZ(0) translateY(0);
+  }
+}
+
+.chrome-fade-in {
+  animation: chrome-fade-in 0.2s ease-out forwards;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Chrome-specific expansion animation */
+@keyframes chrome-expand {
+  0% {
+    max-height: 0;
+    opacity: 0;
+    transform: translateZ(0) scaleY(0.8);
+  }
+  100% {
+    max-height: 500px;
+    opacity: 1;
+    transform: translateZ(0) scaleY(1);
+  }
+}
+
+.chrome-expand {
+  animation: chrome-expand 0.3s ease-out forwards;
+  transform-origin: top;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Chrome-specific collapse animation */
+@keyframes chrome-collapse {
+  0% {
+    max-height: 500px;
+    opacity: 1;
+    transform: translateZ(0) scaleY(1);
+  }
+  100% {
+    max-height: 0;
+    opacity: 0;
+    transform: translateZ(0) scaleY(0.8);
+  }
+}
+
+.chrome-collapse {
+  animation: chrome-collapse 0.2s ease-in forwards;
+  transform-origin: top;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Additional Chrome-specific fixes for table stability */
+.chrome-table-stable {
+  contain: layout style paint;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+.chrome-table-stable * {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Chrome-specific fix for rapid state changes */
+.chrome-state-stable {
+  will-change: auto;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout;
+}
+
+/* Chrome-specific fix for expansion content */
+.chrome-expansion-content {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style;
+  will-change: transform;
+  overflow: hidden;
+}
+
+/* Chrome-specific fix for table body */
+.chrome-table-body-optimized {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout;
+}
+
+/* Chrome-specific fix for table header */
+.chrome-table-header-optimized {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout;
+  position: relative;
+  z-index: 1;
+}
+
+/* Chrome-specific fix for initial table rendering */
+.chrome-table-initial-render {
+  opacity: 0;
+  animation: chrome-table-fade-in 0.3s ease-out forwards;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+@keyframes chrome-table-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateZ(0) translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateZ(0) translateY(0);
+  }
+}
+
+/* Chrome-specific fix for table row stability */
+.chrome-table-row-stable {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout;
+  will-change: auto;
+  position: relative;
+}
+
+/* Chrome-specific fix for table cell stability */
+.chrome-table-cell-stable {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout;
+  position: relative;
+}
+
+/* Chrome-specific fix for expansion stability */
+.chrome-expansion-stable {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style;
+  will-change: transform;
+  position: relative;
+  z-index: 1;
+}
+
+/* Chrome-specific fix for table container stability */
+.chrome-table-container-stable {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style;
+  perspective: 1000px;
+  position: relative;
+}
+
+/* Chrome-specific fix for rapid DOM updates */
+.chrome-dom-stable {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout style paint;
+  will-change: auto;
+}
+
+/* Chrome-specific fix for table re-rendering */
+.chrome-table-rerender-stable {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  contain: layout;
+  will-change: auto;
+  position: relative;
+}
