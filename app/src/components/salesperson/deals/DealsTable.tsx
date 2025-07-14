@@ -44,6 +44,7 @@ const DealsTable = ({ setTogglePaymentForm }: DealsTableProps) => {
             onToggle={() =>
               setExpandedRowId((prev) => (prev === row.id ? null : row.id))
             }
+            isExpanded={expandedRowId === row.id}
             variant="salesperson"
           />
         ),
@@ -138,15 +139,27 @@ const DealsTable = ({ setTogglePaymentForm }: DealsTableProps) => {
     return <div className="p-4 text-center text-red-500">Error fetching deals: {error.message}</div>;
   }
 
+  // Debug: Log deals data to see if payments are present
+  console.log("Deals data:", deals);
+  console.log("Expanded row ID:", expandedRowId);
+
   return (
     <ReusableTable
       columns={columns}
       data={deals || []}
       expandedRowId={expandedRowId}
       setExpandedRowId={setExpandedRowId}
-      getNestedData={(row) => row.payments}
+      getNestedData={(row) => {
+        console.log("Getting nested data for row:", row);
+        console.log("Payments:", row.payments);
+        return row.payments || [];
+      }}
       nestedColumns={nestedColumns}
-      showNestedTable={(row) => row.payments && row.payments.length > 0}
+      showNestedTable={(row) => {
+        const hasPayments = row.payments && row.payments.length > 0;
+        console.log("Show nested table for row:", row, "hasPayments:", hasPayments);
+        return hasPayments;
+      }}
     />
   );
 };

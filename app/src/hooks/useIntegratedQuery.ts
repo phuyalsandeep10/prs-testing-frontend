@@ -82,7 +82,7 @@ interface Commission {
   id: string;
   fullName: string;
   totalSales: number;
-  currency: 'NEP' | 'AUD' | 'USD';
+  currency: string; // Updated to support all ISO currencies
   rate: number;
   percentage: number;
   bonus: number;
@@ -995,7 +995,7 @@ export const useCommissionQuery = (filters?: Record<string, any>) => {
       if (organizationId) {
         allFilters.organization = organizationId;
       }
-      const response = await apiClient.get<PaginatedResponse<Commission>>('/commission/', {
+      const response = await apiClient.get<PaginatedResponse<Commission>>('/commission/commissions/', {
         params: allFilters,
       });
       return response.data!;
@@ -1027,7 +1027,7 @@ export const useOrgAdminCommissionQuery = () => {
       return response.data!;
     },
     enabled: isAuthInitialized && hasPermission('manage:deals') && user?.role === 'org-admin',
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // No stale time - always refetch
   });
 
   // Handle errors using useEffect to avoid setState during render
@@ -1051,7 +1051,7 @@ export const useCreateCommissionMutation = () => {
   
   return useMutation({
     mutationFn: async (commissionData: CreateInput<Commission>): Promise<Commission> => {
-      const response = await apiClient.post<Commission>('/commission/', commissionData);
+      const response = await apiClient.post<Commission>('/commission/commissions/', commissionData);
       return response.data!;
     },
     onSuccess: (data, variables) => {
@@ -1087,7 +1087,7 @@ export const useUpdateCommissionMutation = () => {
   
   return useMutation({
     mutationFn: async ({ id, data }: { id: number; data: UpdateInput<Commission> }): Promise<Commission> => {
-      const response = await apiClient.put<Commission>(`/commission/${id}/`, data);
+      const response = await apiClient.put<Commission>(`/commission/commissions/${id}/`, data);
       return response.data!;
     },
     onSuccess: (data, variables) => {
@@ -1115,8 +1115,8 @@ export const useBulkUpdateCommissionMutation = () => {
   const { addNotification } = useUI();
   
   return useMutation({
-    mutationFn: async (commissionData: UpdateInput<Commission>[]): Promise<Commission[]> => {
-      const response = await apiClient.put<Commission[]>('/commission/bulk/', commissionData);
+    mutationFn: async (commissionData: UpdateInput<Commission>[]): Promise<{ message: string; updated_commissions: Commission[] }> => {
+      const response = await apiClient.put<{ message: string; updated_commissions: Commission[] }>('/commission/commissions/bulk/', commissionData);
       return response.data!;
     },
     onSuccess: (data, variables) => {
@@ -1125,7 +1125,7 @@ export const useBulkUpdateCommissionMutation = () => {
       addNotification({
         type: 'success',
         title: 'Bulk commission update successful',
-        message: `${data.length} commission records have been updated.`,
+        message: data.message || `${data.updated_commissions.length} commission records have been updated.`,
       });
     },
     onError: (err: any) => {
@@ -1144,7 +1144,7 @@ export const useDeleteCommissionMutation = () => {
   
   return useMutation({
     mutationFn: async (id: number): Promise<void> => {
-      await apiClient.delete(`/commission/${id}/`);
+      await apiClient.delete(`/commission/commissions/${id}/`);
     },
     onSuccess: (data, id) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.commission });

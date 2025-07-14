@@ -9,6 +9,7 @@ interface PaymentVerificationModalProps {
   onOpenChange: (open: boolean) => void;
   mode: "verification" | "view" | "edit";
   paymentId?: string | number;
+  onVerificationSuccess?: () => void; // New callback for successful verification
 }
 
 const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({
@@ -16,9 +17,14 @@ const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({
   onOpenChange,
   mode,
   paymentId,
+  onVerificationSuccess,
 }) => {
   const handleSave = (data: any) => {
-    console.log(`Payment ${mode} saved:`, data);
+    // If this was a verification and we have a success callback, call it
+    if (mode === "verification" && data.success && onVerificationSuccess) {
+      onVerificationSuccess();
+    }
+    
     onOpenChange(false);
   };
 

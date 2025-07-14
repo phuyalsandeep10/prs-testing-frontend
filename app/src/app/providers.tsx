@@ -12,6 +12,7 @@ import {
 import { useRealtimeSync } from "@/lib/realtime";
 import { useBackgroundSync } from "@/lib/offline";
 import { usePerformanceMonitor } from "@/lib/monitoring";
+import { NotificationProvider } from "@/contexts/NotificationContext";
 
 // Phase 4B Day 2: Advanced Features Provider
 function AdvancedFeaturesProvider({ children, queryClient }: { children: ReactNode; queryClient: any }) {
@@ -32,6 +33,7 @@ function AdvancedFeaturesProvider({ children, queryClient }: { children: ReactNo
     console.log('✅ Performance Monitoring');
     console.log('✅ Optimistic Updates');
     console.log('✅ Cross-tab Synchronization');
+    console.log('✅ Notification System');
   }, []);
 
   return <>{children}</>;
@@ -80,9 +82,11 @@ export default function Providers({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AdvancedFeaturesProvider queryClient={queryClient}>
-        {children}
-      </AdvancedFeaturesProvider>
+      <NotificationProvider>
+        <AdvancedFeaturesProvider queryClient={queryClient}>
+          {children}
+        </AdvancedFeaturesProvider>
+      </NotificationProvider>
     </QueryClientProvider>
   );
 }

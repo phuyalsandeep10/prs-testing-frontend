@@ -11,9 +11,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { useRef, useState } from "react";
-import Notifications from "@/components/global-components/Notification";
+import NotificationComponent from "@/components/global-components/Notification";
 import { useAuth } from "@/stores";
+import { useUnreadCount } from "@/hooks/useNotifications";
 
 export default function Header() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -21,6 +23,9 @@ export default function Header() {
 
   // ===== Auth =====
   const { user, logout } = useAuth();
+
+  // ===== Notifications =====
+  const { data: unreadCount } = useUnreadCount();
 
   // Determine display name
   const firstName = (user as any)?.first_name ?? (user as any)?.firstName ?? '';
@@ -52,21 +57,31 @@ export default function Header() {
           <span className="sr-only">Offers</span>
         </Button>
 
-        <Button
-          ref={bellRef}
-          variant="ghost"
-          size="icon"
-          className="rounded-full"
-          onClick={() => setIsModalOpen(true)}
-        >
-          <Bell className="h-6 w-6" />
-          <span className="sr-only">Notifications</span>
-        </Button>
-        <Notifications
-          isOpen={isModalOpen}
-          onOpenChange={setIsModalOpen}
-          anchorRef={bellRef}
-        />
+        <div className="relative">
+          <Button
+            ref={bellRef}
+            variant="ghost"
+            size="icon"
+            className="rounded-full relative"
+            onClick={() => setIsModalOpen(true)}
+          >
+            <Bell className="h-6 w-6" />
+            {unreadCount && unreadCount > 0 && (
+              <Badge 
+                variant="destructive" 
+                className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+              >
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </Badge>
+            )}
+            <span className="sr-only">Notifications</span>
+          </Button>
+          <NotificationComponent
+            isOpen={isModalOpen}
+            onOpenChange={setIsModalOpen}
+            anchorRef={bellRef}
+          />
+        </div>
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

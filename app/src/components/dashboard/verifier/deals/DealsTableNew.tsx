@@ -126,17 +126,25 @@ const DealsTableNew: React.FC<DealsTableProps> = ({ searchTerm = "" }) => {
         header: "Payment",
         cell: ({ row }) => (
           <div className="flex gap-1">
-            {row.original.payments?.slice(0, 2).map((p: Payment, idx: number) => (
-              <span
-                key={p.id}
-                className={cn(
-                  "text-xs font-semibold",
-                  p.status === "verified" ? "text-green-600" : p.status === "rejected" ? "text-red-600" : "text-gray-500"
-                )}
-              >
-                {idx === 0 ? "First" : "Second"}
-              </span>
-            ))}
+            {row.original.payments?.slice(0, 2).map((p: Payment, idx: number) => {
+              const paymentNumber = idx === 0 ? "First" : "Second";
+              const badgeClass = {
+                verified: "bg-green-500 text-white border-green-600",
+                pending: "bg-orange-400 text-white border-orange-500",
+                rejected: "bg-red-500 text-white border-red-600",
+              };
+              
+              return (
+                <span
+                  key={p.id}
+                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${
+                    badgeClass[p.status] || badgeClass.pending
+                  }`}
+                >
+                  {paymentNumber}
+                </span>
+              );
+            })}
           </div>
         ),
       },
@@ -158,7 +166,7 @@ const DealsTableNew: React.FC<DealsTableProps> = ({ searchTerm = "" }) => {
       {
         id: "version",
         header: "Version",
-        cell: ({ row }) => <span>{row.original.version && row.original.version > 1 ? "Edited" : "Original"}</span>,
+        cell: ({ row }) => <span>{row.original.version === 'edited' ? "Edited" : "Original"}</span>,
       },
       {
         id: "sales_person",
@@ -212,11 +220,23 @@ const DealsTableNew: React.FC<DealsTableProps> = ({ searchTerm = "" }) => {
       error={error?.message}
       onRefresh={refetch}
       getRowProps={(row) => {
-        const payments = (row.original as any)?.payments as Payment[] | undefined;
-        const hasRejected = payments?.some((p) => p.status === "rejected");
-        return {
-          className: hasRejected ? "bg-red-50" : "",
-        };
+        const deal = row.original as Deal;
+        const payments = deal.payments || [];
+        
+        // Check if any payment is rejected - make entire row red
+        const hasRejectedPayment = payments.some(payment => payment.status === 'rejected');
+        if (hasRejectedPayment) {
+          return { className: "bg-red-100 hover:bg-red-200 transition-colors" };
+        }
+        
+        // Check if all payments are verified - make row green
+        const allPaymentsVerified = payments.length > 0 && payments.every(payment => payment.status === 'verified');
+        if (allPaymentsVerified) {
+          return { className: "bg-green-50 hover:bg-green-100 transition-colors" };
+        }
+        
+        // Default styling for pending payments
+        return { className: "hover:bg-gray-50 transition-colors" };
       }}
       config={{
         styling: { variant: "figma" },

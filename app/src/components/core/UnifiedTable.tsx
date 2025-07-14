@@ -844,7 +844,13 @@ export const UnifiedTable = React.memo(
     );
 
     // Table instance
-    const table = useReactTable(tableConfig);
+    const table = useReactTable({
+      ...tableConfig,
+      getRowId: (row) => {
+        // Use deal_id if available, otherwise fall back to index
+        return (row as any).deal_id || `row-${Math.random()}`;
+      },
+    });
 
     // Memoized callback for row selection
     const handleRowSelection = React.useCallback(() => {
@@ -985,7 +991,7 @@ export const UnifiedTable = React.memo(
         )}
 
         {/* Table */}
-        <div className="rounded-md border overflow-hidden">
+        <div className="rounded-md border overflow-hidden w-full">
           <Table className={styles.table}>
             <TableHeader className={`!w-auto ${styles.header}`}>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -1054,12 +1060,18 @@ export const UnifiedTable = React.memo(
                       ))}
                     </TableRow>
                     {features.expansion &&
-                      expandedContent &&
-                      currentExpandedRows[row.id] && (
+                      expandedContent && (
                         <TableRow>
                           <TableCell colSpan={columns.length} className="p-0">
-                            <div className="p-4 bg-gray-50 border-t">
-                              {expandedContent(row)}
+                            <div 
+                              className={cn(
+                                "w-full overflow-hidden transition-all duration-500 ease-in-out",
+                                currentExpandedRows[row.id] 
+                                  ? "max-h-[1000px] opacity-100 scale-100" 
+                                  : "max-h-0 opacity-0 scale-95"
+                              )}
+                            >
+                              {currentExpandedRows[row.id] && expandedContent(row)}
                             </div>
                           </TableCell>
                         </TableRow>

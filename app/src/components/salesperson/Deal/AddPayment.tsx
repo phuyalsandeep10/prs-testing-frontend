@@ -28,7 +28,7 @@ const AddPayment: React.FC<AddPaymentProps> = ({
   onSave,
   onCancel,
 }) => {
-  const [selectedPaymentType, setSelectedPaymentType] = useState("Advance");
+  const [selectedPaymentType, setSelectedPaymentType] = useState("Advance Payment");
   const [showDropdown, setShowDropdown] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedFileName, setSelectedFileName] = useState("Receipt.png");
@@ -48,19 +48,10 @@ const AddPayment: React.FC<AddPaymentProps> = ({
   const [fileError, setFileError] = useState<string>("");
 
   const paymentTypes = [
-    { value: "advance", label: "Advance" },
+    { value: "advance", label: "Advance Payment" },
     { value: "partial", label: "Partial Payment" },
-    { value: "final", label: "Final Installment" },
+    { value: "final", label: "Final Payment" },
   ];
-
-  const mapPaymentTypeToBackend = (frontendType: string): string => {
-    const mapping: { [key: string]: string } = {
-      advance: "advance",
-      partial: "partial_payment",
-      final: "full_payment",
-    };
-    return mapping[frontendType] || "advance";
-  };
 
   const submitPayment = async (data: AddPaymentData) => {
     if (!dealId) {
@@ -81,8 +72,8 @@ const AddPayment: React.FC<AddPaymentProps> = ({
       formData.append("received_amount", data.receivedAmount);
       formData.append("cheque_number", data.chequeNo);
       formData.append(
-        "payment_type",
-        mapPaymentTypeToBackend(data.paymentType)
+        "payment_category",
+        data.paymentType
       );
       formData.append("payment_remarks", data.remarks);
 
@@ -96,18 +87,50 @@ const AddPayment: React.FC<AddPaymentProps> = ({
       onSave(data);
       onCancel();
     } catch (error: any) {
-      if (error.message?.includes("400")) {
-        toast.error(
-          `Bad Request: ${
-            error.details?.message || error.message || "Invalid data format"
-          }`
-        );
-      } else if (error.message?.includes("timeout")) {
+      console.log("Payment submission error:", error);
+      
+      // Handle different types of errors
+      if (error.code === '400' || error.message?.includes('400')) {
+        // Extract validation error messages from the backend
+        let errorMessage = "Invalid data format";
+        
+        if (error.details) {
+          // Django REST Framework returns validation errors in this format
+          if (typeof error.details === 'object') {
+            const errorMessages: string[] = [];
+            
+            // Extract error messages from the details object
+            Object.entries(error.details).forEach(([field, messages]) => {
+              if (Array.isArray(messages)) {
+                errorMessages.push(...messages);
+              } else if (typeof messages === 'string') {
+                errorMessages.push(messages);
+              }
+            });
+            
+            if (errorMessages.length > 0) {
+              errorMessage = errorMessages.join('. ');
+            }
+          } else if (typeof error.details === 'string') {
+            errorMessage = error.details;
+          }
+        } else if (error.message && !error.message.includes('400')) {
+          errorMessage = error.message;
+        }
+        
+        toast.error(errorMessage);
+      } else if (error.code === 'TIMEOUT' || error.message?.includes('timeout')) {
         toast.error("Request timed out. Please try again.");
+      } else if (error.code === '401' || error.message?.includes('401')) {
+        toast.error("Authentication failed. Please log in again.");
+      } else if (error.code === '403' || error.message?.includes('403')) {
+        toast.error("You don't have permission to perform this action.");
+      } else if (error.code === '404' || error.message?.includes('404')) {
+        toast.error("Resource not found. Please check the deal ID.");
+      } else if (error.code === '500' || error.message?.includes('500')) {
+        toast.error("Server error. Please try again later.");
       } else {
-        toast.error(
-          error.message || "Failed to add payment. Please try again."
-        );
+        toast.error(error.message || "Failed to add payment. Please try again.");
       }
     } finally {
       setIsSubmitting(false);
@@ -122,7 +145,7 @@ const AddPayment: React.FC<AddPaymentProps> = ({
 
   const handleClear = () => {
     reset();
-    setSelectedPaymentType("Advance");
+    setSelectedPaymentType("Advance Payment");
     setSelectedFileName("Receipt.png");
     setSelectedFile(null);
     setFileError("");

@@ -76,6 +76,15 @@ export const columns: ColumnDef<Team>[] = [
   {
     accessorKey: "teamLead",
     header: "Team Lead",
+    cell: ({ row }) => {
+      const lead = row.original.teamLead;
+      if (!lead) return '—';
+      if (lead && typeof lead === 'object') {
+        const l = lead as any;
+        return l.full_name || l.name || l.username || '—';
+      }
+      return lead;
+    },
   },
   {
     accessorKey: "contactNumber",

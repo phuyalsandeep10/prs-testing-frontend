@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Loader2, X } from "lucide-react";
-import { useCreateTeamMutation, useUsersQuery } from "@/hooks/useIntegratedQuery";
+import { useCreateTeamMutation, useUsersQuery, useDealsQuery } from "@/hooks/useIntegratedQuery";
 import { useProjects } from "@/hooks/api";
 import { useAuth, useUI } from "@/stores";
 
@@ -53,11 +53,14 @@ export function AddNewTeamFormWrapper({
   // Correctly call the query hooks with the organization ID
   const { data: usersData, isLoading: usersLoading } = useUsersQuery(orgIdStr, { page_size: 1000 });
   const { data: projects = [], isLoading: projectsLoading } = useProjects(orgIdNum);
+  const { data: dealsData, isLoading: dealsLoading } = useDealsQuery();
 
   console.log('[AddNewTeamFormWrapper] Data received from useUsersQuery:', usersData);
   console.log('[AddNewTeamFormWrapper] Users loading state:', usersLoading);
   console.log('[AddNewTeamFormWrapper] Projects from standardized hook:', projects);
   console.log('[AddNewTeamFormWrapper] Projects loading state:', projectsLoading);
+  console.log('[AddNewTeamFormWrapper] Deals data:', dealsData);
+  console.log('[AddNewTeamFormWrapper] Deals loading state:', dealsLoading);
 
   const users: any[] = React.useMemo(() => {
     if (!usersData) return [];
@@ -68,25 +71,42 @@ export function AddNewTeamFormWrapper({
     return [];
   }, [usersData]);
 
+  // Extract deals data for projects field
+  const deals: any[] = React.useMemo(() => {
+    if (!dealsData) return [];
+    const d: any = dealsData;
+    if (Array.isArray(d)) return d;
+    if (Array.isArray(d.results)) return d.results;
+    if (Array.isArray(d.data)) return d.data;
+    return [];
+  }, [dealsData]);
+
+  // Debug deals data
+  console.log('[AddNewTeamFormWrapper] Raw dealsData:', dealsData);
+  console.log('[AddNewTeamFormWrapper] Processed deals:', deals);
+  console.log('[AddNewTeamFormWrapper] Deals length:', deals.length);
+
   // Create team mutation
   const createTeamMutation = useCreateTeamMutation();
 
   // Filter users based on their roles
   const extractRoleName = (u: any) => (typeof u.role === 'string' ? u.role : u.role?.name || '');
 
+  // Team leads should only show users with Supervisor role
   const teamLeads = users.filter((u: any) => {
     if (!u || !u.id) return false;
     const roleName = extractRoleName(u).toLowerCase();
-    return ['supervisor', 'teamlead', 'team lead', 'org-admin', 'super-admin'].some(r => roleName.includes(r));
+    return roleName === 'supervisor';
   }).map((u: any) => ({
       ...u,
       displayName: `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() || u.name || u.username,
     }));
 
+  // Team members should only show users with Team Member role
   const teamMembers = users.filter((u: any) => {
     if (!u || !u.id) return false;
     const roleName = extractRoleName(u).toLowerCase();
-    return !['super-admin', 'org-admin'].includes(roleName);
+    return roleName === 'team member';
   }).map((u: any) => ({
       ...u,
       displayName: `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() || u.name || u.username,
@@ -101,7 +121,9 @@ export function AddNewTeamFormWrapper({
     console.log('Users loading:', usersLoading);
     console.log('Projects from hook:', projects);
     console.log('Projects loading:', projectsLoading);
-  }, [users, teamLeads, teamMembers, usersLoading, projects, projectsLoading]);
+    console.log('Deals for projects:', deals);
+    console.log('Deals loading:', dealsLoading);
+  }, [users, teamLeads, teamMembers, usersLoading, projects, projectsLoading, deals, dealsLoading]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -136,6 +158,7 @@ export function AddNewTeamFormWrapper({
       }
 
       if (values.assignedProject) {
+        // Store the deal ID as a project reference
         teamData.projects = [parseInt(values.assignedProject, 10)];
       }
 
@@ -172,7 +195,7 @@ export function AddNewTeamFormWrapper({
   };
 
   // Combined loading state from mutations
-  const isLoading = createTeamMutation.isPending || usersLoading || projectsLoading;
+  const isLoading = createTeamMutation.isPending || usersLoading || projectsLoading || dealsLoading;
 
   const handleClear = () => {
     form.reset();
@@ -213,7 +236,7 @@ export function AddNewTeamFormWrapper({
                   <FormControl>
                     <Input 
                       className="h-12 border-indigo-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-lg"
-                      placeholder="Sales Person Name" 
+                      placeholder="Enter team name (e.g., Sales Team Alpha, Marketing Team Beta)" 
                       {...field} 
                       disabled={isLoading}
                     />
@@ -234,15 +257,21 @@ export function AddNewTeamFormWrapper({
                   </FormLabel>
                   <FormControl>
                     <Select value={field.value} onValueChange={field.onChange} disabled={isLoading}>
-                      <SelectTrigger className="h-12 border-indigo-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-lg">
-                        <SelectValue placeholder="Sales Leader Name" />
+                      <SelectTrigger className="h-12 w-full border-indigo-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-lg">
+                        <SelectValue placeholder="Select a supervisor to lead this team (e.g., John Doe)" />
                       </SelectTrigger>
                       <SelectContent>
-                        {teamLeads.map((lead) => (
-                          <SelectItem key={lead.id} value={`${lead.id}-${lead.displayName}`}>
-                            {lead.displayName} ({lead.email})
-                          </SelectItem>
-                        ))}
+                        {teamLeads.length === 0 ? (
+                          <div className="px-2 py-1 text-sm text-gray-500">
+                            No supervisors available. Please create a supervisor first.
+                          </div>
+                        ) : (
+                          teamLeads.map((lead) => (
+                            <SelectItem key={lead.id} value={`${lead.id}-${lead.displayName}`}>
+                              {lead.displayName} ({lead.email})
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </FormControl>
@@ -262,7 +291,12 @@ export function AddNewTeamFormWrapper({
                   </FormLabel>
                   <FormControl>
                     <div className="h-auto p-2 space-y-2 border border-indigo-300 rounded-lg min-h-[48px]">
-                      {teamMembers.map((member) => (
+                      {teamMembers.length === 0 ? (
+                        <div className="text-gray-500 text-sm py-2 px-3">
+                          No team members available. Please create team members first.
+                        </div>
+                      ) : (
+                        teamMembers.map((member) => (
                         <div key={member.id} className="flex items-center space-x-2">
                           <Checkbox
                             id={`member-${member.id}`}
@@ -284,7 +318,8 @@ export function AddNewTeamFormWrapper({
                             {member.displayName}
                           </label>
                         </div>
-                      ))}
+                      ))
+                      )}
                     </div>
                   </FormControl>
                   <FormMessage />
@@ -303,15 +338,21 @@ export function AddNewTeamFormWrapper({
                   </FormLabel>
                   <FormControl>
                     <Select value={field.value} onValueChange={field.onChange} disabled={isLoading}>
-                      <SelectTrigger className="h-12 border-indigo-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-lg">
-                        <SelectValue placeholder="Calilia, Leedheed CRM...." />
+                      <SelectTrigger className="h-12 w-full border-indigo-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-lg">
+                        <SelectValue placeholder="Select a deal to assign to this team (e.g., Deal Name)" />
                       </SelectTrigger>
                       <SelectContent>
-                        {projects.map((project) => (
-                          <SelectItem key={project.id} value={project.id.toString()}>
-                            {project.name}
-                          </SelectItem>
-                        ))}
+                        {deals.length === 0 ? (
+                          <div className="px-2 py-1 text-sm text-gray-500">
+                            No deals available
+                          </div>
+                        ) : (
+                          deals.map((deal) => (
+                            <SelectItem key={deal.id} value={deal.id.toString()}>
+                              {deal.deal_name || deal.name || `Deal ${deal.id}`}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                   </FormControl>
@@ -332,7 +373,7 @@ export function AddNewTeamFormWrapper({
                   <FormControl>
                     <Input 
                       className="h-12 border-indigo-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-lg"
-                      placeholder="+977 - 9807057526" 
+                      placeholder="Enter team contact number (e.g., +977 - 9807057526)" 
                       {...field} 
                       disabled={isLoading}
                     />

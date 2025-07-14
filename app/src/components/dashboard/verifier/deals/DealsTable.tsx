@@ -1,16 +1,30 @@
 "use client";
 
-import React, { useMemo, useState, useCallback } from "react";
+import React, { useMemo, useState, useCallback, useEffect } from "react";
 import { ColumnDef, Row } from "@tanstack/react-table";
 import { Check, X, Edit, Plus, ChevronRight, ChevronDown } from "lucide-react";
+import Image from "next/image";
+import EditIcon from "@/assets/icons/edit.svg";
+import AddIcon from "@/assets/icons/add.svg";
 import { format } from "date-fns";
 import { UnifiedTable } from "@/components/core";
-import ExpandButton from "@/components/shared/ExpandButton";
+import ExpandButton from "@/components/dashboard/salesperson/deals/ExpandButton";
 import { useDealsQuery } from "@/hooks/useDeals";
+import { useDealExpanded } from "@/hooks/api/useDeals";
 import { Deal, Payment } from "@/types/deals";
 import { useRoleConfig } from "@/hooks/useRoleBasedColumns";
 import { Button } from "@/components/ui/button";
+import { apiClient } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 // Helper function to convert index to ordinal words
 const getOrdinalWord = (index: number): string => {
@@ -80,21 +94,9 @@ const DealsTable: React.FC<DealsTableProps> = ({
     ordering: "-created_at",
   });
   
-  // Debug logging
-  console.log('🔍 [VERIFIER_DEALS_TABLE_DEBUG] ===== VERIFIER DEALS TABLE DEBUG =====');
-  console.log('🔍 [VERIFIER_DEALS_TABLE_DEBUG] dealsResponse:', dealsResponse);
-  console.log('🔍 [VERIFIER_DEALS_TABLE_DEBUG] isLoading:', isLoading);
-  console.log('🔍 [VERIFIER_DEALS_TABLE_DEBUG] error:', error);
-  console.log('🔍 [VERIFIER_DEALS_TABLE_DEBUG] dealsResponse?.data:', dealsResponse?.data);
-  console.log('🔍 [VERIFIER_DEALS_TABLE_DEBUG] dealsResponse?.data?.length:', dealsResponse?.data?.length);
-  console.log('🔍 [VERIFIER_DEALS_TABLE_DEBUG] dealsResponse?.pagination:', dealsResponse?.pagination);
-  console.log('🔍 [VERIFIER_DEALS_TABLE_DEBUG] Raw response structure:', {
-    hasResults: dealsResponse?.data && typeof dealsResponse.data === 'object' && 'results' in dealsResponse.data,
-    isArray: Array.isArray(dealsResponse?.data),
-    dataType: typeof dealsResponse?.data,
-    keys: dealsResponse?.data ? Object.keys(dealsResponse.data) : 'No data'
-  });
-  console.log('🔍 [VERIFIER_DEALS_TABLE_DEBUG] ===========================================');
+  // Debug logging (commented out for production)
+  // console.log('🔍 [VERIFIER_DEALS_TABLE_DEBUG] dealsResponse:', dealsResponse);
+  // console.log('🔍 [VERIFIER_DEALS_TABLE_DEBUG] deals:', deals);
   
   // Handle the data structure like salesperson table
   const deals = useMemo(() => {
@@ -106,73 +108,277 @@ const DealsTable: React.FC<DealsTableProps> = ({
     return [];
   }, [dealsResponse]);
   
-  console.log('🔍 [VERIFIER_DEALS_TABLE_DEBUG] Final deals array length:', deals.length);
+  // console.log('🔍 [VERIFIER_DEALS_TABLE_DEBUG] Final deals array length:', deals.length);
   
   const isError = !!error;
 
   // Expansion state management
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
 
-  const toggleRowExpansion = (rowId: string) => {
-    setExpandedRows(prev => ({
-      ...prev,
-      [rowId]: !prev[rowId]
-    }));
-  };
+  // Handle expand button click
+  const handleExpand = useCallback(
+    (row: any) => {
+      const dealId = row.original.deal_id || row.original.id;
+      const isExpanded = !expandedRows[dealId];
 
-  // Expanded content renderer
-  const renderExpandedContent = (row: any) => {
-    const payments = row.original.payments || [];
-    
-    return (
-      <div className="p-4 bg-gray-50 border-t">
-        <h4 className="font-semibold text-gray-900 mb-3">Payment Details</h4>
-        {payments.length === 0 ? (
-          <p className="text-gray-500">No payments found for this deal</p>
-        ) : (
-          <div className="space-y-3">
-            {payments.map((payment: Payment, index: number) => (
-              <div key={payment.id} className="bg-white p-3 rounded-lg border">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium text-gray-700">Amount:</span>
-                    <div className="text-gray-900">${payment.received_amount}</div>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Method:</span>
-                    <div className="text-gray-900">{payment.payment_method || 'N/A'}</div>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Status:</span>
-                    <span className={cn(
-                      "px-2 py-1 rounded-full text-xs font-medium",
-                      payment.status === "verified" ? "bg-green-100 text-green-700" :
-                      payment.status === "rejected" ? "bg-red-100 text-red-700" :
-                      "bg-yellow-100 text-yellow-700"
-                    )}>
-                      {payment.status || row.original.verification_status}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Date:</span>
-                    <div className="text-gray-900">
-                      {payment.payment_date ? format(new Date(payment.payment_date), "MMM d, yyyy") : 'N/A'}
-                    </div>
-                  </div>
-                </div>
-                {payment.payment_remarks && (
-                  <div className="mt-2 pt-2 border-t">
-                    <span className="font-medium text-gray-700">Remarks:</span>
-                    <div className="text-gray-900 text-sm">{payment.payment_remarks}</div>
-                  </div>
-                )}
-              </div>
-            ))}
+      setExpandedRows(prev => ({
+        ...prev,
+        [dealId]: isExpanded
+      }));
+    },
+    [expandedRows]
+  );
+
+  // Component for expanded row content using React Query
+  const ExpandedRowContent = ({ dealId }: { dealId: string }) => {
+    const { data: nestedData, isLoading, error } = useDealExpanded(dealId);
+
+    console.log('🔍 [EXPANDED_ROW_CONTENT] dealId:', dealId);
+    console.log('🔍 [EXPANDED_ROW_CONTENT] nestedData:', nestedData);
+    console.log('🔍 [EXPANDED_ROW_CONTENT] isLoading:', isLoading);
+    console.log('🔍 [EXPANDED_ROW_CONTENT] error:', error);
+    console.log('🔍 [EXPANDED_ROW_CONTENT] nestedData length:', nestedData?.length);
+
+    if (isLoading) {
+      return (
+        <div className="bg-gray-50 p-4 w-full">
+          <div className="flex items-center justify-center h-32">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading payment details...</p>
+            </div>
           </div>
-        )}
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="bg-gray-50 p-4 w-full">
+          <div className="flex items-center justify-center h-32">
+            <div className="text-center">
+              <p className="text-red-600 mb-4">Failed to load payment details</p>
+              <p className="text-gray-600 text-sm">{error.message}</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (!nestedData || nestedData.length === 0) {
+      return (
+        <div className="bg-gray-50 p-4 w-full">
+          <div className="flex items-center justify-center h-32">
+            <div className="text-center">
+              <p className="text-gray-600">No payment history available</p>
+              <p className="text-gray-500 text-sm mt-2">Debug: nestedData = {JSON.stringify(nestedData)}</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-gray-50 p-4 w-full transition-all duration-500 ease-in-out">
+        <UnifiedTable
+          columns={nestedColumns as ColumnDef<unknown>[]}
+          data={nestedData}
+          config={{
+            features: {
+              pagination: false,
+              sorting: false,
+              filtering: false,
+              selection: false,
+              expansion: false,
+              columnVisibility: false,
+              globalSearch: false,
+            },
+            styling: {
+              variant: "figma",
+            },
+          }}
+        />
       </div>
     );
   };
+
+  // Nested columns for payment details
+  const nestedColumns: ColumnDef<any>[] = useMemo(
+    () => [
+      {
+        accessorKey: "payment_serial",
+        header: "Payment",
+        cell: ({ row }) => {
+          return <div>{row.original.payment_serial}</div>;
+        },
+      },
+      {
+        accessorKey: "payment_date",
+        header: "Payment Date",
+        cell: ({ row }) => {
+          const paymentDate = row.original.payment_date;
+          const formattedDate = new Date(paymentDate).toLocaleDateString(
+            "en-US",
+            {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            }
+          );
+          return <span>{formattedDate}</span>;
+        },
+      },
+      {
+        accessorKey: "created_at",
+        header: "Payment Created",
+        cell: ({ row }) => {
+          const createdDate = row.original.created_at;
+          const formattedDate = new Date(createdDate).toLocaleDateString(
+            "en-US",
+            {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            }
+          );
+          return <span>{formattedDate}</span>;
+        },
+      },
+      {
+        accessorKey: "payment_value",
+        header: "Payment Value",
+        cell: ({ row }) => {
+          return <div>${row.original.payment_value}</div>;
+        },
+      },
+      {
+        accessorKey: "payment_version",
+        header: "Payment Version",
+        cell: ({ row }) => {
+          return (
+            <span className="px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-600">
+              {row.original.payment_version}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "verification_status",
+        header: "Payment Status",
+        cell: ({ row }) => {
+          const status = row.original.verification_status;
+          let badgeClass = "px-2 py-1 text-xs font-medium rounded";
+          
+          switch (status) {
+            case 'verified':
+              badgeClass += " bg-green-100 text-green-800 border border-green-200";
+              break;
+            case 'rejected':
+              badgeClass += " bg-red-100 text-red-800 border border-red-200";
+              break;
+            case 'pending':
+            default:
+              badgeClass += " bg-yellow-100 text-yellow-800 border border-yellow-200";
+              break;
+          }
+          
+          return (
+            <span className={badgeClass}>
+              {status?.charAt(0).toUpperCase() + status?.slice(1) || 'Pending'}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "receipt_link",
+        header: "Receipt Link",
+        cell: ({ row }) => {
+          const receiptLink = row.original.receipt_link;
+          if (receiptLink) {
+            return (
+              <a
+                href={receiptLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline"
+              >
+                View Receipt
+              </a>
+            );
+          }
+          return <div>No receipt</div>;
+        },
+      },
+      {
+        accessorKey: "verified_by",
+        header: "Verified By",
+        cell: ({ row }) => {
+          const verifiedBy = row.original.verified_by;
+          const status = row.original.verification_status;
+          
+          let textClass = "text-sm";
+          if (status === 'verified') {
+            textClass += " text-green-600 font-medium";
+          } else if (status === 'rejected') {
+            textClass += " text-red-600 font-medium";
+          } else {
+            textClass += " text-gray-500";
+          }
+          
+          return (
+            <div className={textClass}>
+              {verifiedBy || 'Not verified yet'}
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "deal_remarks",
+        header: "Remarks",
+        cell: ({ row }) => {
+          return <div>{row.original.deal_remarks || "N/A"}</div>;
+        },
+      },
+      {
+        accessorKey: "verifier_remark_status",
+        header: "Verifier Remark",
+        cell: ({ row }) => {
+          const remarkStatus = row.original.verifier_remark_status;
+          const status = row.original.verification_status;
+          
+          let badgeClass = "px-2 py-1 text-xs font-medium rounded";
+          if (remarkStatus === 'yes' || status === 'verified') {
+            badgeClass += " bg-green-100 text-green-800 border border-green-200";
+          } else if (status === 'rejected') {
+            badgeClass += " bg-red-100 text-red-800 border border-red-200";
+          } else {
+            badgeClass += " bg-gray-100 text-gray-600 border border-gray-200";
+          }
+          
+          const displayText = remarkStatus === 'yes' ? 'Verified' : 
+                             status === 'rejected' ? 'Rejected' : 'Pending';
+          
+          return (
+            <span className={badgeClass}>
+              {displayText}
+            </span>
+          );
+        },
+      },
+    ],
+    []
+  );
+
+  // Expanded content renderer
+  const renderExpandedContent = useCallback(
+    (row: Row<unknown>) => {
+      const deal = row.original as Deal;
+      const dealId = deal.deal_id || deal.id;
+      
+      return <ExpandedRowContent dealId={dealId} />;
+    },
+    []
+  );
 
   const columns: ColumnDef<Deal>[] = useMemo(
     () => [
@@ -201,16 +407,31 @@ const DealsTable: React.FC<DealsTableProps> = ({
         header: "Status",
         accessorKey: "pay_status",
         cell: ({ row }) => {
-          const statusRaw = row.original.pay_status; // full_payment | partial_payment
-          const statusLabel = statusRaw === "full_payment" ? "Full Pay" : "Partial Pay";
-          const badgeClass =
-            statusRaw === "full_payment"
-              ? "bg-green-100 text-green-700"
-              : "bg-yellow-100 text-yellow-700";
+          const deal = row.original;
+          const payments = deal.payments || [];
+          
+          // Determine status based on payment verification
+          let statusLabel = "Pending";
+          let badgeClass = "bg-orange-400 text-white";
+          
+          if (payments.length === 0) {
+            statusLabel = "No Payments";
+            badgeClass = "bg-gray-400 text-white";
+          } else if (payments.some(payment => payment.status === 'rejected')) {
+            statusLabel = "Rejected";
+            badgeClass = "bg-red-500 text-white";
+          } else if (payments.every(payment => payment.status === 'verified')) {
+            statusLabel = "Verified";
+            badgeClass = "bg-green-500 text-white";
+          } else if (payments.some(payment => payment.status === 'pending')) {
+            statusLabel = "Pending";
+            badgeClass = "bg-orange-400 text-white";
+          }
+          
           return (
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${badgeClass}`}>{
-              statusLabel
-            }</span>
+            <span className={`px-3 py-1 text-[12px] font-medium rounded-full ${badgeClass}`}>
+              {statusLabel}
+            </span>
           );
         },
       },
@@ -252,45 +473,42 @@ const DealsTable: React.FC<DealsTableProps> = ({
         header: "Payment",
         cell: ({ row }) => {
           const payments = row.original.payments || [];
-          const dealStatus = row.original.verification_status;
-          
-          // If no payments exist, show deal status
-          if (payments.length === 0) {
-            const statusColor = 
-              dealStatus === "verified" ? "text-green-600" :
-              dealStatus === "rejected" ? "text-red-600" : 
-              "text-orange-500"; // pending = orange
-            
-            return (
-              <div className="flex gap-1">
-                <span className={`text-xs font-semibold ${statusColor}`}>
-                  First
-                </span>
-              </div>
-            );
-          }
-          
-          // If payments exist, show them with proper status colors
+          if (!payments || payments.length === 0) return "No Payments";
+
           return (
-            <div className="flex gap-1">
-              {payments.slice(0, 2).map((p: Payment, idx: number) => {
-                // Determine payment status - if payment has status, use it; otherwise use deal status
-                const paymentStatus = p.status || dealStatus;
-                const statusColor = 
-                  paymentStatus === "verified" ? "text-green-600" :
-                  paymentStatus === "rejected" ? "text-red-600" : 
-                  "text-orange-500"; // pending = orange
+            <div className="inline-block">
+              {payments.map((p: Payment, index: number) => {
+                const paymentNumber = index === 0 ? "First" : 
+                                    index === 1 ? "Second" : 
+                                    index === 2 ? "Third" : 
+                                    index === 3 ? "Fourth" : 
+                                    index === 4 ? "Fifth" : 
+                                    `${index + 1}th`;
                 
+                // Updated color scheme for payment status
+                const badgeClass = {
+                  verified: "bg-green-500 text-white border-green-600",
+                  pending: "bg-orange-400 text-white border-orange-500",
+                  rejected: "bg-red-500 text-white border-red-600",
+                };
+
+                // Format the payment amount - use verified amount if available, otherwise use received amount
+                const amountToShow = p.verified_amount || p.received_amount;
+                const amount = parseFloat(amountToShow || '0').toLocaleString('en-US', { 
+                  style: 'currency', 
+                  currency: 'USD' 
+                });
+
                 return (
-                  <span
-                    key={p.id}
-                    className={cn(
-                      "text-xs font-semibold",
-                      statusColor
-                    )}
-                  >
-                    {idx === 0 ? "First" : "Second"}
-                  </span>
+                  <PaymentTooltip key={p.id} amount={amount}>
+                    <span
+                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border me-2 ${
+                        badgeClass[p.status] || badgeClass.pending
+                      }`}
+                    >
+                      {paymentNumber}
+                    </span>
+                  </PaymentTooltip>
                 );
               })}
             </div>
@@ -343,61 +561,71 @@ const DealsTable: React.FC<DealsTableProps> = ({
       {
         id: "actions",
         header: "Actions",
-        cell: ({ row }) => (
-          <div className="flex gap-2">
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleRowExpansion(row.id);
-              }}
-              title={expandedRows[row.id] ? "Collapse" : "Expand"}
-            >
-              {expandedRows[row.id] ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
+        cell: ({ row }) => {
+          // Memoize the main action buttons separately to prevent re-rendering
+          const MainActionButtons = useMemo(() => (
+            <div className="flex items-center justify-center gap-1">
+              {roleConfig.allowedActions.includes('verify') && (
+                <>
+                  <button
+                    onClick={() => onVerifyPayment?.(row.original.id, row.original.payments?.[0]?.id || '', 'verified')}
+                    className="w-5 h-5 rounded-full text-[#009959] flex items-center justify-center transition-colors hover:bg-gray-100"
+                    title="Verify Payment"
+                  >
+                    <Check className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => onVerifyPayment?.(row.original.id, row.original.payments?.[0]?.id || '', 'rejected')}
+                    className="w-5 h-5 rounded-full text-[#F61818] flex items-center justify-center transition-colors hover:bg-gray-100"
+                    title="Reject Payment"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </>
               )}
-            </Button>
-            {roleConfig.allowedActions.includes('verify') && (
-              <>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={() => onVerifyPayment?.(row.original.id, row.original.payments?.[0]?.id || '', 'verified')}
-                  className="text-green-600 hover:text-green-700"
-                  title="Verify Payment"
-                >
-                  <Check className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  onClick={() => onVerifyPayment?.(row.original.id, row.original.payments?.[0]?.id || '', 'rejected')}
-                  className="text-red-600 hover:text-red-700"
-                  title="Reject Payment"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </>
-            )}
-          </div>
-        ),
+            </div>
+          ), [row.original.id, row.original.payments, roleConfig.allowedActions, onVerifyPayment]);
+
+          // Render expand button separately to prevent it from affecting other buttons
+          return (
+            <div className="flex items-center justify-center gap-1">
+              {MainActionButtons}
+              <ExpandButton
+                isExpanded={!!expandedRows[row.id]}
+                onToggle={() => handleExpand(row)}
+              />
+            </div>
+          );
+        },
       },
     ],
-    [onVerifyPayment, roleConfig.allowedActions, expandedRows]
+    [onVerifyPayment, roleConfig.allowedActions, handleExpand]
   );
 
-  // Get row className for styling
+  // Row styling based on payment verification status
   const getRowClassName = (row: Row<Deal>) => {
-    const payments = row.original.payments as Payment[] | undefined;
-    const hasRejected = payments?.some((p) => p.status === "rejected");
-    return hasRejected ? "bg-red-50" : "";
+    const deal = row.original;
+    const payments = deal.payments || [];
+    
+    // Check if any payment is rejected - make entire row red
+    const hasRejectedPayment = payments.some(payment => payment.status === 'rejected');
+    if (hasRejectedPayment) {
+      return "bg-red-100 hover:bg-red-200 transition-colors";
+    }
+    
+    // Check if all payments are verified - make row green
+    const allPaymentsVerified = payments.length > 0 && payments.every(payment => payment.status === 'verified');
+    if (allPaymentsVerified) {
+      return "bg-green-50 hover:bg-green-100 transition-colors";
+    }
+    
+    // Default styling for pending payments
+    return "hover:bg-gray-50 transition-colors";
   };
 
   return (
     <UnifiedTable
+      key={`verifier-deals-${deals.length}`}
       data={deals}
       columns={columns as any}
       loading={isLoading}

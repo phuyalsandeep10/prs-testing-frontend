@@ -4,6 +4,7 @@ export interface Payment {
   receipt_file: string | null;
   payment_remarks: string | null;
   received_amount: string;
+  verified_amount?: string;
   cheque_number: string;
   payment_method: string;
   status: 'pending' | 'verified' | 'rejected';

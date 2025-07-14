@@ -23,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useDealExpanded } from "@/hooks/api/useDeals";
 
 interface ApiResponse {
   count: number;
@@ -140,10 +141,8 @@ const DealsTable: React.FC<DealsTableProps> = ({
   // This ensures expanded payment columns show fresh data after adding payments
   useEffect(() => {
     if (data) {
-      // Clear all cached nested data when main data changes
-      setNestedData({});
-      setNestedLoading({});
-      setNestedError({});
+      // React Query will handle cache invalidation automatically
+      console.log('🔍 [SALESPERSON_DEALS_TABLE] Main deals data updated, React Query will handle cache invalidation');
     }
   }, [data]);
 
@@ -156,68 +155,21 @@ const DealsTable: React.FC<DealsTableProps> = ({
       (deal) =>
         deal.deal_name.toLowerCase().includes(searchLower) ||
         deal.client_name.toLowerCase().includes(searchLower) ||
-        deal.pay_status.toLowerCase().includes(searchLower) ||
+        deal.pay_status?.toLowerCase().includes(searchLower) ||
         deal.source_type.toLowerCase().includes(searchLower)
     );
   }, [data, searchTerm]);
 
-  // Add state for expanded rows and nested data
+  // Add state for expanded rows
   const [internalExpandedRows, setInternalExpandedRows] = useState<
     Record<string, boolean>
   >({});
-  const [nestedData, setNestedData] = useState<Record<string, any[]>>({});
-  const [nestedLoading, setNestedLoading] = useState<Record<string, boolean>>(
-    {}
-  );
-  const [nestedError, setNestedError] = useState<Record<string, string>>({});
 
   // Use external expandedRows if provided, otherwise use internal state
   const expandedRows = externalExpandedRows || internalExpandedRows;
   const setExpandedRows = externalExpandedRows
     ? onExpandedRowsChange || (() => {})
     : setInternalExpandedRows;
-
-  // Function to fetch nested payments for a deal
-  const fetchNestedPayments = async (dealId: string) => {
-    setNestedLoading((prev) => ({ ...prev, [dealId]: true }));
-    setNestedError((prev) => ({ ...prev, [dealId]: undefined }));
-    try {
-      const response = await apiClient.get<any>(
-        `/deals/deals/${dealId}/expand/`
-      );
-
-      const NestedData = response.data;
-
-      // Transform the data: extract payment_history and merge with parent data
-      let transformedData = [];
-      if (
-        NestedData &&
-        NestedData.payment_history &&
-        Array.isArray(NestedData.payment_history)
-      ) {
-        transformedData = NestedData.payment_history.map((payment: any) => ({
-          ...payment,
-          verified_by: NestedData.verified_by,
-          deal_remarks: NestedData.deal_remarks,
-          verifier_remark_status: NestedData.verifier_remark_status,
-          payment_version: NestedData.payment_version,
-          verification_status: NestedData.verification_status,
-        }));
-      }
-
-      setNestedData((prev) => {
-        const newData = { ...prev, [dealId]: transformedData };
-        return newData;
-      });
-    } catch (err: any) {
-      setNestedError((prev) => ({
-        ...prev,
-        [dealId]: err.message || "Error fetching nested data",
-      }));
-    } finally {
-      setNestedLoading((prev) => ({ ...prev, [dealId]: false }));
-    }
-  };
 
   // Handle expand button click
   const handleExpand = useCallback(
@@ -226,16 +178,77 @@ const DealsTable: React.FC<DealsTableProps> = ({
       const newExpandedRows = { ...expandedRows };
       const isExpanded = !newExpandedRows[dealId];
 
-      if (isExpanded) {
-        // Always fetch fresh nested data when expanding to ensure latest payments
-        fetchNestedPayments(dealId);
-      }
-
       newExpandedRows[dealId] = isExpanded;
       setExpandedRows(newExpandedRows);
     },
     [expandedRows, setExpandedRows]
   );
+
+  // Component for expanded row content using React Query
+  const ExpandedRowContent = ({ dealId }: { dealId: string }) => {
+    const { data: nestedData, isLoading, error } = useDealExpanded(dealId);
+
+    if (isLoading) {
+      return (
+        <div className="bg-gray-50 p-4 w-full">
+          <div className="flex items-center justify-center h-32">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading payment details...</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="bg-gray-50 p-4 w-full">
+          <div className="flex items-center justify-center h-32">
+            <div className="text-center">
+              <p className="text-red-600 mb-4">Failed to load payment details</p>
+              <p className="text-gray-600 text-sm">{error.message}</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (!nestedData || nestedData.length === 0) {
+      return (
+        <div className="bg-gray-50 p-4 w-full">
+          <div className="flex items-center justify-center h-32">
+            <div className="text-center">
+              <p className="text-gray-600">No payment history available</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="bg-gray-50 p-4 w-full transition-all duration-500 ease-in-out">
+        <UnifiedTable
+          columns={nestedColumns as ColumnDef<unknown>[]}
+          data={nestedData}
+          config={{
+            features: {
+              pagination: false,
+              sorting: false,
+              filtering: false,
+              selection: false,
+              expansion: false,
+              columnVisibility: false,
+              globalSearch: false,
+            },
+            styling: {
+              variant: "figma",
+            },
+          }}
+        />
+      </div>
+    );
+  };
 
   // Parent table column configuration
   const columns = useMemo(
@@ -265,22 +278,19 @@ const DealsTable: React.FC<DealsTableProps> = ({
         },
       },
       {
-        accessorKey: "Pay Status",
-        header: "Pay Status",
+        accessorKey: "pay_status",
+        header: "Status",
         cell: ({ row }: any) => {
-          const status = row.original;
-          const getStatusColor = () => {
-            switch (status.payment_status.toLowerCase()) {
-              case "full pay":
-                return "bg-[#E6F7FF] text-[#16A34A] px-3 py-1 text-[12px] font-medium rounded-full";
-              case "partial pay":
-                return "bg-[#FFF7ED] text-[#EA580C] px-3 py-1 text-[12px] font-medium rounded-full";
-              default:
-                return "bg-gray-100 text-gray-600 px-3 py-1 text-[12px] font-medium rounded-full";
-            }
-          };
+          const statusRaw = row.original.pay_status; // full_payment | partial_payment
+          const statusLabel = statusRaw === "full_payment" ? "Full Pay" : "Partial Pay";
+          const badgeClass =
+            statusRaw === "full_payment"
+              ? "bg-[#009959] text-[#ffffff]"
+              : "bg-[#FEF3C7] text-[#B45309]";
           return (
-            <span className={getStatusColor()}>{status.payment_status}</span>
+            <span className={`px-3 py-1 text-[12px] font-medium rounded-full ${badgeClass}`}>{
+              statusLabel
+            }</span>
           );
         },
       },
@@ -338,23 +348,38 @@ const DealsTable: React.FC<DealsTableProps> = ({
           if (!payments || payments.length === 0) return "No Payments";
 
           return (
-            <div className="inline-block ">
+            <div className="inline-block">
               {payments.map((p, index) => {
+                const paymentNumber = index === 0 ? "First" : 
+                                    index === 1 ? "Second" : 
+                                    index === 2 ? "Third" : 
+                                    index === 3 ? "Fourth" : 
+                                    index === 4 ? "Fifth" : 
+                                    `${index + 1}th`;
+                
                 const badgeClass = {
-                  verified: "bg-[#009959] text-[#ffffff] rounded-[37.5]",
-                  pending: "bg-[#FEF3C7] text-[#B45309] rounded-[37.5]",
-                  rejected: "bg-[#FFADA8] text-[#F61818] rounded-[37.5]",
+                  verified: "bg-green-500 text-white border-green-600",
+                  pending: "bg-orange-400 text-white border-orange-500",
+                  rejected: "bg-red-500 text-white border-red-600",
                 };
 
+                // Format the payment amount - use verified amount if available, otherwise use received amount
+                const amountToShow = p.verified_amount || p.received_amount;
+                const amount = parseFloat(amountToShow || '0').toLocaleString('en-US', { 
+                  style: 'currency', 
+                  currency: 'USD' 
+                });
+
                 return (
-                  <span
-                    key={index}
-                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border me-2 ${
-                      badgeClass[p.status]
-                    }`}
-                  >
-                    {`verified `}
-                  </span>
+                  <PaymentTooltip key={index} amount={amount}>
+                    <span
+                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border me-2 ${
+                        badgeClass[p.status] || badgeClass.pending
+                      }`}
+                    >
+                      {paymentNumber}
+                    </span>
+                  </PaymentTooltip>
                 );
               })}
             </div>
@@ -394,34 +419,44 @@ const DealsTable: React.FC<DealsTableProps> = ({
       {
         id: "actions",
         header: "Actions",
-        cell: ({ row }: any) => (
-          <div className="flex items-center justify-center gap-1">
-            <button
-              onClick={() => {
-                if (onEditDeal) {
-                  onEditDeal(row.original.deal_id);
-                } else {
-                  router.push(`/salesperson/deal/edit/${row.original.deal_id}`);
-                }
-              }}
-              className="w-6 h-6 rounded-full text-[#4F46E5]  flex items-center justify-center htransition-colors"
-              title="Edit Deal"
-            >
-              <Image src={Edit} alt="edit" className="w-6 h-6" />
-            </button>
-            <button
-              onClick={() => onAddPayment?.(row.original.deal_id)}
-              className="w-6 h-6 rounded-full text-[#22C55E]  flex items-center justify-center transition-colors"
-              title="Add Payment"
-            >
-              <Image src={Add} alt="add" className="w-6 h-6" />
-            </button>
-            <ExpandButton
-              isExpanded={!!expandedRows[row.original.deal_id]}
-              onToggle={() => handleExpand(row)}
-            />
-          </div>
-        ),
+        cell: ({ row }: any) => {
+          // Memoize the main action buttons separately to prevent re-rendering
+          const MainActionButtons = useMemo(() => (
+            <div className="flex items-center justify-center gap-1">
+              <button
+                onClick={() => {
+                  if (onEditDeal) {
+                    onEditDeal(row.original.deal_id);
+                  } else {
+                    router.push(`/salesperson/deal/edit/${row.original.deal_id}`);
+                  }
+                }}
+                className="w-5 h-5 rounded-full text-[#4F46E5] flex items-center justify-center transition-colors hover:bg-gray-100"
+                title="Edit Deal"
+              >
+                <Image src={Edit} alt="edit" className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => onAddPayment?.(row.original.deal_id)}
+                className="w-5 h-5 rounded-full text-[#22C55E] flex items-center justify-center transition-colors hover:bg-gray-100"
+                title="Add Payment"
+              >
+                <Image src={Add} alt="add" className="w-4 h-4" />
+              </button>
+            </div>
+          ), [row.original.deal_id, onEditDeal, onAddPayment, router]);
+
+          // Render expand button separately to prevent it from affecting other buttons
+          return (
+            <div className="flex items-center justify-center gap-1">
+              {MainActionButtons}
+              <ExpandButton
+                isExpanded={!!expandedRows[row.original.deal_id]}
+                onToggle={() => handleExpand(row)}
+              />
+            </div>
+          );
+        },
       },
     ],
     [onEditDeal, onAddPayment, expandedRows, handleExpand]
@@ -557,80 +592,31 @@ const DealsTable: React.FC<DealsTableProps> = ({
     (row: Row<unknown>) => {
       const deal = row.original as Deal;
       const dealId = deal.deal_id;
-
-      // Debug log to check the data shape
-      if (nestedLoading[dealId]) {
-        return (
-          <div className="bg-gray-50 p-4">
-            <div className="border rounded-lg">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    {[...Array(12)].map((_, i) => (
-                      <TableHead key={i}>
-                        <Skeleton className="h-[24px] w-[100px]" />
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {[...Array(2)].map((_, rowIndex) => (
-                    <TableRow key={rowIndex}>
-                      {[...Array(12)].map((_, colIndex) => (
-                        <TableCell key={colIndex}>
-                          <Skeleton className="h-[32px] w-[100px]" />
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        );
-      }
-      if (nestedError[dealId])
-        return <div className="text-red-500 p-4">{nestedError[dealId]}</div>;
-
-      const tableData = nestedData[dealId] || [];
-
-      return (
-        <div className="bg-gray-50 p-4">
-          <UnifiedTable
-            columns={nestedColumns as ColumnDef<unknown>[]}
-            data={tableData}
-            config={{
-              features: {
-                pagination: false,
-                sorting: false,
-                filtering: false,
-                selection: false,
-                expansion: false,
-                columnVisibility: false,
-                globalSearch: false,
-              },
-              styling: {
-                variant: "compact",
-              },
-            }}
-          />
-        </div>
-      );
+      
+      return <ExpandedRowContent dealId={dealId} />;
     },
-    [nestedColumns, nestedData, nestedLoading, nestedError]
+    []
   );
 
-  // making bg red if contains pay 2
+  // Row styling based on payment verification status
   const getRowClassName = (row: Row<Deal>) => {
     const deal = row.original;
-    // Condition 2: There are 2 or more payments, which means "Pay 2" exists
-    const hasPay2 = deal.payments?.length >= 2;
-
-    if (hasPay2) {
-      return "bg-[#FA9898] hover:bg-red-100 transition-colors";
+    const payments = deal.payments || [];
+    
+    // Check if any payment is rejected - make entire row red
+    const hasRejectedPayment = payments.some(payment => payment.status === 'rejected');
+    if (hasRejectedPayment) {
+      return "bg-red-100 hover:bg-red-200 transition-colors";
     }
-
-    return "";
+    
+    // Check if all payments are verified - make row green
+    const allPaymentsVerified = payments.length > 0 && payments.every(payment => payment.status === 'verified');
+    if (allPaymentsVerified) {
+      return "bg-green-50 hover:bg-green-100 transition-colors";
+    }
+    
+    // Default styling for pending payments
+    return "hover:bg-gray-50 transition-colors";
   };
 
   // Use controlled expansion state if provided, otherwise use internal state
@@ -682,8 +668,13 @@ const DealsTable: React.FC<DealsTableProps> = ({
     );
   }
 
+  // Debug logging
+  console.log("DealsTable Debug:");
+  console.log("Filtered data:", filteredData);
+  console.log("Current expanded rows:", currentExpandedRows);
+
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full">
       <UnifiedTable
         columns={columns as ColumnDef<unknown>[]}
         data={filteredData || []}
@@ -692,13 +683,9 @@ const DealsTable: React.FC<DealsTableProps> = ({
         expandedContent={expandedContent}
         expandedRows={currentExpandedRows}
         onExpandedRowsChange={(newExpandedRows) => {
+          console.log("Expanded rows changed:", newExpandedRows);
           setExpandedRows(newExpandedRows);
-          // Fetch data for any newly expanded row (by deal_id)
-          Object.keys(newExpandedRows).forEach((dealId) => {
-            if (newExpandedRows[dealId] && !nestedData[dealId]) {
-              fetchNestedPayments(dealId);
-            }
-          });
+          // React Query will automatically fetch data when ExpandedRowContent is rendered
         }}
         getRowProps={(row: Row<unknown>) => ({
           className: getRowClassName(row as Row<Deal>),
@@ -717,7 +704,6 @@ const DealsTable: React.FC<DealsTableProps> = ({
           pagination: {
             pageSize: 10,
           },
-          getRowId: (row: any) => row.deal_id,
         }}
       />
     </div>

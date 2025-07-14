@@ -82,6 +82,7 @@ export function ReusableTable<TData, NestedData>({
   getNestedData,
   rowClassName,
   expandedRowId,
+  setExpandedRowId,
   isLoading = false,
   error = null,
 }: ReusableTableProps<TData, NestedData>) {

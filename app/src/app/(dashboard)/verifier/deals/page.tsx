@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import pillsButton from "@/assets/icons/pills-button.svg";
 import DealsTable from "@/components/dashboard/verifier/deals/DealsTable";
+import PaymentVerificationModal from "@/components/dashboard/verifier/PaymentVerificationModal";
 import Image from "next/image";
 import DealModal from "@/components/salesperson/Deal/DealModal";
 
@@ -16,6 +17,13 @@ const DealsPage = () => {
     dealId: null as string | null,
     dealData: null as any,
   });
+  
+  // Add state for payment verification modal
+  const [verificationModalState, setVerificationModalState] = useState({
+    isOpen: false,
+    paymentId: null as string | null,
+  });
+  
   const [searchTerm, setSearchTerm] = useState("");
   const actionButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -34,6 +42,27 @@ const DealsPage = () => {
 
   const closeModal = () => {
     setModalState((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  // Add handler for payment verification
+  const handleVerifyPayment = (dealId: string, paymentId: string, status: 'verified' | 'rejected') => {
+    console.log('🔍 [DEALS_PAGE_DEBUG] handleVerifyPayment called:', { dealId, paymentId, status });
+    setVerificationModalState({
+      isOpen: true,
+      paymentId: paymentId,
+    });
+  };
+
+  const closeVerificationModal = () => {
+    setVerificationModalState({
+      isOpen: false,
+      paymentId: null,
+    });
+  };
+
+  const handleVerificationSuccess = () => {
+    // Optionally refetch deals data or show success message
+    console.log('🔍 [DEALS_PAGE_DEBUG] Payment verification successful');
   };
 
   return (
@@ -74,7 +103,10 @@ const DealsPage = () => {
 
       {/* Main Content */}
       <div className="px-8 py-6">
-        <DealsTable searchTerm={searchTerm} />
+        <DealsTable 
+          searchTerm={searchTerm} 
+          onVerifyPayment={handleVerifyPayment}
+        />
       </div>
 
       {/* Unified Deal Modal */}
@@ -85,6 +117,15 @@ const DealsPage = () => {
         mode={modalState.mode}
         dealId={modalState.dealId}
         dealData={modalState.dealData}
+      />
+
+      {/* Payment Verification Modal */}
+      <PaymentVerificationModal
+        isOpen={verificationModalState.isOpen}
+        onOpenChange={closeVerificationModal}
+        mode="verification"
+        paymentId={verificationModalState.paymentId}
+        onVerificationSuccess={handleVerificationSuccess}
       />
     </div>
   );

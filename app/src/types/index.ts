@@ -50,7 +50,7 @@ export interface Team extends BaseEntity {
 }
 
 // ==================== COMMISSION TYPES ====================
-export type Currency = 'NEP' | 'AUD' | 'USD';
+export type Currency = string; // Updated to support all ISO currencies
 
 export interface CommissionData extends BaseEntity {
   fullName: string;
@@ -158,12 +158,25 @@ export interface TableConfig<T> {
 // ==================== NOTIFICATION TYPES ====================
 export interface Notification extends BaseEntity {
   title: string;
-  message?: string;
-  type: 'info' | 'success' | 'warning' | 'error';
-  timestamp: string;
+  message: string;
+  notificationType: 'client_created' | 'deal_created' | 'deal_updated' | 'deal_status_changed' | 'user_created' | 'role_created' | 'team_created' | 'project_created' | 'commission_created' | 'payment_received' | 'new_organization' | 'system_alert';
+  priority: 'low' | 'medium' | 'high' | 'urgent';
+  category: 'business' | 'user_management' | 'system' | 'security';
   isRead: boolean;
-  userId: string;
+  readAt?: string;
+  relatedObjectType?: string;
+  relatedObjectId?: number;
   actionUrl?: string;
+  recipientEmail: string;
+  organizationName?: string;
+}
+
+export interface NotificationStats {
+  totalNotifications: number;
+  unreadCount: number;
+  byType: Record<string, number>;
+  byPriority: Record<string, number>;
+  recentNotifications: Notification[];
 }
 
 export interface NotificationPreferences {
@@ -173,6 +186,16 @@ export interface NotificationPreferences {
   communicationEmails: boolean;
   announcementsUpdates: boolean;
   allNotificationSounds: boolean;
+  // Backend fields
+  enableClientNotifications?: boolean;
+  enableDealNotifications?: boolean;
+  enableUserManagementNotifications?: boolean;
+  enableTeamNotifications?: boolean;
+  enableProjectNotifications?: boolean;
+  enableCommissionNotifications?: boolean;
+  enableSystemNotifications?: boolean;
+  minPriority?: string;
+  autoMarkReadDays?: number;
 }
 
 export interface UserSession extends BaseEntity {

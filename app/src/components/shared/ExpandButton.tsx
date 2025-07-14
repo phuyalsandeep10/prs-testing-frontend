@@ -78,8 +78,6 @@ export default function ExpandButton({
     [onToggle, isExpanded]
   );
 
-  const size = iconSizes[variant];
-
   return (
     <button
       ref={btnRef}

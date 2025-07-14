@@ -5,6 +5,7 @@ import {
   Team, 
   NotificationPreferences,
   UserSession,
+  NotificationStats,
   // Note: Deal type lives in a dedicated module to keep the generic type bundle smaller
   // Importing lazily to avoid circular deps with heavy role definitions
 } from '@/types';
@@ -327,6 +328,85 @@ class ApiClient {
 
   async updateNotificationPreferences(data: Partial<NotificationPreferences>): Promise<ApiResponse<NotificationPreferences>> {
     return this.patch<NotificationPreferences>('/notifications/preferences/', data);
+  }
+
+  // ==================== NOTIFICATION API METHODS ====================
+  async getNotifications(params?: {
+    unread_only?: boolean;
+    type?: string;
+    priority?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<PaginatedResponse<Notification>> {
+    try {
+      return this.getPaginated<Notification>('notifications/', params?.page, params?.limit, params);
+    } catch (error) {
+      console.warn('Notification endpoint not available, returning empty response:', error);
+      return {
+        data: [],
+        pagination: { page: 1, limit: 20, total: 0, totalPages: 0 }
+      };
+    }
+  }
+
+  async getNotificationStats(): Promise<ApiResponse<NotificationStats>> {
+    try {
+      return this.get<NotificationStats>('notifications/stats/');
+    } catch (error) {
+      console.warn('Notification stats endpoint not available, returning empty response:', error);
+      return {
+        data: {
+          totalNotifications: 0,
+          unreadCount: 0,
+          byType: {},
+          byPriority: {},
+          recentNotifications: []
+        },
+        success: true,
+        message: 'Fallback response'
+      };
+    }
+  }
+
+  async getUnreadCount(): Promise<ApiResponse<{ unread_count: number }>> {
+    try {
+      return this.get<{ unread_count: number }>('notifications/unread_count/');
+    } catch (error) {
+      console.warn('Unread count endpoint not available, returning zero:', error);
+      return {
+        data: { unread_count: 0 },
+        success: true,
+        message: 'Fallback response'
+      };
+    }
+  }
+
+  async markNotificationAsRead(id: string): Promise<ApiResponse<{ message: string }>> {
+    try {
+      return this.post<{ message: string }>(`notifications/${id}/mark_as_read/`, {});
+    } catch (error) {
+      console.warn('Mark as read endpoint not available:', error);
+      return {
+        data: { message: 'Operation not supported' },
+        success: false,
+        message: 'Endpoint not available'
+      };
+    }
+  }
+
+  async markNotificationsAsRead(notificationIds?: string[]): Promise<ApiResponse<{ message: string; count: number }>> {
+    try {
+      return this.post<{ message: string; count: number }>('notifications/mark_all_as_read/', {
+        notification_ids: notificationIds || []
+      });
+    } catch (error) {
+      console.warn('Mark all as read endpoint not available:', error);
+      return {
+        data: { message: 'Operation not supported', count: 0 },
+        success: false,
+        message: 'Endpoint not available'
+      };
+    }
   }
 
   // Session Management

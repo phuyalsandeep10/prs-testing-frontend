@@ -3,7 +3,11 @@
 import React, { useMemo, useState, useCallback, useEffect } from "react";
 import { useDealsQuery, useDeleteDeal } from "@/hooks/useDeals";
 import { ColumnDef, Row } from "@tanstack/react-table";
-import { Edit, Plus, ChevronRight, ChevronDown, Trash2 } from "lucide-react";
+import { Edit, Plus, ChevronRight, ChevronDown, X } from "lucide-react";
+import Image from "next/image";
+import EditIcon from "@/assets/icons/edit.svg";
+import AddIcon from "@/assets/icons/add.svg";
+import { apiClient } from "@/lib/api";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,12 +22,21 @@ import {
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { UnifiedTable } from "@/components/core";
-import ExpandButton from "@/components/shared/ExpandButton";
+import ExpandButton from "@/components/dashboard/salesperson/deals/ExpandButton";
 import { useRoleConfig } from "@/hooks/useRoleBasedColumns";
 import { Deal, Payment } from "@/types/deals";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 // Helper function to convert index to ordinal words
 const getOrdinalWord = (index: number): string => {
@@ -107,66 +120,331 @@ const DealsTable: React.FC<DealsTableProps> = ({
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const roleConfig = useRoleConfig();
 
-  const handleRowExpand = useCallback((rowId: string) => {
-    setExpandedRows((prev) => ({
-      ...prev,
-      [rowId]: !prev[rowId],
-    }));
+  // Add state for nested data
+  const [nestedData, setNestedData] = useState<Record<string, any[]>>({});
+  const [nestedLoading, setNestedLoading] = useState<Record<string, boolean>>({});
+  const [nestedError, setNestedError] = useState<Record<string, string>>({});
+
+  // Function to fetch nested payments for a deal
+  const fetchNestedPayments = useCallback(async (dealId: string) => {
+    setNestedLoading((prev) => ({ ...prev, [dealId]: true }));
+    setNestedError((prev) => ({ ...prev, [dealId]: undefined }));
+    try {
+      const response = await apiClient.get<any>(
+        `/deals/deals/${dealId}/expand/`
+      );
+
+      const NestedData = response.data;
+
+      // Transform the data: extract payment_history (no need to merge since fields are already included)
+      let transformedData = [];
+      if (
+        NestedData &&
+        NestedData.payment_history &&
+        Array.isArray(NestedData.payment_history)
+      ) {
+        transformedData = NestedData.payment_history;
+      }
+
+      setNestedData((prev) => {
+        const newData = { ...prev, [dealId]: transformedData };
+        return newData;
+      });
+    } catch (err: any) {
+      setNestedError((prev) => ({
+        ...prev,
+        [dealId]: err.message || "Error fetching nested data",
+      }));
+    } finally {
+      setNestedLoading((prev) => ({ ...prev, [dealId]: false }));
+    }
   }, []);
 
-  // Expanded content renderer
-  const renderExpandedContent = (row: any) => {
-    const payments = row.original.payments || [];
+  // Handle expand button click
+  const handleExpand = useCallback(
+    (row: any) => {
+      const dealId = row.original.deal_id || row.original.id;
+      const isExpanded = !expandedRows[dealId];
+
+      if (isExpanded) {
+        // Always fetch fresh nested data when expanding to ensure latest payments
+        fetchNestedPayments(dealId);
+      }
+
+      setExpandedRows(prev => ({
+        ...prev,
+        [dealId]: isExpanded
+      }));
+    },
+    [expandedRows, fetchNestedPayments]
+  );
+
+  // Listen for payment status updates and clear nested data cache
+  useEffect(() => {
+    const handlePaymentUpdate = (event: CustomEvent) => {
+      const { dealId, action, status } = event.detail;
+      console.log('🔍 [ORG_ADMIN_DEALS_TABLE] Payment status updated:', { dealId, action, status });
+      
+      // Clear nested data cache for the specific deal
+      if (dealId) {
+        setNestedData(prev => {
+          const newData = { ...prev };
+          delete newData[dealId];
+          return newData;
+        });
+        
+        // If the deal is currently expanded, refetch the data
+        if (expandedRows[dealId]) {
+          fetchNestedPayments(dealId);
+        }
+      } else {
+        // If no specific dealId, clear all nested data cache
+        setNestedData({});
+        setNestedLoading({});
+        setNestedError({});
+      }
+    };
+
+    window.addEventListener('paymentStatusUpdated', handlePaymentUpdate as EventListener);
     
-    return (
-      <div className="p-4 bg-gray-50 border-t">
-        <h4 className="font-semibold text-gray-900 mb-3">Payment Details</h4>
-        {payments.length === 0 ? (
-          <p className="text-gray-500">No payments found for this deal</p>
-        ) : (
-          <div className="space-y-3">
-            {payments.map((payment: Payment, index: number) => (
-              <div key={payment.id} className="bg-white p-3 rounded-lg border">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium text-gray-700">Amount:</span>
-                    <div className="text-gray-900">${payment.received_amount}</div>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Method:</span>
-                    <div className="text-gray-900">{payment.payment_method || 'N/A'}</div>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Status:</span>
-                    <span className={cn(
-                      "px-2 py-1 rounded-full text-xs font-medium",
-                      payment.status === "verified" ? "bg-green-100 text-green-700" :
-                      payment.status === "rejected" ? "bg-red-100 text-red-700" :
-                      "bg-yellow-100 text-yellow-700"
-                    )}>
-                      {payment.status || row.original.verification_status}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-700">Date:</span>
-                    <div className="text-gray-900">
-                      {payment.payment_date ? format(new Date(payment.payment_date), "MMM d, yyyy") : 'N/A'}
-                    </div>
-                  </div>
-                </div>
-                {payment.payment_remarks && (
-                  <div className="mt-2 pt-2 border-t">
-                    <span className="font-medium text-gray-700">Remarks:</span>
-                    <div className="text-gray-900 text-sm">{payment.payment_remarks}</div>
-                  </div>
-                )}
-              </div>
-            ))}
+    return () => {
+      window.removeEventListener('paymentStatusUpdated', handlePaymentUpdate as EventListener);
+    };
+  }, [expandedRows, fetchNestedPayments]);
+
+  // Nested columns for payment details
+  const nestedColumns: ColumnDef<any>[] = useMemo(
+    () => [
+      {
+        accessorKey: "payment_serial",
+        header: "Payment",
+        cell: ({ row }) => {
+          return <div>{row.original.payment_serial}</div>;
+        },
+      },
+      {
+        accessorKey: "payment_date",
+        header: "Payment Date",
+        cell: ({ row }) => {
+          const paymentDate = row.original.payment_date;
+          const formattedDate = new Date(paymentDate).toLocaleDateString(
+            "en-US",
+            {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            }
+          );
+          return <span>{formattedDate}</span>;
+        },
+      },
+      {
+        accessorKey: "created_at",
+        header: "Payment Created",
+        cell: ({ row }) => {
+          const createdDate = row.original.created_at;
+          const formattedDate = new Date(createdDate).toLocaleDateString(
+            "en-US",
+            {
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            }
+          );
+          return <span>{formattedDate}</span>;
+        },
+      },
+      {
+        accessorKey: "payment_value",
+        header: "Payment Value",
+        cell: ({ row }) => {
+          return <div>${row.original.payment_value}</div>;
+        },
+      },
+      {
+        accessorKey: "payment_version",
+        header: "Payment Version",
+        cell: ({ row }) => {
+          return (
+            <span className="px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-600">
+              {row.original.payment_version}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "verification_status",
+        header: "Payment Status",
+        cell: ({ row }) => {
+          const status = row.original.verification_status;
+          let badgeClass = "px-2 py-1 text-xs font-medium rounded";
+          
+          switch (status) {
+            case 'verified':
+              badgeClass += " bg-green-100 text-green-800 border border-green-200";
+              break;
+            case 'rejected':
+              badgeClass += " bg-red-100 text-red-800 border border-red-200";
+              break;
+            case 'pending':
+            default:
+              badgeClass += " bg-yellow-100 text-yellow-800 border border-yellow-200";
+              break;
+          }
+          
+          return (
+            <span className={badgeClass}>
+              {status?.charAt(0).toUpperCase() + status?.slice(1) || 'Pending'}
+            </span>
+          );
+        },
+      },
+      {
+        accessorKey: "receipt_link",
+        header: "Receipt Link",
+        cell: ({ row }) => {
+          const receiptLink = row.original.receipt_link;
+          if (receiptLink) {
+            return (
+              <a
+                href={receiptLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline"
+              >
+                View Receipt
+              </a>
+            );
+          }
+          return <div>No receipt</div>;
+        },
+      },
+      {
+        accessorKey: "verified_by",
+        header: "Verified By",
+        cell: ({ row }) => {
+          const verifiedBy = row.original.verified_by;
+          const status = row.original.verification_status;
+          
+          let textClass = "text-sm";
+          if (status === 'verified') {
+            textClass += " text-green-600 font-medium";
+          } else if (status === 'rejected') {
+            textClass += " text-red-600 font-medium";
+          } else {
+            textClass += " text-gray-500";
+          }
+          
+          return (
+            <div className={textClass}>
+              {verifiedBy || 'Not verified yet'}
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "deal_remarks",
+        header: "Remarks",
+        cell: ({ row }) => {
+          return <div>{row.original.deal_remarks || "N/A"}</div>;
+        },
+      },
+      {
+        accessorKey: "verifier_remark_status",
+        header: "Verifier Remark",
+        cell: ({ row }) => {
+          const remarkStatus = row.original.verifier_remark_status;
+          const status = row.original.verification_status;
+          
+          let badgeClass = "px-2 py-1 text-xs font-medium rounded";
+          if (remarkStatus === 'yes' || status === 'verified') {
+            badgeClass += " bg-green-100 text-green-800 border border-green-200";
+          } else if (status === 'rejected') {
+            badgeClass += " bg-red-100 text-red-800 border border-red-200";
+          } else {
+            badgeClass += " bg-gray-100 text-gray-600 border border-gray-200";
+          }
+          
+          const displayText = remarkStatus === 'yes' ? 'Verified' : 
+                             status === 'rejected' ? 'Rejected' : 'Pending';
+          
+          return (
+            <span className={badgeClass}>
+              {displayText}
+            </span>
+          );
+        },
+      },
+    ],
+    []
+  );
+
+  // Expanded content renderer
+  const renderExpandedContent = useCallback(
+    (row: Row<unknown>) => {
+      const deal = row.original as Deal;
+      const dealId = deal.deal_id || deal.id;
+
+      if (nestedLoading[dealId]) {
+        return (
+          <div className="bg-gray-50 p-4 w-full transition-all duration-500 ease-in-out">
+            <div className="border rounded-lg w-full">
+              <Table className="w-full">
+                <TableHeader>
+                  <TableRow>
+                    {[...Array(12)].map((_, i) => (
+                      <TableHead key={i}>
+                        <Skeleton className="h-[24px] w-[100px]" />
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[...Array(2)].map((_, rowIndex) => (
+                    <TableRow key={rowIndex}>
+                      {[...Array(12)].map((_, colIndex) => (
+                        <TableCell key={colIndex}>
+                          <Skeleton className="h-[32px] w-[100px]" />
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </div>
-        )}
-      </div>
-    );
-  };
+        );
+      }
+      if (nestedError[dealId])
+        return <div className="text-red-500 p-4">{nestedError[dealId]}</div>;
+
+      const tableData = nestedData[dealId] || [];
+
+      return (
+        <div className="bg-gray-50 p-4 w-full transition-all duration-500 ease-in-out">
+          <UnifiedTable
+            columns={nestedColumns as ColumnDef<unknown>[]}
+            data={tableData}
+            config={{
+              features: {
+                pagination: false,
+                sorting: false,
+                filtering: false,
+                selection: false,
+                expansion: false,
+                columnVisibility: false,
+                globalSearch: false,
+              },
+              styling: {
+                variant: "figma",
+              },
+            }}
+          />
+        </div>
+      );
+    },
+    [nestedColumns, nestedData, nestedLoading, nestedError]
+  );
 
   const columns: ColumnDef<Deal>[] = useMemo(
     () => [
@@ -199,10 +477,10 @@ const DealsTable: React.FC<DealsTableProps> = ({
           const statusLabel = statusRaw === "full_payment" ? "Full Pay" : "Partial Pay";
           const badgeClass =
             statusRaw === "full_payment"
-              ? "bg-green-100 text-green-700"
-              : "bg-yellow-100 text-yellow-700";
+              ? "bg-[#009959] text-[#ffffff]"
+              : "bg-[#FEF3C7] text-[#B45309]";
           return (
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${badgeClass}`}>{
+            <span className={`px-3 py-1 text-[12px] font-medium rounded-full ${badgeClass}`}>{
               statusLabel
             }</span>
           );
@@ -246,45 +524,41 @@ const DealsTable: React.FC<DealsTableProps> = ({
         header: "Payment",
         cell: ({ row }) => {
           const payments = row.original.payments || [];
-          const dealStatus = row.original.verification_status;
-          
-          // If no payments exist, show deal status
-          if (payments.length === 0) {
-            const statusColor = 
-              dealStatus === "verified" ? "text-green-600" :
-              dealStatus === "rejected" ? "text-red-600" : 
-              "text-orange-500"; // pending = orange
-            
-            return (
-              <div className="flex gap-1">
-                <span className={`text-xs font-semibold ${statusColor}`}>
-                  First
-                </span>
-              </div>
-            );
-          }
-          
-          // If payments exist, show them with proper status colors
+          if (!payments || payments.length === 0) return "No Payments";
+
           return (
-            <div className="flex gap-1">
-              {payments.slice(0, 2).map((p: Payment, idx: number) => {
-                // Determine payment status - if payment has status, use it; otherwise use deal status
-                const paymentStatus = p.status || dealStatus;
-                const statusColor = 
-                  paymentStatus === "verified" ? "text-green-600" :
-                  paymentStatus === "rejected" ? "text-red-600" : 
-                  "text-orange-500"; // pending = orange
+            <div className="inline-block">
+              {payments.map((p: Payment, index: number) => {
+                const paymentNumber = index === 0 ? "First" : 
+                                    index === 1 ? "Second" : 
+                                    index === 2 ? "Third" : 
+                                    index === 3 ? "Fourth" : 
+                                    index === 4 ? "Fifth" : 
+                                    `${index + 1}th`;
                 
+                const badgeClass = {
+                  verified: "bg-green-500 text-white border-green-600",
+                  pending: "bg-orange-400 text-white border-orange-500",
+                  rejected: "bg-red-500 text-white border-red-600",
+                };
+
+                // Format the payment amount - use verified amount if available, otherwise use received amount
+                const amountToShow = p.verified_amount || p.received_amount;
+                const amount = parseFloat(amountToShow || '0').toLocaleString('en-US', { 
+                  style: 'currency', 
+                  currency: 'USD' 
+                });
+
                 return (
-                  <span
-                    key={p.id}
-                    className={cn(
-                      "text-xs font-semibold",
-                      statusColor
-                    )}
-                  >
-                    {idx === 0 ? "First" : "Second"}
-                  </span>
+                  <PaymentTooltip key={p.id} amount={amount}>
+                    <span
+                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border me-2 ${
+                        badgeClass[p.status] || badgeClass.pending
+                      }`}
+                    >
+                      {paymentNumber}
+                    </span>
+                  </PaymentTooltip>
                 );
               })}
             </div>
@@ -337,95 +611,108 @@ const DealsTable: React.FC<DealsTableProps> = ({
       {
         id: "actions",
         header: "Actions",
-        cell: ({ row }) => (
-          <div className="flex gap-2">
-            <Button
-              size="icon"
-              variant="outline"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleRowExpand(row.id);
-              }}
-              title={expandedRows[row.id] ? "Collapse" : "Expand"}
-            >
-              {expandedRows[row.id] ? (
-                <ChevronDown className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
+        cell: ({ row }) => {
+          // Memoize the main action buttons separately to prevent re-rendering
+          const MainActionButtons = useMemo(() => (
+            <div className="flex items-center justify-center gap-1">
+              {roleConfig.allowedActions.includes('edit') && (
+                <button
+                  onClick={() => onEditDeal?.(row.original.id)}
+                  className="w-5 h-5 rounded-full text-[#4F46E5] flex items-center justify-center transition-colors hover:bg-gray-100"
+                  title="Edit Deal"
+                >
+                  <Image src={EditIcon} alt="edit" className="w-4 h-4" />
+                </button>
               )}
-            </Button>
-            {roleConfig.allowedActions.includes('edit') && (
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={() => onEditDeal?.(row.original.id)}
-              >
-                <Edit className="h-4 w-4" />
-              </Button>
-            )}
-            {roleConfig.allowedActions.includes('addPayment') && (
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={() => onAddPayment?.(row.original.id)}
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            )}
-            {roleConfig.allowedActions.includes('delete') && (
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    size="icon"
-                    variant="outline"
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete the deal
-                      "{row.original.deal_name}".
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction 
-                      onClick={async () => {
-                        try {
-                          await deleteDealMutation.mutateAsync(row.original.id);
-                          toast.success("Deal deleted successfully!");
-                        } catch (error: any) {
-                          toast.error(error.message || "Failed to delete deal");
-                        }
-                      }}
-                      className="bg-red-600 hover:bg-red-700"
+              {roleConfig.allowedActions.includes('addPayment') && (
+                <button
+                  onClick={() => onAddPayment?.(row.original.id)}
+                  className="w-5 h-5 rounded-full text-[#22C55E] flex items-center justify-center transition-colors hover:bg-gray-100"
+                  title="Add Payment"
+                >
+                  <Image src={AddIcon} alt="add" className="w-4 h-4" />
+                </button>
+              )}
+              {roleConfig.allowedActions.includes('delete') && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button
+                      className="w-5 h-5 rounded-full text-red-600 flex items-center justify-center transition-colors hover:bg-gray-100"
+                      title="Delete Deal"
                     >
-                      Continue
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            )}
-          </div>
-        ),
+                      <X className="w-4 h-4" />
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete the deal
+                        "{row.original.deal_name}".
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        onClick={async () => {
+                          try {
+                            await deleteDealMutation.mutateAsync(row.original.id);
+                            toast.success("Deal deleted successfully!");
+                          } catch (error: any) {
+                            toast.error(error.message || "Failed to delete deal");
+                          }
+                        }}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        Continue
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
+          ), [row.original.id, row.original.deal_name, roleConfig.allowedActions, onEditDeal, onAddPayment, deleteDealMutation]);
+
+          // Render expand button separately to prevent it from affecting other buttons
+          return (
+            <div className="flex items-center justify-center gap-1">
+              {MainActionButtons}
+              <ExpandButton
+                isExpanded={!!expandedRows[row.id]}
+                onToggle={() => handleExpand(row)}
+              />
+            </div>
+          );
+        },
       },
     ],
-    [onEditDeal, onAddPayment, roleConfig.allowedActions, expandedRows, handleRowExpand]
+    [onEditDeal, onAddPayment, roleConfig.allowedActions, handleExpand]
   );
 
-  // Get row className for styling
+  // Row styling based on payment verification status
   const getRowClassName = (row: Row<Deal>) => {
-    const payments = row.original.payments as Payment[] | undefined;
-    const hasRejected = payments?.some((p) => p.status === "rejected");
-    return hasRejected ? "bg-red-50" : "";
+    const deal = row.original;
+    const payments = deal.payments || [];
+    
+    // Check if any payment is rejected - make entire row red
+    const hasRejectedPayment = payments.some(payment => payment.status === 'rejected');
+    if (hasRejectedPayment) {
+      return "bg-red-100 hover:bg-red-200 transition-colors";
+    }
+    
+    // Check if all payments are verified - make row green
+    const allPaymentsVerified = payments.length > 0 && payments.every(payment => payment.status === 'verified');
+    if (allPaymentsVerified) {
+      return "bg-green-50 hover:bg-green-100 transition-colors";
+    }
+    
+    // Default styling for pending payments
+    return "hover:bg-gray-50 transition-colors";
   };
 
   return (
     <UnifiedTable
+      key={`org-admin-deals-${deals.length}`}
       data={deals}
       columns={columns as any}
       loading={isLoading}

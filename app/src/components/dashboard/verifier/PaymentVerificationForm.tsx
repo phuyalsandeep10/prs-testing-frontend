@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -57,7 +57,7 @@ interface PaymentVerificationFormProps {
   mode?: "verification" | "view" | "edit";
   paymentId?: string | number;
   invoiceData?: any;
-  onSave?: (data: PaymentVerificationData) => void;
+  onSave?: (data: PaymentVerificationData & { action?: string; success?: boolean; paymentId?: string }) => void;
   onCancel?: () => void;
 }
 
@@ -101,21 +101,15 @@ function getErrorMessage(error: any): string | null {
     queryKey: ['payment-verifier-form', invoiceId],
     queryFn: async () => {
       if (!invoiceId) return null;
-      console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] Making API call to:', `/verifier/verifier-form/${invoiceId}/`);
-      try {
-        const response = await apiClient.get<any>(`/verifier/verifier-form/${invoiceId}/`);
-        console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] API response:', response);
-        console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] API response type:', typeof response);
-        console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] API response keys:', response ? Object.keys(response) : 'No response');
-        return response;
-      } catch (error) {
-        console.error('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] API call failed:', error);
-        throw error;
-      }
+      const response = await apiClient.get<any>(`/verifier/verifier-form/${invoiceId}/`);
+      return response;
     },
     enabled: !!invoiceId,
     retry: 1,
   });
+
+  // Create a memoized schema that updates when currentAction changes
+  const validationSchema = useMemo(() => createSchema(currentAction), [currentAction]);
 
   const {
     register,
@@ -128,9 +122,11 @@ function getErrorMessage(error: any): string | null {
     setError,
     clearErrors,
   } = useForm<PaymentVerificationData>({
-    resolver: zodResolver(createSchema(currentAction)),
+    resolver: zodResolver(validationSchema),
     mode: "onSubmit",
   });
+
+
 
   // Populate form when payment data is loaded
   useEffect(() => {
@@ -154,12 +150,19 @@ function getErrorMessage(error: any): string | null {
     }
   }, [paymentData, isLoadingPayment, reset]);
 
+  // Re-validate form when currentAction changes
+  useEffect(() => {
+    trigger(); // Re-validate all fields when action changes
+  }, [currentAction, trigger]);
+
   // Use standardized hook for payment verification
   const updatePaymentStatusMutation = useUpdatePaymentStatus();
 
-  const onSubmit = async (data: PaymentVerificationData) => {
+  // Separate submit function that doesn't go through form handleSubmit
+  const submitPayment = async (data: PaymentVerificationData, action: "verify" | "deny" | "refund") => {
     try {
-      // Use the payment ID from the fetched data
+      console.log('🔍 [DEBUG] submitPayment called with action:', action);
+      setIsSubmitting(true);
       const paymentId = paymentData?.payment?.id || invoiceId;
       
       if (!paymentId) {
@@ -167,23 +170,31 @@ function getErrorMessage(error: any): string | null {
         return;
       }
       
-      // Create FormData for the backend (expects form data, not JSON)
+      // Create FormData for the backend
       const formData = new FormData();
-      formData.append('invoice_status', currentAction === "verify" ? "verified" : "rejected");
+      formData.append('invoice_status', action === "verify" ? "verified" : "rejected");
       formData.append('verifier_remarks', data.verifierRemarks || '');
       formData.append('amount_in_invoice', data.amountInInvoice || '0');
       
-      // Submit to the verifier form endpoint using FormData
-      const response = await apiClient.upload<any>(`/verifier/verifier-form/${paymentId}/`, formData);
+      // Add failure_remarks for denied payments
+      if (action === "deny" && data.refundReason) {
+        formData.append('failure_remarks', data.refundReason);
+      }
       
-      console.log("Payment verification submitted successfully", response);
+      console.log('🔍 [DEBUG] Submitting with action:', action);
+      console.log('🔍 [DEBUG] FormData invoice_status:', action === "verify" ? "verified" : "rejected");
+      
+      const response = await apiClient.upload<any>(`/verifier/verifier-form/${paymentId}/`, formData);
+      console.log('🔍 [DEBUG] Backend response:', response);
+      
       reset();
       
-      // Show success notification
-      const actionText = currentAction === "verify" ? "verified" : "rejected";
+      // Show success notification based on the backend response
+      const actualStatus = response?.status || action === "verify" ? "verified" : "rejected";
+      const actionText = actualStatus === "verified" ? "verified" : "rejected";
       await Swal.fire({
         icon: "success",
-        title: "Payment Verification Successful!",
+        title: `Payment ${actionText.charAt(0).toUpperCase() + actionText.slice(1)}!`,
         text: `Payment has been ${actionText} successfully.`,
         timer: 2000,
         showConfirmButton: false,
@@ -192,30 +203,99 @@ function getErrorMessage(error: any): string | null {
       // Invalidate and refetch relevant queries to update the UI
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['invoices'] }),
-        queryClient.invalidateQueries({ queryKey: ['deals'] }),
         queryClient.invalidateQueries({ queryKey: ['verification-queue'] }),
         queryClient.invalidateQueries({ queryKey: ['payment-verifier-form', invoiceId] }),
+        
+        // Invalidate all deals-related queries with different patterns
+        queryClient.invalidateQueries({ queryKey: ['deals'] }),
         queryClient.invalidateQueries({ predicate: (query) => 
-          query.queryKey[0] === 'deals' || 
-          query.queryKey[0] === 'invoices' ||
-          query.queryKey.includes('verification')
+          Array.isArray(query.queryKey) && 
+          query.queryKey[0] === 'deals'
         }),
-      ]);
+        
+        // Invalidate specific deals query patterns used by different tables
+        queryClient.invalidateQueries({ predicate: (query) => 
+          Array.isArray(query.queryKey) && 
+          query.queryKey.length >= 2 && 
+          query.queryKey[0] === 'deals' && 
+          typeof query.queryKey[1] === 'string'
+        }),
+        
+        queryClient.invalidateQueries({ predicate: (query) => 
+          Array.isArray(query.queryKey) && 
+          query.queryKey.length >= 2 && 
+          query.queryKey[0] === 'deals' && 
+          typeof query.queryKey[1] === 'object'
+        }),
+        
+        // Invalidate any query that includes 'deals' in the key
+        queryClient.invalidateQueries({ predicate: (query) => 
+          Array.isArray(query.queryKey) && 
+          query.queryKey.includes('deals')
+        }),
+        
+        // Invalidate any cached data for the specific deal's expand endpoint
+        queryClient.invalidateQueries({ predicate: (query) => 
+          Array.isArray(query.queryKey) && 
+          query.queryKey.some(key => 
+            typeof key === 'string' && 
+            key.includes('expand')
+          )
+        }),
+        
+        // Invalidate React Query keys for expanded deal data
+        queryClient.invalidateQueries({ predicate: (query) => 
+          Array.isArray(query.queryKey) && 
+          query.queryKey.length >= 3 && 
+          query.queryKey[0] === 'deals' && 
+          query.queryKey[1] === 'detail' && 
+          query.queryKey[3] === 'expanded'
+        }),
+              ]);
+      
+      // Force refetch all deals queries to ensure immediate update
+      await Promise.all([
+        queryClient.refetchQueries({ predicate: (query) => 
+          Array.isArray(query.queryKey) && 
+          query.queryKey[0] === 'deals'
+        }),
+        queryClient.refetchQueries({ predicate: (query) => 
+          Array.isArray(query.queryKey) && 
+          query.queryKey.includes('deals')
+        }),
+              ]);
+      
+      // Dispatch custom event to notify all deals tables to clear their nested data cache
+      const paymentUpdateEvent = new CustomEvent('paymentStatusUpdated', {
+        detail: {
+          paymentId: paymentId,
+          dealId: paymentData?.deal?.id,
+          action: action,
+          status: action === "verify" ? "verified" : "rejected"
+        }
+      });
+      window.dispatchEvent(paymentUpdateEvent);
       
       if (onSave) {
-        onSave(data);
+        onSave({
+          ...data,
+          action: action,
+          success: true,
+          paymentId: paymentId
+        });
       }
     } catch (error) {
-      console.error("Submission failed:", error);
-      
-      // Show error notification
       await Swal.fire({
         icon: "error",
         title: "Verification Failed",
         text: error instanceof Error ? error.message : "An error occurred during verification.",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+
 
   const handleClear = () => {
     if (mode === "view") return;
@@ -236,17 +316,9 @@ function getErrorMessage(error: any): string | null {
 
   const isViewMode = mode === "view";
 
-  // Debug logging
-  console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] ===== PAYMENT VERIFICATION FORM DEBUG =====');
-  console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] paymentId:', invoiceId);
-  console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] mode:', mode);
-  console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] paymentData:', paymentData);
-  console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] paymentData type:', typeof paymentData);
-  console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] paymentData keys:', paymentData ? Object.keys(paymentData) : 'No data');
-  console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] isLoadingPayment:', isLoadingPayment);
-  console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] paymentError:', paymentError);
-  console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] Query enabled:', !!invoiceId);
-  console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] ===========================================');
+  // Debug logging (commented out for production)
+  // console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] paymentId:', invoiceId);
+  // console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] paymentData:', paymentData);
 
   // Show loading state while fetching payment data
   if (isLoadingPayment) {
@@ -281,7 +353,7 @@ function getErrorMessage(error: any): string | null {
   }
 
   return (
-    <form className="h-full w-full flex flex-col overflow-hidden" onSubmit={handleSubmit(onSubmit)}>
+    <form className="h-full w-full flex flex-col overflow-hidden">
       <div className="flex-1 p-6 overflow-auto">
         <div className="flex flex-col gap-6 lg:gap-1 lg:flex-row lg:mt-3">
           <div className="div1 w-full flex-1">
@@ -594,15 +666,14 @@ function getErrorMessage(error: any): string | null {
                     disabled={isViewMode}
                     options={[
                       {
-                        value: "Insufficient Funds",
+                        value: "insufficient_funds",
                         label: "Insufficient Funds",
                       },
-                      { value: "Invalid Card", label: "Invalid Card" },
-                      { value: "Bank Decline", label: "Bank Decline" },
-                      { value: "Technical Error", label: "Technical Error" },
-                      { value: "Cheque Bounce", label: "Cheque Bounce" },
+                      { value: "bank_decline", label: "Bank Decline" },
+                      { value: "technical_error", label: "Technical Error" },
+                      { value: "cheque_bounce", label: "Cheque Bounce" },
                       {
-                        value: "Payment Received but Not Reflected",
+                        value: "payment_received_not_reflected",
                         label: "Payment Received but Not Reflected",
                       },
                     ]}
@@ -644,19 +715,82 @@ function getErrorMessage(error: any): string | null {
         <div className="flex gap-4">
           <Button
             variant="destructive"
-            onClick={() => setCurrentAction("deny")}
+            onClick={async () => {
+              console.log('🔍 [DEBUG] Deny button clicked, setting currentAction to "deny"');
+              setCurrentAction("deny");
+              console.log('🔍 [DEBUG] After setCurrentAction("deny"), currentAction should be "deny"');
+              
+              // Add a small delay to ensure state update
+              await new Promise(resolve => setTimeout(resolve, 0));
+              
+              console.log('🔍 [DEBUG] After delay, currentAction is:', currentAction);
+              setIsSubmitting(true);
+              
+              try {
+                const formValues = getValues();
+                console.log('🔍 [DEBUG] Form values:', formValues);
+                
+                // Check if required fields are filled
+                if (!formValues.verifierRemarks) {
+                  setError("verifierRemarks", { message: "Verifier remarks is required" });
+                  setIsSubmitting(false);
+                  return;
+                }
+                
+                if (!formValues.amountInInvoice) {
+                  setError("amountInInvoice", { message: "Amount in invoice is required" });
+                  setIsSubmitting(false);
+                  return;
+                }
+                
+                if (!formValues.refundReason) {
+                  setError("refundReason", { message: "Refund reason is required" });
+                  setIsSubmitting(false);
+                  return;
+                }
+                
+                console.log('🔍 [DEBUG] About to call submitPayment with action: deny');
+                await submitPayment(formValues, "deny");
+              } catch (error) {
+                setIsSubmitting(false);
+              }
+            }}
             className="h-[48px] w-[142px]"
             disabled={isViewMode || isSubmitting}
-            type="submit"
+            type="button"
           >
             {isSubmitting ? "Denying..." : "Deny"}
           </Button>
           <Button
             variant="default"
-            onClick={() => setCurrentAction("verify")}
+            onClick={async () => {
+              setCurrentAction("verify");
+              setIsSubmitting(true);
+              
+              try {
+                const formValues = getValues();
+                
+                // Check if required fields are filled
+                if (!formValues.verifierRemarks) {
+                  setError("verifierRemarks", { message: "Verifier remarks is required" });
+                  setIsSubmitting(false);
+                  return;
+                }
+                
+                if (!formValues.amountInInvoice) {
+                  setError("amountInInvoice", { message: "Amount in invoice is required" });
+                  setIsSubmitting(false);
+                  return;
+                }
+                
+                await submitPayment(formValues, "verify");
+              } catch (error) {
+                setIsSubmitting(false);
+              }
+            }}
             className="h-[48px] w-[142px]"
             disabled={isViewMode || isSubmitting}
-            type="submit"
+            type="button"
           >
             {isSubmitting ? "Verifying..." : "Verify"}
           </Button>

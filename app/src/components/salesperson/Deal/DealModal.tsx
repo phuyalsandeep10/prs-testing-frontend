@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import SlideModal from "@/components/ui/SlideModal";
 import DealForm from "./DealForm";
@@ -8,6 +8,7 @@ import AddPayment from "./AddPayment";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { X } from "lucide-react";
 
 
 
@@ -179,6 +180,13 @@ const DealModal: React.FC<DealModalProps> = ({
     return "xl";
   };
 
+  const getModalSize = () => {
+    if (mode === "payment") {
+      return "max-w-lg";
+    }
+    return "max-w-4xl";
+  };
+
   if (mode === "payment") {
     return (
       <SlideModal
@@ -188,41 +196,31 @@ const DealModal: React.FC<DealModalProps> = ({
         width={getModalWidth()}
         showCloseButton={true}
       >
-        <div
-          className={`p-0 bg-white border shadow-xl ${getModalSize()} rounded-lg overflow-hidden flex flex-col z-[100000]`}
-          style={{
-            position: "relative",
-            zIndex: 100000,
-            margin: 0,
-          }}
-        >
-          <div className="px-6 py-4 bg-white border-b border-gray-100">
-            <div className="flex items-center justify-between">
-              <h1 className="text-[24px] font-semibold text-[#4F46E5]">
-                ADD PAYMENT
-              </h1>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onOpenChange(false)}
-                className="h-8 w-8 p-0 hover:bg-gray-100 text-gray-400 rounded-full"
-                disabled={isSubmitting}
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-          </div>
-
-          <div className="flex-1">
-            <AddPayment
-              dealId={dealId}
-              onSave={handlePaymentSave}
-              onCancel={handleCancel}
-            />
+        <div className="px-6 py-4 bg-white border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <h1 className="text-[24px] font-semibold text-[#4F46E5]">
+              ADD PAYMENT
+            </h1>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+              className="h-8 w-8 p-0 hover:bg-gray-100 text-gray-400 rounded-full"
+              disabled={isSubmitting}
+            >
+              <X className="h-5 w-5" />
+            </Button>
           </div>
         </div>
-      </div>,
-      document.body
+
+        <div className="flex-1">
+          <AddPayment
+            dealId={dealId}
+            onSave={handlePaymentSave}
+            onCancel={handleCancel}
+          />
+        </div>
+      </SlideModal>
     );
   }
 
@@ -234,47 +232,37 @@ const DealModal: React.FC<DealModalProps> = ({
       width={getModalWidth()}
       showCloseButton={true}
     >
-      <div
-        className={`p-0 bg-white border shadow-xl ${getModalSize()} rounded-lg overflow-hidden flex flex-col z-[100000]`}
-        style={{
-          position: "relative",
-          zIndex: 100000,
-          margin: 0,
-        }}
-      >
-        <div className="px-6 py-4 border-b border-gray-200 bg-white">
-          <div className="flex items-center justify-between">
-            <h1 className="text-[20px] font-semibold text-[#465FFF]">
-              {getTitle()}
-            </h1>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-              className="h-8 w-8 p-0 hover:bg-gray-100 text-gray-500"
-              disabled={isSubmitting}
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Modal Content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-auto">
-            <DealForm
-              ref={dealFormRef}
-              mode={mode}
-              dealId={dealId}
-              onSave={handleSave}
-              onCancel={handleCancel}
-              isSubmitting={isSubmitting}
-            />
-          </div>
+      <div className="px-6 py-4 border-b border-gray-200 bg-white">
+        <div className="flex items-center justify-between">
+          <h1 className="text-[20px] font-semibold text-[#465FFF]">
+            {getTitle()}
+          </h1>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+            className="h-8 w-8 p-0 hover:bg-gray-100 text-gray-500"
+            disabled={isSubmitting}
+          >
+            <X className="h-5 w-5" />
+          </Button>
         </div>
       </div>
-    </div>,
-    document.body
+
+      {/* Modal Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-auto">
+          <DealForm
+            ref={dealFormRef}
+            mode={mode}
+            dealId={dealId}
+            onSave={handleSave}
+            onCancel={handleCancel}
+            isSubmitting={isSubmitting}
+          />
+        </div>
+      </div>
+    </SlideModal>
   );
 };
 

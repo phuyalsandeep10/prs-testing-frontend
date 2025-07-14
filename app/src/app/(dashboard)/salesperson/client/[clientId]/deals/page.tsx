@@ -1,200 +1,154 @@
 "use client";
 
 import * as React from "react";
-import { ArrowLeft, Calendar, User, DollarSign, Briefcase, Clock, FileText, Building, Mail, Phone, Loader2, AlertTriangle } from "lucide-react";
 import { useClient, useClientDeals } from "@/hooks/api";
-import type { Client as ClientType, Deal } from "@/types/deals";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { toast } from "sonner";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useParams } from "next/navigation";
+import { Loader2, AlertTriangle } from "lucide-react";
 
-const ClientDealsPage: React.FC = () => {
+const LABEL_CLASS = "text-gray-500 text-[16px] font-normal";
+const VALUE_CLASS = "text-black text-[18px] font-semibold";
+
+const SalesDetailsPage: React.FC = () => {
   const { clientId } = useParams<{ clientId: string }>();
-
-  // Use standardized hooks
-  const { 
-    data: client, 
-    isLoading: clientLoading, 
-    error: clientError 
-  } = useClient(clientId || '');
-  
-  const { 
-    data: deals = [], 
-    isLoading: dealsLoading, 
-    error: dealsError 
-  } = useClientDeals(clientId || '');
+  const { data: client, isLoading: clientLoading, error: clientError } = useClient(clientId || '');
+  const { data: deals = [], isLoading: dealsLoading, error: dealsError } = useClientDeals(clientId || '');
 
   const isLoading = clientLoading || dealsLoading;
   const hasError = clientError || dealsError;
 
-  // Show error toast when there are errors
-  React.useEffect(() => {
-    if (clientError) {
-      toast.error("Failed to fetch client details.");
-    }
-    if (dealsError) {
-      toast.error("Failed to fetch deals.");
-    }
-  }, [clientError, dealsError]);
+  // Pick the most recent deal (by deal_date or created_at)
+  const mainDeal = React.useMemo(() => {
+    if (!deals || deals.length === 0) return null;
+    return [...deals].sort((a, b) => {
+      const dateA = new Date(a.deal_date || a.created_at || 0).getTime();
+      const dateB = new Date(b.deal_date || b.created_at || 0).getTime();
+      return dateB - dateA;
+    })[0];
+  }, [deals]);
+
+  // Gather all activity logs from all deals (flattened)
+  const allActivities = React.useMemo(() => {
+    if (!deals) return [];
+    return deals.flatMap(deal => (deal.activity_logs || []).map(log => ({...log, dealName: deal.deal_name})));
+  }, [deals]);
 
   if (isLoading) {
     return (
       <div className="p-8 flex items-center justify-center min-h-screen">
         <div className="text-center">
           <Loader2 className="mx-auto h-8 w-8 animate-spin text-gray-500 mb-4" />
-          <p className="text-gray-600">Loading client deals...</p>
+          <p className="text-gray-600">Loading sales details...</p>
         </div>
       </div>
     );
   }
 
-  if (hasError || !client) {
+  if (hasError || !client || !mainDeal) {
     return (
       <div className="p-8 flex items-center justify-center min-h-screen">
         <div className="text-center">
           <AlertTriangle className="mx-auto h-8 w-8 text-red-500 mb-4" />
-          <p className="text-red-600 mb-2">Could not load client information</p>
-          <Button onClick={() => window.location.reload()}>
-            Try Again
-          </Button>
+          <p className="text-red-600 mb-2">Could not load sales details</p>
+          <Button onClick={() => window.location.reload()}>Try Again</Button>
         </div>
       </div>
     );
   }
 
+  // Helper for formatting dates
+  const formatDate = (date: string | undefined) => {
+    if (!date) return "-";
+    try {
+      return new Date(date).toLocaleDateString();
+    } catch {
+      return date;
+    }
+  };
+
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Client Sales Details</h1>
-        <Link href="/dashboard/salesperson/client" key="back-link">
-          <Button variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Client List
+    <div className="min-h-screen bg-white flex flex-col">
+      {/* Header with Back button */}
+      <div className="flex justify-end items-center p-8 pb-0">
+        <Link href="/dashboard/salesperson/client">
+          <Button variant="outline" className="font-semibold text-[16px] px-6 py-2 rounded-lg">
+            &larr; Back to Dashboard
           </Button>
         </Link>
       </div>
-      
-      {/* Client Information Header */}
-      <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-            <Building className="h-8 w-8 text-blue-600" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800">{client.client_name}</h2>
-            <div className="flex items-center gap-4 text-gray-500 mt-1">
-              <span className="flex items-center gap-2"><Mail className="h-4 w-4" /> {(client as any).email}</span>
-              <span className="flex items-center gap-2"><Phone className="h-4 w-4" /> {(client as any).phone_number}</span>
+
+      {/* Sales Details Section */}
+      <div className="flex-1 flex flex-col items-center w-full">
+        <div className="w-full max-w-5xl bg-white rounded-xl shadow-md mt-4 p-10">
+          <h1 className="text-[32px] font-bold text-[#465FFF] mb-8">Sales Details</h1>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-16 gap-y-6 mb-8">
+            {/* Left Column */}
+            <div className="space-y-6">
+              <div>
+                <div className={LABEL_CLASS}>Client name</div>
+                <div className={VALUE_CLASS}>{client.client_name || "-"}</div>
+              </div>
+              <div>
+                <div className={LABEL_CLASS}>Current Payment Stage</div>
+                <div className="text-green-600 text-[18px] font-semibold">
+                  {typeof mainDeal.client_status === 'string' && mainDeal.client_status.toLowerCase() === 'clear' ? 'Clear' : mainDeal.client_status || '-'}
+                </div>
+              </div>
+              <div>
+                <div className={LABEL_CLASS}>Last contact Date</div>
+                <div className={VALUE_CLASS}>{formatDate(mainDeal.updated_at)}</div>
+              </div>
+            </div>
+            {/* Right Column */}
+            <div className="space-y-6">
+              <div>
+                <div className={LABEL_CLASS}>Deal Name</div>
+                <div className={VALUE_CLASS}>{mainDeal.deal_name || '-'}</div>
+              </div>
+              <div>
+                <div className={LABEL_CLASS}>Deal Value</div>
+                <div className={VALUE_CLASS}>${Number(mainDeal.deal_value || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+              </div>
+              <div>
+                <div className={LABEL_CLASS}>Expected Close Date</div>
+                <div className={VALUE_CLASS}>{formatDate(mainDeal.due_date)}</div>
+              </div>
+              <div>
+                <div className={LABEL_CLASS}>Assigned Salesperson</div>
+                <div className={VALUE_CLASS}>{
+                  mainDeal.created_by?.full_name
+                    || mainDeal.created_by?.email
+                    || '-'
+                }</div>
+              </div>
+              <div>
+                <div className={LABEL_CLASS}>Next Sales Action</div>
+                <div className="text-[#465FFF] text-[18px] font-semibold">Schedule Follow-up</div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Deals Accordion */}
-      <Accordion type="single" collapsible className="w-full bg-white p-4 rounded-lg shadow-md">
-        {deals.length > 0 ? (
-          deals.map(deal => (
-            <AccordionItem value={String(deal.id)} key={deal.id}>
-              <AccordionTrigger>
-                <div className="flex justify-between w-full pr-4">
-                  <span className="font-semibold">{deal.deal_name || `Deal ${deal.id}`}</span>
-                  <span className="text-gray-600">{deal.deal_date ? new Date(deal.deal_date).toLocaleDateString() : 'N/A'}</span>
-                  <span className="font-semibold text-green-600">रू {(deal.deal_value || 0).toLocaleString()}</span>
+        {/* Reviews Section */}
+        <div className="w-full max-w-5xl bg-white rounded-xl shadow-md mt-8 p-10">
+          <h2 className="text-[22px] font-bold mb-6">Reviews</h2>
+          <div className="space-y-4">
+            {allActivities.length > 0 ? (
+              allActivities.map((log, idx) => (
+                <div key={log.id || idx} className="bg-[#F6F8FA] rounded-lg p-4 border border-[#E5E7EB]">
+                  <div className="text-[15px] text-gray-500 mb-1">{formatDate(log.timestamp)}{log.dealName ? ` - ${log.dealName}` : ''}</div>
+                  <div className="text-[16px] text-gray-800">{log.message}</div>
                 </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <DealDetailView deal={deal} />
-              </AccordionContent>
-            </AccordionItem>
-          ))
-        ) : (
-          <p className="text-center text-gray-500 py-8">This client has no deals.</p>
-        )}
-      </Accordion>
+              ))
+            ) : (
+              <div className="text-gray-500 text-[16px]">No reviews or activity found.</div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
 
-const DealDetailView: React.FC<{ deal: Deal }> = ({ deal }) => {
-  return (
-    <div className="bg-gray-50 p-6 rounded-lg border">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <DetailItem label="Deal ID" value={deal.id || deal.deal_id || ''} icon={<Briefcase />} />
-          <DetailItem label="Deal Date" value={deal.deal_date ? new Date(deal.deal_date).toLocaleDateString() : 'N/A'} icon={<Calendar />} />
-          <DetailItem label="Payment Status" value={deal.pay_status || deal.status || 'N/A'} icon={<FileText />} />
-          <DetailItem label="Deal Value" value={`रू ${(deal.deal_value || deal.value || '0').toLocaleString()}`} icon={<DollarSign />} />
-          <DetailItem label="Last Updated" value={deal.updated_at ? new Date(deal.updated_at).toLocaleDateString() : 'N/A'} icon={<Clock />} />
-        </div>
-        <div className="mt-10">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Activity</h2>
-          <div className="space-y-4">
-            {deal.activity_logs && deal.activity_logs.length > 0 ? (
-              deal.activity_logs.map((log) => (
-                <div key={log.id} className="p-4 bg-white rounded-lg border border-gray-200">
-                  <p className="font-semibold text-gray-700">{new Date(log.timestamp).toLocaleString()}</p>
-                  <p className="text-gray-600">{log.message}</p>
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-500">No activity recorded for this deal.</p>
-            )}
-          </div>
-        </div>
-        {deal.payments && deal.payments.length > 0 && (
-          <div className="mt-10">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Payments</h2>
-            <div className="space-y-4">
-              {deal.payments.map((payment) => (
-                <div key={payment.id} className="p-4 bg-white rounded-lg border border-gray-200">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Amount</p>
-                      <p className="text-lg font-semibold">रू {Number(payment.received_amount).toLocaleString()}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Method</p>
-                      <p className="text-gray-800">{payment.payment_method}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Status</p>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        payment.status === 'verified' ? 'bg-green-100 text-green-700' :
-                        payment.status === 'rejected' ? 'bg-red-100 text-red-700' :
-                        'bg-yellow-100 text-yellow-700'
-                      }`}>
-                        {payment.status}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-500">Date</p>
-                      <p className="text-gray-800">{new Date(payment.payment_date).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-                  {payment.payment_remarks && (
-                    <div className="mt-2 pt-2 border-t">
-                      <p className="text-sm font-medium text-gray-500">Remarks</p>
-                      <p className="text-gray-800">{payment.payment_remarks}</p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-    </div>
-  );
-}
-
-const DetailItem: React.FC<{ label: string; value: string; icon: React.ReactNode }> = ({ label, value, icon }) => (
-  <div>
-    <p className="text-sm font-medium text-gray-500 flex items-center gap-2">
-      {React.cloneElement(icon as React.ReactElement, { className: 'h-4 w-4' })}
-      {label}
-    </p>
-    <p className="text-lg font-semibold text-gray-800 mt-1">{value}</p>
-  </div>
-);
-
-export default ClientDealsPage; 
+export default SalesDetailsPage; 

@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Plus, Search, Filter, MoreHorizontal } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Plus, Search, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { UnifiedTable } from '@/components/core';
+import { TeamsTable } from './TeamsTable';
 import { PermissionGate } from '@/components/common/PermissionGate';
 import {
   useTeamsQuery,
@@ -15,16 +15,8 @@ import {
   useDeleteTeamMutation,
   useTableStateSync,
 } from '@/hooks/useIntegratedQuery';
+import { useProjects } from '@/hooks/api';
 import { useAuth, useUI } from '@/stores';
-import { ColumnDef } from '@tanstack/react-table';
-import { exportToCSV } from '@/lib/utils/export';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
 import { AddNewTeamForm } from './AddNewTeamForm';
 
 // ------------------- Types -------------------
@@ -43,6 +35,21 @@ interface UiTeam {
   contact_number?: string;
   projects?: { id: string; name: string }[];
   created_at: string;
+}
+
+// Team data type matching TeamsTable component interface
+interface TransformedTeam {
+  id: string;
+  teamName: string;
+  teamLead: string;
+  contactNumber: string;
+  teamMembers: Array<{
+    id: string;
+    name: string;
+    avatar?: string;
+  }>;
+  assignedProjects: string;
+  extraProjectsCount?: number;
 }
 
 export function ManageTeamsClient() {
@@ -67,73 +74,73 @@ export function ManageTeamsClient() {
     refetch,
   } = useTeamsQuery(tableState);
 
+  // Get projects for mapping
+  const orgIdNum = user?.organizationId ? parseInt(user.organizationId, 10) : undefined;
+  const { data: projects = [] } = useProjects(orgIdNum);
+
   // Mutations
   const createTeamMutation = useCreateTeamMutation();
   const updateTeamMutation = useUpdateTeamMutation();
   const deleteTeamMutation = useDeleteTeamMutation();
 
-  const [selectedTeams, setSelectedTeams] = useState<UiTeam[]>([]);
+
 
   const teams: UiTeam[] = React.useMemo(() => (teamsData?.data ?? []) as any, [teamsData]);
+
+  // Transform API data to match TeamsTable component interface
+  const transformTeamsForTable = useCallback((teams: UiTeam[]): TransformedTeam[] => {
+    console.log('=== TRANSFORM TEAMS DEBUG ===');
+    console.log('Input teams for transform:', teams);
+    console.log('Projects for mapping:', projects);
+    
+    const transformed = teams.map((team) => {
+      console.log('Transforming team:', team);
+      console.log('Team lead raw:', team.team_lead);
+      console.log('Team members raw:', team.members);
+      console.log('Team projects raw:', team.projects);
+      
+      const transformedTeam = {
+        id: team.id.toString(),
+        teamName: team.name,
+        teamLead: team.team_lead 
+          ? team.team_lead.full_name || team.team_lead.username || "Unknown Lead"
+          : "No Lead",
+        contactNumber: team.contact_number || "N/A",
+        teamMembers:
+          team.members?.map((m) => ({
+            id: m.id.toString(),
+            name: m.full_name || "Unknown Member",
+            avatar: `https://ui-avatars.com/api/?name=${m.full_name}&background=random`,
+          })) || [],
+        assignedProjects:
+          team.projects?.map((project) => project.name).join(", ") || "No projects",
+        extraProjectsCount:
+          team.projects && team.projects.length > 1
+            ? team.projects.length - 1
+            : 0,
+      };
+      
+      console.log('Transformed team result:', transformedTeam);
+      return transformedTeam;
+    });
+
+    console.log('Final transformed teams:', transformed);
+    return transformed;
+  }, [projects]);
+
+  // Transform teams for table display
+  const transformedTeams = useMemo(() => {
+    return transformTeamsForTable(teams);
+  }, [teams, transformTeamsForTable]);
 
   // Lightweight debug to verify data flow – remove or comment in production
   useEffect(() => {
     console.log('[TEAMS_TABLE_DEBUG] raw teamsData ->', teamsData);
     console.log('[TEAMS_TABLE_DEBUG] derived teams[] ->', teams);
-  }, [teamsData, teams]);
+    console.log('[TEAMS_TABLE_DEBUG] transformed teams[] ->', transformedTeams);
+  }, [teamsData, teams, transformedTeams]);
 
-  // ------------------- Columns -------------------
-  const columns: ColumnDef<UiTeam>[] = [
-    {
-      id: 'name',
-      header: 'Team Name',
-      cell: ({ row }) => <span className="font-medium text-gray-900">{row.original.name}</span>,
-    },
-    {
-      id: 'team_lead',
-      header: 'Team Lead',
-      cell: ({ row }) => <span className="text-gray-700">{row.original.team_lead?.username || row.original.team_lead?.full_name || '—'}</span>,
-    },
-    {
-      id: 'members',
-      header: 'Members',
-      cell: ({ row }) => <span className="text-gray-700">{row.original.members.length}</span>,
-    },
-    {
-      id: 'projects',
-      header: 'Projects',
-      cell: ({ row }) => <span className="text-gray-700">{row.original.projects?.length ?? 0}</span>,
-    },
-    {
-      id: 'created',
-      header: 'Created',
-      cell: ({ row }) => new Date(row.original.created_at).toLocaleDateString(),
-    },
-    {
-      id: 'actions',
-      header: 'Actions',
-      cell: ({ row }) => (
-        <PermissionGate requiredPermissions={['create:teams']}>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleEditTeam(row.original)}>
-                Edit Team
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteTeam(row.original)}>
-                Delete Team
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </PermissionGate>
-      ),
-    },
-  ];
+  // ------------------- Handlers -------------------
 
   // ------------------- Handlers -------------------
   const handleCreateTeam = () => {
@@ -150,11 +157,15 @@ export function ManageTeamsClient() {
     });
   };
 
-  const handleEditTeam = (team: UiTeam) => {
+  const handleEditTeam = (team: TransformedTeam) => {
+    // Find the original team data for editing
+    const originalTeam = teams.find(t => t.id === team.id);
+    if (!originalTeam) return;
+    
     openModal({
       component: AddNewTeamForm,
       props: {
-        initialData: team,
+        initialData: originalTeam,
         isEdit: true,
         onClose: closeModal,
         onFormSubmit: () => {
@@ -166,24 +177,24 @@ export function ManageTeamsClient() {
     });
   };
 
-  const handleDeleteTeam = async (team: UiTeam) => {
-    if (!confirm(`Delete team "${team.name}"?`)) return;
+  const handleDeleteTeam = async (team: TransformedTeam) => {
+    if (!confirm(`Delete team "${team.teamName}"?`)) return;
     try {
       await deleteTeamMutation.mutateAsync(team.id);
     } catch (err) {/* notifications handled in hook */}
   };
 
-  const handleBulkExport = () => {
-    if (selectedTeams.length === 0) return;
-    exportToCSV('selected_teams.csv', selectedTeams);
-  };
+
 
   // ------------------- Derived -------------------
-  const filteredTeams = React.useMemo(() => {
-    if (!tableState.search) return teams;
+  const filteredTransformedTeams = React.useMemo(() => {
+    if (!tableState.search) return transformedTeams;
     const q = tableState.search.toLowerCase();
-    return teams.filter(t => t.name.toLowerCase().includes(q) || t.team_lead?.full_name.toLowerCase().includes(q));
-  }, [teams, tableState.search]);
+    return transformedTeams.filter(t => 
+      t.teamName.toLowerCase().includes(q) || 
+      t.teamLead.toLowerCase().includes(q)
+    );
+  }, [transformedTeams, tableState.search]);
 
   // Simple metrics
   const totalTeams = teamsData?.pagination.total || 0;
@@ -234,9 +245,6 @@ export function ManageTeamsClient() {
             <Button variant="outline" onClick={resetFilters}>
               <Filter className="h-4 w-4 mr-2" /> Reset
             </Button>
-            {selectedTeams.length > 0 && (
-              <Button variant="outline" onClick={handleBulkExport}>Export ({selectedTeams.length})</Button>
-            )}
           </div>
         </CardContent>
       </Card>
@@ -244,26 +252,31 @@ export function ManageTeamsClient() {
       {/* Table */}
       <Card>
         <CardContent className="p-0">
-          <UnifiedTable
-            data={filteredTeams}
-            columns={columns as ColumnDef<unknown>[]}
-            loading={isLoading}
-            error={error?.message}
-            onRowSelect={(rows) => setSelectedTeams(rows as UiTeam[])}
-            onRefresh={refetch}
-            config={{
-              features: { pagination: true, sorting: true, selection: true, export: true, refresh: true, globalSearch: false },
-              pagination: {
-                pageSize: tableState.pageSize,
+          {isLoading ? (
+            <div className="p-8 text-center">
+              <p className="text-gray-600">Loading teams...</p>
+            </div>
+          ) : error ? (
+            <div className="p-8 text-center">
+              <p className="text-red-600">Error loading teams: {error.message}</p>
+            </div>
+          ) : filteredTransformedTeams.length === 0 ? (
+            <div className="p-8 text-center">
+              <p className="text-gray-600">No teams found.</p>
+            </div>
+          ) : (
+            <TeamsTable
+              data={filteredTransformedTeams}
+              onEdit={handleEditTeam}
+              onDelete={handleDeleteTeam}
+              pagination={{
                 page: tableState.page,
-                total: teamsData?.pagination.total,
+                pageSize: tableState.pageSize,
+                total: teamsData?.pagination.total || 0,
                 onPageChange: setPage,
-                onPageSizeChange: setPageSize,
-              },
-              styling: { variant: 'professional', size: 'md' },
-              messages: { empty: 'No teams found.', loading: 'Loading teams...' },
-            }}
-          />
+              }}
+            />
+          )}
         </CardContent>
       </Card>
     </div>

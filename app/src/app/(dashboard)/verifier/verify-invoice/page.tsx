@@ -112,6 +112,21 @@ const VerifyInvoice = () => {
     setToken(localStorage.getItem("authToken"));
   }, []);
 
+  // Callback to handle successful payment verification
+  const handleVerificationSuccess = () => {
+    // Switch to completed tab to show the newly verified payment
+    setActiveTab("completed");
+    
+    // Show a success message
+    MySwal.fire({
+      icon: "success",
+      title: "Payment Verified!",
+      text: "Payment has been successfully verified and moved to completed tab.",
+      timer: 3000,
+      showConfirmButton: false,
+    });
+  };
+
   const {
     data: invoiceData,
     isLoading,
@@ -298,7 +313,7 @@ const VerifyInvoice = () => {
                   }}
                   className="text-white flex items-center justify-center"
                   title="Cancel Invoice"
-                  disabled={cancelMutation.isLoading}
+                  disabled={cancelMutation.isPending}
                 >
                   <Image src={Cancel} alt="cancel icon" />
                 </button>
@@ -433,6 +448,7 @@ const VerifyInvoice = () => {
         }}
         mode={modalState.mode}
         paymentId={modalState.paymentId}
+        onVerificationSuccess={handleVerificationSuccess}
       />
     </div>
   );

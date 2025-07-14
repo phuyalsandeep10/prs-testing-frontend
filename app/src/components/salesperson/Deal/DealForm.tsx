@@ -5,6 +5,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter, usePathname } from "next/navigation";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { DealSchema } from "./DealSchema";
 import InputField from "@/components/ui/clientForm/InputField";
 import SelectField from "@/components/ui/clientForm/SelectField";
@@ -215,7 +216,7 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
           throw new Error("Selected client not found");
         }
 
-        // Prepare deal data (no payment fields)
+        // Prepare deal data with payment fields included
         const dealPayload = {
           client_id: selectedClient.id,
           client_name: data.clientName,
@@ -229,6 +230,16 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
           due_date: data.dueDate,
           deal_remarks: data.dealRemarks || "",
           payment_method: data.payMethod,
+          // Include payment data if present
+          ...(mode === "add" && (data.paymentDate || data.receivedAmount || data.chequeNumber || data.paymentRemarks) && {
+            payments: [{
+              payment_date: data.paymentDate,
+              received_amount: data.receivedAmount,
+              cheque_number: data.chequeNumber,
+              payment_method: data.payMethod,
+              payment_remarks: data.paymentRemarks,
+            }]
+          })
         };
 
         // Use PUT for edit mode, POST for add mode
@@ -246,56 +257,8 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
         // Get the deal id for payment association
         const dealIdentifier = dealResult.deal_id || dealResult.id || dealId;
 
-        // 2. If payment fields are present AND we're in add mode, post payment to /deals/payments/
-        // In edit mode, don't create new payments since they already exist
-        if (
-          mode === "add" &&
-          (data.paymentDate ||
-            data.receivedAmount ||
-            data.chequeNumber ||
-            data.paymentRemarks ||
-            (data.uploadReceipt && data.uploadReceipt.length > 0))
-        ) {
-          console.log("Creating new payment in add mode");
-          const paymentPayload = new FormData();
-          paymentPayload.append("deal_id", dealIdentifier.toString());
-          if (data.paymentDate)
-            paymentPayload.append("payment_date", data.paymentDate);
-          if (data.receivedAmount)
-            paymentPayload.append("received_amount", data.receivedAmount);
-          if (data.chequeNumber)
-            paymentPayload.append("cheque_number", data.chequeNumber);
-          if (data.payMethod)
-            paymentPayload.append("payment_method", data.payMethod);
-          if (data.paymentRemarks)
-            paymentPayload.append("payment_remarks", data.paymentRemarks);
-          if (data.uploadReceipt && data.uploadReceipt.length > 0) {
-            paymentPayload.append("receipt_file", data.uploadReceipt[0]);
-          }
-
-          // Log FormData contents for debugging
-          for (let [key, value] of paymentPayload.entries()) {
-          }
-
-          try {
-            const paymentResponse = await apiClient.postMultipart(
-              "/deals/payments/",
-              paymentPayload
-            );
-          } catch (paymentError: any) {
-            throw new Error(`Payment creation failed: ${paymentError.message}`);
-          }
-        } else {
-          if (mode === "edit") {
-            console.log(
-              "Edit mode: Skipping payment creation - payment already exists"
-            );
-          } else {
-            console.log(
-              "Add mode: No payment fields present, skipping payment creation"
-            );
-          }
-        }
+        // Note: Payment data is now included in the deal creation payload
+        // No separate payment API call needed
 
         return dealResult;
       } catch (error: any) {

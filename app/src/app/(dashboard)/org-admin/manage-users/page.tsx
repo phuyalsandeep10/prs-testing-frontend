@@ -161,14 +161,26 @@ export default function ManageUsersPage() {
   // Computed values for filtering and pagination
   const filteredUsers = useMemo(() => {
     if (!users) return [];
-    const filtered = users.filter(user => {
+    
+    // First, filter out Organization Admin users
+    const nonOrgAdminUsers = users.filter(user => {
+      const userRole = typeof user.role === 'string' 
+        ? user.role 
+        : (user.role as any)?.name || '';
+      
+      // Exclude users with Organization Admin role
+      return userRole !== 'Organization Admin' && userRole !== 'org-admin';
+    });
+    
+    // Then apply search filter
+    const filtered = nonOrgAdminUsers.filter(user => {
       const fullName = `${user.first_name} ${user.last_name}`.toLowerCase();
       const email = user.email?.toLowerCase() || '';
       const searchLower = searchTerm.toLowerCase();
       return fullName.includes(searchLower) || email.includes(searchLower);
     });
     
-    // console.log('🔍 [USER_TABLE_DEBUG] Filtered users:', filtered.length, 'of', users.length);
+    // console.log('🔍 [USER_TABLE_DEBUG] Filtered users:', filtered.length, 'of', nonOrgAdminUsers.length, '(excluded org admins)');
     return filtered;
   }, [users, searchTerm]);
 
