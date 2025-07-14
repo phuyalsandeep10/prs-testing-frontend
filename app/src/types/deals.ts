@@ -6,7 +6,7 @@ export interface Payment {
   received_amount: string;
   cheque_number: string;
   payment_method: string;
-  status: "pending" | "verified" | "rejected";
+  status: 'pending' | 'verified' | 'rejected';
   verified_by: {
     id: string;
     full_name: string;
@@ -36,8 +36,16 @@ export interface Deal {
     full_name: string;
     email: string;
   };
-  pay_status: "partial_payment" | "full_payment";
-  source_type: string;
+  updated_by?: {
+    id: string;
+    full_name: string;
+    email: string;
+  };
+  payment_status: 'initial payment' | 'partial_payment' | 'full_payment';
+  verification_status: 'verified' | 'pending' | 'rejected';
+  client_status: 'pending' | 'loyal' | 'bad_debt';
+  source_type: 'linkedin' | 'instagram' | 'google' | 'referral' | 'others';
+  deal_name: string;
   deal_value: string;
   currency: string;
   deal_date: string;
@@ -58,4 +66,4 @@ export interface Deal {
 export interface Client {
   id: string;
   client_name: string;
-}
+} 
