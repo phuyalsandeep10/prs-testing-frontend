@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { type Client } from "@/lib/types/roles";
-import { clientApi } from '@/lib/api';
+import { useUpdateClient } from '@/hooks/api';
 
 const formSchema = z.object({
   client_name: z.string().min(1, "Client name is required"),
@@ -21,19 +21,19 @@ const formSchema = z.object({
   phone_number: z.string().min(10, "Contact number must be at least 10 digits"),
   nationality: z.string().min(1, "Nationality is required"),
   status: z.enum(["clear", "pending", "bad_debt"]).optional(),
-  satisfaction: z.enum(["excellent", "good", "average", "poor"]).optional(),
+  satisfaction: z.enum(["neutral", "satisfied", "unsatisfied"]).optional(),
   remarks: z.string().optional(),
 });
 
 interface EditClientFormProps {
   client: Client;
   onClose: () => void;
-  onClientUpdated: (updatedClient: Client) => void;
+  onClientUpdated?: (updatedClient: Client) => void;
 }
 
 export default function EditClientForm({ client, onClose, onClientUpdated }: EditClientFormProps) {
-  const [isLoading, setIsLoading] = React.useState(false);
   const [isVisible, setIsVisible] = React.useState(false);
+  const updateClientMutation = useUpdateClient();
 
   React.useEffect(() => {
     // Trigger slide-in animation
@@ -48,69 +48,60 @@ export default function EditClientForm({ client, onClose, onClientUpdated }: Edi
       email: client.email || "",
       phone_number: client.phone_number || "",
       nationality: client.nationality || "",
-      status: client.payment_status && ["clear", "pending", "bad_debt"].includes(client.payment_status) ? client.payment_status as "clear" | "pending" | "bad_debt" : "clear",
-      satisfaction: client.satisfaction && ["excellent", "good", "average", "poor"].includes(client.satisfaction) ? client.satisfaction as "excellent" | "good" | "average" | "poor" : "average",
+      status: client.status && ["clear", "pending", "bad_debt"].includes(client.status) ? client.status as "clear" | "pending" | "bad_debt" : "clear",
+      satisfaction: client.satisfaction && ["neutral", "satisfied", "unsatisfied"].includes(client.satisfaction) ? client.satisfaction as "neutral" | "satisfied" | "unsatisfied" : "neutral",
       remarks: client.remarks || "",
     },
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setIsLoading(true);
     try {
       const phoneRaw = values.phone_number.trim();
-      const payload: any = {
-        name: values.client_name,
+      const payload = {
+        id: client.id,
+        client_name: values.client_name,
         email: values.email,
         nationality: values.nationality,
-        phoneNumber: phoneRaw.startsWith('+') ? phoneRaw : `+977${phoneRaw}`,
+        phone_number: phoneRaw.startsWith('+') ? phoneRaw : `+977${phoneRaw}`,
         status: values.status,
         satisfaction: values.satisfaction,
         remarks: values.remarks || '',
       };
-      const response = await clientApi.update({ id: client.id, ...payload });
-      if (response.success && response.data) {
-        toast.success("Client updated successfully!");
-        const apiObj: any = response.data;
-        const mapped: Client = {
-          ...(apiObj as any),
-          client_name: apiObj.name,
-          phone_number: apiObj.phoneNumber,
-          created_at: apiObj.createdAt || client.created_at,
-        };
-        onClientUpdated(mapped);
-        handleClose();
-      } else {
-        toast.error(response.message || "Failed to update client.");
+      
+      const updatedClient = await updateClientMutation.mutateAsync(payload);
+      toast.success("Client updated successfully!");
+      
+      if (onClientUpdated) {
+        onClientUpdated(updatedClient);
       }
+      handleClose();
     } catch (error: any) {
       console.error("Failed to update client:", error);
       
-      if (error.code === '404') {
+      if (error.status === 404) {
         toast.error("Client not found. The client may have been deleted or you don't have permission to edit it. Please refresh the page.");
-      } else if (error.code === '401') {
+      } else if (error.status === 401) {
         toast.error("Authentication failed. Please login again.");
-      } else if (error.details) {
-        // Handle validation errors from backend
-        if (error.details.email) {
-          toast.error(`Email Error: ${error.details.email[0]}`);
-        } else if (error.details.phone_number) {
-          toast.error(`Phone Error: ${error.details.phone_number[0]}`);
-        } else if (error.details.client_name) {
-          toast.error(`Name Error: ${error.details.client_name[0]}`);
+      } else if (error.response?.data) {
+        const errorData = error.response.data;
+        if (errorData.email) {
+          toast.error(`Email Error: ${errorData.email[0]}`);
+        } else if (errorData.phone_number) {
+          toast.error(`Phone Error: ${errorData.phone_number[0]}`);
+        } else if (errorData.client_name) {
+          toast.error(`Name Error: ${errorData.client_name[0]}`);
         } else {
-          const k = Object.keys(error.details)[0];
-          toast.error(`${k}: ${error.details[k][0]}`);
+          const k = Object.keys(errorData)[0];
+          toast.error(`${k}: ${errorData[k][0]}`);
         }
       } else {
         toast.error(error.message || 'Failed to update client. Please try again.');
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleClear = () => {
-    if (!isLoading) {
+    if (!updateClientMutation.isPending) {
       form.reset();
       toast.info("Form cleared");
     }
@@ -194,7 +185,7 @@ export default function EditClientForm({ client, onClose, onClientUpdated }: Edi
                         className="h-[48px] border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg" 
                         placeholder="Abinash Gokte Babu Tiwari" 
                         {...field} 
-                        disabled={isLoading} 
+                        disabled={updateClientMutation.isPending} 
                       />
                     </FormControl>
                     <FormMessage className="text-[12px] text-red-500 mt-1" />
@@ -217,7 +208,7 @@ export default function EditClientForm({ client, onClose, onClientUpdated }: Edi
                         className="h-[48px] border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg" 
                         placeholder="Abinashgoktebabutiwari666@gmail.com" 
                         {...field} 
-                        disabled={isLoading} 
+                        disabled={updateClientMutation.isPending} 
                       />
                     </FormControl>
                     <FormMessage className="text-[12px] text-red-500 mt-1" />
@@ -236,7 +227,7 @@ export default function EditClientForm({ client, onClose, onClientUpdated }: Edi
                         Contact Number<span className="text-red-500 ml-1">*</span>
                       </FormLabel>
                       <div className="flex items-center gap-0">
-                        <Select defaultValue="+977" disabled={isLoading}>
+                        <Select defaultValue="+977" disabled={updateClientMutation.isPending}>
                           <SelectTrigger className="w-[80px] h-[48px] border-2 border-[#4F46E5] focus:border-[#4F46E5] rounded-r-none rounded-l-lg">
                             <SelectValue />
                           </SelectTrigger>
@@ -250,7 +241,7 @@ export default function EditClientForm({ client, onClose, onClientUpdated }: Edi
                             placeholder="9807057526" 
                             {...field} 
                             className="h-[48px] border-2 border-[#4F46E5] border-l-0 focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-l-none rounded-r-lg" 
-                            disabled={isLoading} 
+                            disabled={updateClientMutation.isPending} 
                           />
                         </FormControl>
                       </div>
@@ -276,7 +267,7 @@ export default function EditClientForm({ client, onClose, onClientUpdated }: Edi
                             className="h-[48px] border-2 border-[#4F46E5] border-l-0 focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-l-none rounded-r-lg" 
                             placeholder="Nepalese" 
                             {...field} 
-                            disabled={isLoading} 
+                            disabled={updateClientMutation.isPending} 
                           />
                         </FormControl>
                       </div>
@@ -305,7 +296,7 @@ export default function EditClientForm({ client, onClose, onClientUpdated }: Edi
                         className="min-h-[120px] border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg resize-none" 
                         placeholder="Enter remarks" 
                         {...field} 
-                        disabled={isLoading} 
+                        disabled={updateClientMutation.isPending} 
                       />
                     </FormControl>
                     <FormMessage className="text-[12px] text-red-500 mt-1" />
@@ -323,7 +314,7 @@ export default function EditClientForm({ client, onClose, onClientUpdated }: Edi
                       <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
                         Status<span className="text-red-500 ml-1">*</span>
                       </FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={updateClientMutation.isPending}>
                         <FormControl>
                           <SelectTrigger className="h-[48px] border-2 border-[#4F46E5] focus:border-[#4F46E5] w-full">
                             <SelectValue placeholder="Clear" />
@@ -354,24 +345,21 @@ export default function EditClientForm({ client, onClose, onClientUpdated }: Edi
                       <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
                         Satisfaction<span className="text-red-500 ml-1">*</span>
                       </FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={updateClientMutation.isPending}>
                         <FormControl>
                           <SelectTrigger className="h-[48px] border-2 border-[#4F46E5] focus:border-[#4F46E5] w-full">
                             <SelectValue placeholder="Neutral" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="excellent" className="text-green-600 font-medium">
-                            Excellent
+                          <SelectItem value="neutral" className="text-gray-600 font-medium">
+                            Neutral
                           </SelectItem>
-                          <SelectItem value="good" className="text-orange-600 font-medium">
-                            Good
+                          <SelectItem value="satisfied" className="text-green-600 font-medium">
+                            Satisfied
                           </SelectItem>
-                          <SelectItem value="average" className="text-orange-600 font-medium">
-                            Average
-                          </SelectItem>
-                          <SelectItem value="poor" className="text-red-600 font-medium">
-                            Poor
+                          <SelectItem value="unsatisfied" className="text-red-600 font-medium">
+                            Unsatisfied
                           </SelectItem>
                         </SelectContent>
                       </Select>
@@ -390,23 +378,23 @@ export default function EditClientForm({ client, onClose, onClientUpdated }: Edi
             <Button
               type="button"
               onClick={handleClear}
-              disabled={isLoading}
+              disabled={updateClientMutation.isPending}
               className="bg-[#EF4444] hover:bg-[#DC2626] text-white px-8 py-2 h-[44px] text-[14px] font-medium rounded-lg"
             >
               Clear
             </Button>
             <Button
               onClick={form.handleSubmit(onSubmit)}
-              disabled={isLoading}
+              disabled={updateClientMutation.isPending}
               className="bg-[#22C55E] hover:bg-[#16A34A] text-white px-8 py-2 h-[44px] text-[14px] font-medium rounded-lg"
             >
-              {isLoading ? (
+              {updateClientMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Adding...
+                  Updating...
                 </>
               ) : (
-                "Add Client"
+                "Update Client"
               )}
             </Button>
           </div>

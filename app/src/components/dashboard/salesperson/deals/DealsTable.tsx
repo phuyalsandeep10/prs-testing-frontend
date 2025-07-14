@@ -12,6 +12,7 @@ import { Deal, Payment } from "@/types/deals";
 import { useRoleConfig } from "@/hooks/useRoleBasedColumns";
 import { useDealsQuery, useTableStateSync } from "@/hooks/useIntegratedQuery";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/stores";
 
 interface DealsTableProps {
   onEditDeal?: (dealId: string) => void;
@@ -30,6 +31,14 @@ const DealsTable: React.FC<DealsTableProps> = ({ onEditDeal, onAddPayment, searc
     resetFilters,
   } = useTableStateSync("sales-deals-table");
 
+  // Check authentication
+  const { isAuthenticated, isAuthInitialized, user } = useAuth();
+  console.log('🔍 [DEALS_TABLE_DEBUG] Auth state:', {
+    isAuthenticated,
+    isAuthInitialized,
+    user: user ? { id: user.id, role: user.role } : null
+  });
+
   // React Query fetch
   const {
     data: dealsData,
@@ -37,6 +46,45 @@ const DealsTable: React.FC<DealsTableProps> = ({ onEditDeal, onAddPayment, searc
     error,
     refetch,
   } = useDealsQuery(tableState);
+
+  // Test with simple query
+  const {
+    data: simpleDealsData,
+    isLoading: simpleLoading,
+    error: simpleError,
+  } = useDealsQuery({});
+
+  console.log('🔍 [DEALS_TABLE_DEBUG] Simple query result:', {
+    data: simpleDealsData,
+    isLoading: simpleLoading,
+    error: simpleError
+  });
+
+  // Check authentication
+  const authToken = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+  console.log('🔍 [DEALS_TABLE_DEBUG] Auth token:', authToken ? 'Present' : 'Missing');
+  console.log('🔍 [DEALS_TABLE_DEBUG] Auth token value:', authToken);
+
+  // Use the correct data array for the table
+  let displayData: Deal[] = [];
+  if (Array.isArray(simpleDealsData?.data)) {
+    displayData = simpleDealsData.data;
+  } else if (simpleDealsData?.data && typeof simpleDealsData.data === 'object' && 'results' in simpleDealsData.data) {
+    displayData = (simpleDealsData.data as { results: Deal[] }).results;
+  }
+  const displayLoading = simpleLoading;
+  const displayError = simpleError;
+
+  // Debug logging
+  console.log('🔍 [DEALS_TABLE_DEBUG] ===== DEALS TABLE DEBUG =====');
+  console.log('🔍 [DEALS_TABLE_DEBUG] tableState:', tableState);
+  console.log('🔍 [DEALS_TABLE_DEBUG] dealsData:', dealsData);
+  console.log('🔍 [DEALS_TABLE_DEBUG] isLoading:', isLoading);
+  console.log('🔍 [DEALS_TABLE_DEBUG] error:', error);
+  console.log('🔍 [DEALS_TABLE_DEBUG] dealsData?.data:', dealsData?.data);
+  console.log('🔍 [DEALS_TABLE_DEBUG] dealsData?.data?.length:', dealsData?.data?.length);
+  console.log('🔍 [DEALS_TABLE_DEBUG] ===============================');
+
 
   const roleConfig = useRoleConfig();
 
@@ -86,7 +134,7 @@ const DealsTable: React.FC<DealsTableProps> = ({ onEditDeal, onAddPayment, searc
                       payment.status === "rejected" ? "bg-red-100 text-red-700" :
                       "bg-yellow-100 text-yellow-700"
                     )}>
-                      {payment.status}
+                      {payment.status || row.original.verification_status}
                     </span>
                   </div>
                   <div>
@@ -165,7 +213,7 @@ const DealsTable: React.FC<DealsTableProps> = ({ onEditDeal, onAddPayment, searc
         header: "Deal Value",
         accessorKey: "deal_value",
         cell: ({ row }) => {
-          const value = row.original.deal_value || row.original.value;
+          const value = row.original.deal_value;
           const numericValue = typeof value === 'number' ? value : parseFloat(String(value || '0'));
           const formattedValue = `रू ${numericValue.toLocaleString()}`;
           return (
@@ -186,30 +234,68 @@ const DealsTable: React.FC<DealsTableProps> = ({ onEditDeal, onAddPayment, searc
       {
         id: "payment",
         header: "Payment",
-        cell: ({ row }) => (
-          <div className="flex gap-1">
-            {row.original.payments?.slice(0, 2).map((p: Payment, idx: number) => (
-              <span
-                key={p.id}
-                className={cn(
-                  "text-xs font-semibold",
-                  p.status === "verified"
-                    ? "text-green-600"
-                    : p.status === "rejected"
-                    ? "text-red-600"
-                    : "text-gray-500"
-                )}
-              >
-                {idx === 0 ? "First" : "Second"}
-              </span>
-            ))}
-          </div>
-        ),
+        cell: ({ row }) => {
+          const payments = row.original.payments || [];
+          const dealStatus = row.original.verification_status;
+          
+          // If no payments exist, show deal status
+          if (payments.length === 0) {
+            const statusColor = 
+              dealStatus === "verified" ? "text-green-600" :
+              dealStatus === "rejected" ? "text-red-600" : 
+              "text-orange-500"; // pending = orange
+            
+            return (
+              <div className="flex gap-1">
+                <span className={`text-xs font-semibold ${statusColor}`}>
+                  First
+                </span>
+              </div>
+            );
+          }
+          
+          // If payments exist, show them with proper status colors
+          return (
+            <div className="flex gap-1">
+              {payments.slice(0, 2).map((p: Payment, idx: number) => {
+                // Determine payment status - if payment has status, use it; otherwise use deal status
+                const paymentStatus = p.status || dealStatus;
+                const statusColor = 
+                  paymentStatus === "verified" ? "text-green-600" :
+                  paymentStatus === "rejected" ? "text-red-600" : 
+                  "text-orange-500"; // pending = orange
+                
+                return (
+                  <span
+                    key={p.id}
+                    className={cn(
+                      "text-xs font-semibold",
+                      statusColor
+                    )}
+                  >
+                    {idx === 0 ? "First" : "Second"}
+                  </span>
+                );
+              })}
+            </div>
+          );
+        },
       },
       {
         id: "pay_method",
         header: "Pay Method",
-        cell: ({ row }) => <span className="text-sm">{row.original.payments?.[0]?.payment_method || "-"}</span>,
+        cell: ({ row }) => {
+          const payments = row.original.payments || [];
+          
+          // If no payments exist, show deal's payment method
+          if (payments.length === 0) {
+            const dealPaymentMethod = row.original.payment_method;
+            return <span className="text-sm">{dealPaymentMethod || "-"}</span>;
+          }
+          
+          // If payments exist, show first payment's method
+          return <span className="text-sm">{payments[0]?.payment_method || "-"}</span>;
+        },
       },
       {
         id: "due_date",
@@ -226,7 +312,7 @@ const DealsTable: React.FC<DealsTableProps> = ({ onEditDeal, onAddPayment, searc
         header: "Version",
         cell: ({ row }) => (
           <span className="text-sm">
-            {row.original.version && row.original.version > 1 ? "Edited" : "Original"}
+            {row.original.version === 'edited' ? "Edited" : "Original"}
           </span>
         ),
       },
@@ -289,12 +375,51 @@ const DealsTable: React.FC<DealsTableProps> = ({ onEditDeal, onAddPayment, searc
     }
   }, [searchTerm, tableState.search, setSearch]);
 
+  // Debug the data being passed to UnifiedTable
+  console.log('🔍 [DEALS_TABLE_DEBUG] ===== UNIFIED TABLE DATA =====');
+  console.log('🔍 [DEALS_TABLE_DEBUG] data being passed to UnifiedTable:', dealsData?.data || []);
+  console.log('🔍 [DEALS_TABLE_DEBUG] data length:', (dealsData?.data || []).length);
+  console.log('🔍 [DEALS_TABLE_DEBUG] columns:', columns);
+  console.log('🔍 [DEALS_TABLE_DEBUG] loading:', isLoading);
+  console.log('🔍 [DEALS_TABLE_DEBUG] error:', error);
+  console.log('🔍 [DEALS_TABLE_DEBUG] ================================');
+
+  // Test with empty data to see if table renders
+  const testData = [
+    {
+      id: 'test-1',
+      deal_id: 'DLID0001',
+      deal_name: 'Test Deal 1',
+      client_name: 'Test Client 1',
+      pay_status: 'partial_payment',
+      deal_value: '1000',
+      deal_date: '2025-01-01',
+      created_at: '2025-01-01',
+      updated_at: '2025-01-01',
+      organization: 'test',
+      client: { id: '1', client_name: 'Test Client 1' },
+      created_by: { id: '1', full_name: 'Test User', email: 'test@test.com' },
+      payment_status: 'partial_payment',
+      verification_status: 'pending',
+      client_status: 'pending',
+      source_type: 'linkedin',
+      currency: 'USD',
+      payment_method: 'bank',
+      deal_remarks: 'Test remarks',
+      version: 'original',
+      payments: [],
+      activity_logs: []
+    }
+  ];
+
+  console.log('🔍 [DEALS_TABLE_DEBUG] Test data:', testData);
+
       return (
     <UnifiedTable
-      data={dealsData?.data || []}
+      data={displayData}
       columns={columns as any}
-      loading={isLoading}
-      error={error?.message}
+      loading={displayLoading}
+      error={displayError?.message}
       onRefresh={refetch}
       expandedContent={renderExpandedContent}
       expandedRows={expandedRows}

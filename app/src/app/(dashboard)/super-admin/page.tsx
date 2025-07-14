@@ -25,9 +25,9 @@ export default function SuperAdminDashboard() {
     try {
       // apiClient handles tokens and base URL automatically
       const [orgsResponse, adminsResponse, usersResponse] = await Promise.all([
-        apiClient.get<any>('/v1/organizations/'),
-        apiClient.get<any>('/v1/auth/users/', { role_name: 'Org Admin' }),
-        apiClient.get<any>('/v1/auth/users/'),
+        apiClient.get<any>('/organizations/'),
+        apiClient.get<any>('/auth/users/', { role: 'Org Admin' }),
+        apiClient.get<any>('/auth/users/'),
       ]);
 
       const orgsData = orgsResponse.data;
@@ -72,12 +72,27 @@ export default function SuperAdminDashboard() {
       loadStats(); // Refresh all stats
     };
 
+    // Listen for deletion events
+    const handleOrganizationDeleted = (event: any) => {
+      console.log('Organization deleted event received in dashboard:', event.detail);
+      loadStats();
+    };
+
+    const handleAdminDeleted = (event: any) => {
+      console.log('Admin deleted event received in dashboard:', event.detail);
+      loadStats();
+    };
+ 
     window.addEventListener('organizationCreated', handleOrganizationCreated);
     window.addEventListener('adminCreated', handleAdminCreated);
+    window.addEventListener('organizationDeleted', handleOrganizationDeleted);
+    window.addEventListener('adminDeleted', handleAdminDeleted);
 
     return () => {
       window.removeEventListener('organizationCreated', handleOrganizationCreated);
       window.removeEventListener('adminCreated', handleAdminCreated);
+      window.removeEventListener('organizationDeleted', handleOrganizationDeleted);
+      window.removeEventListener('adminDeleted', handleAdminDeleted);
     };
   }, []);
 

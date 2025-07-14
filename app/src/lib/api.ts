@@ -20,7 +20,8 @@ import {
 } from '@/types';
 
 // ==================== API CONFIGURATION ====================
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+// Use NEXT_PUBLIC_API_URL as complete base (e.g. http://localhost:8000/api)
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api').replace(/\/+$/, '');
 const API_TIMEOUT = 10000;
 
 class ApiClient {
@@ -39,7 +40,8 @@ class ApiClient {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
-    const url = `${this.baseURL}${endpoint}`;
+    // Join base and endpoint with exactly one slash
+    const url = `${this.baseURL.replace(/\/+$/, '')}/${endpoint.replace(/^\/+/, '')}`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
@@ -285,28 +287,28 @@ class ApiClient {
   // ==================== DEAL & CLIENT SHORTCUTS ====================
   /** Convenience wrapper for fetching a single deal by id */
   async getDealById(id: string): Promise<ApiResponse<Deal>> {
-    return this.get<Deal>(`/deals/${id}`);
+    return this.get<Deal>(`/deals/deals/${id}/`);
   }
 
   /** Convenience wrapper for fetching a single client by id */
   async getClientById(id: string): Promise<ApiResponse<Client>> {
-    return this.get<Client>(`/clients/${id}`);
+    return this.get<Client>(`/clients/${id}/`);
   }
 
   /** Fetch all deals for a given client */
   async getDealsByClientId(clientId: string): Promise<ApiResponse<Deal[]>> {
-    return this.get<Deal[]>(`/deals?client=${clientId}`);
+    return this.get<Deal[]>(`/deals/deals/?client=${clientId}`);
   }
 
   // ==================== SETTINGS API METHODS ====================
   
   // Profile Management
   async getProfile(): Promise<ApiResponse<User>> {
-    return this.get<User>('/auth/users/profile/');
+    return this.get<User>('/auth/profile/');
   }
 
   async updateProfile(data: Partial<User>): Promise<ApiResponse<User>> {
-    return this.patch<User>('/auth/users/profile/', data);
+    return this.patch<User>('/auth/profile/', data);
   }
 
   // Password Management
@@ -315,16 +317,16 @@ class ApiClient {
     new_password: string;
     confirm_password: string;
   }): Promise<ApiResponse<{ message: string }>> {
-    return this.post<{ message: string }>('/auth/users/change_password/', data);
+    return this.post('/auth/password/change/', data);
   }
 
   // Notification Preferences
   async getNotificationPreferences(): Promise<ApiResponse<NotificationPreferences>> {
-    return this.get<NotificationPreferences>('/auth/users/notification_preferences/');
+    return this.get<NotificationPreferences>('/notifications/preferences/');
   }
 
   async updateNotificationPreferences(data: Partial<NotificationPreferences>): Promise<ApiResponse<NotificationPreferences>> {
-    return this.patch<NotificationPreferences>('/auth/users/notification_preferences/', data);
+    return this.patch<NotificationPreferences>('/notifications/preferences/', data);
   }
 
   // Session Management
@@ -343,22 +345,22 @@ export const apiClient = new ApiClient();
 // ==================== USER API ====================
 export const userApi = {
   getAll: (params?: { page?: number; limit?: number; search?: string; role?: string }) =>
-    apiClient.getPaginated<User>('/users', params?.page, params?.limit, params),
+    apiClient.getPaginated<User>('/auth/users/', params?.page, params?.limit, params),
   
   getById: (id: string) =>
-    apiClient.get<User>(`/users/${id}`),
+    apiClient.get<User>(`/auth/users/${id}/`),
   
   create: (data: CreateInput<User>) =>
-    apiClient.post<User>('/users', data),
+    apiClient.post<User>('/auth/users/', data),
   
   update: (data: UpdateInput<User>) =>
-    apiClient.put<User>(`/users/${data.id}`, data),
+    apiClient.put<User>(`/auth/users/${data.id}/`, data),
   
   delete: (id: string) =>
-    apiClient.delete<void>(`/users/${id}`),
+    apiClient.delete<void>(`/auth/users/${id}/`),
   
   changeStatus: (id: string, status: User['status']) =>
-    apiClient.patch<User>(`/users/${id}/status`, { status }),
+    apiClient.patch<User>(`/auth/users/${id}/status/`, { status }),
 };
 
 // ==================== CLIENT API ====================
@@ -370,13 +372,13 @@ export const clientApi = {
     category?: string;
     status?: string;
   }) =>
-    apiClient.getPaginated<Client>('/clients', params?.page, params?.limit, params),
+    apiClient.getPaginated<Client>('/clients/', params?.page, params?.limit, params),
   
   getById: (id: string) =>
     apiClient.get<Client>(`/clients/${id}/`),
   
   create: (data: CreateInput<Client>) =>
-    apiClient.post<Client>('/clients', data),
+    apiClient.post<Client>('/clients/', data),
   
   update: (data: UpdateInput<Client>) =>
     apiClient.put<Client>(`/clients/${data.id}/`, data),
@@ -385,31 +387,31 @@ export const clientApi = {
     apiClient.delete<void>(`/clients/${id}/`),
   
   addActivity: (clientId: string, activity: CreateInput<Activity>) =>
-    apiClient.post<Client>(`/clients/${clientId}/activities`, activity),
+    apiClient.post<Client>(`/clients/${clientId}/activities/`, activity),
 };
 
 // ==================== TEAM API ====================
 export const teamApi = {
   getAll: (params?: { page?: number; limit?: number; search?: string }) =>
-    apiClient.getPaginated<Team>('/teams', params?.page, params?.limit, params),
+    apiClient.getPaginated<Team>('/team/teams/', params?.page, params?.limit, params),
   
   getById: (id: string) =>
-    apiClient.get<Team>(`/teams/${id}`),
+    apiClient.get<Team>(`/team/teams/${id}/`),
   
   create: (data: CreateInput<Team>) =>
-    apiClient.post<Team>('/teams', data),
+    apiClient.post<Team>('/team/teams/', data),
   
   update: (data: UpdateInput<Team>) =>
-    apiClient.put<Team>(`/teams/${data.id}`, data),
+    apiClient.put<Team>(`/team/teams/${data.id}/`, data),
   
   delete: (id: string) =>
-    apiClient.delete<void>(`/teams/${id}`),
+    apiClient.delete<void>(`/team/teams/${id}/`),
   
   addMember: (teamId: string, userId: string) =>
-    apiClient.post<Team>(`/teams/${teamId}/members`, { userId }),
+    apiClient.post<Team>(`/team/teams/${teamId}/members/`, { userId }),
   
   removeMember: (teamId: string, userId: string) =>
-    apiClient.delete<Team>(`/teams/${teamId}/members/${userId}`),
+    apiClient.delete<Team>(`/team/teams/${teamId}/members/${userId}/`),
 };
 
 // ==================== DEAL API ====================
@@ -422,32 +424,32 @@ export const dealApi = {
     category?: string;
     ordering?: string;
   }) =>
-    apiClient.getPaginated<Deal>('/deals', params?.page, params?.limit, params),
+    apiClient.getPaginated<Deal>('/deals/deals/', params?.page, params?.limit, params),
 
-  getById: (id: string) => apiClient.get<Deal>(`/deals/${id}`),
+  getById: (id: string) => apiClient.get<Deal>(`/deals/deals/${id}/`),
 
-  create: (data: CreateInput<Deal>) => apiClient.post<Deal>('/deals', data),
+  create: (data: CreateInput<Deal>) => apiClient.post<Deal>('/deals/deals/', data),
 
-  update: (data: UpdateInput<Deal>) => apiClient.put<Deal>(`/deals/${data.id}`, data),
+  update: (data: UpdateInput<Deal>) => apiClient.put<Deal>(`/deals/deals/${data.id}/`, data),
 
-  delete: (id: string) => apiClient.delete<void>(`/deals/${id}`),
+  delete: (id: string) => apiClient.delete<void>(`/deals/deals/${id}/`),
 };
 
 // ==================== PAYMENT API ====================
 export const paymentApi = {
   getAll: (params?: { page?: number; limit?: number; dealId?: string; clientId?: string }) =>
-    apiClient.getPaginated<Payment>('/payments', params?.page, params?.limit, params),
+    apiClient.getPaginated<Payment>('/deals/payments/', params?.page, params?.limit, params),
 
-  getById: (id: string) => apiClient.get<Payment>(`/payments/${id}`),
+  getById: (id: string) => apiClient.get<Payment>(`/deals/payments/${id}/`),
 
-  create: (data: CreateInput<Payment>) => apiClient.post<Payment>('/payments', data),
+  create: (data: CreateInput<Payment>) => apiClient.post<Payment>('/deals/payments/', data),
 
-  update: (data: UpdateInput<Payment>) => apiClient.put<Payment>(`/payments/${data.id}`, data),
+  update: (data: UpdateInput<Payment>) => apiClient.put<Payment>(`/deals/payments/${data.id}/`, data),
 
-  delete: (id: string) => apiClient.delete<void>(`/payments/${id}`),
+  delete: (id: string) => apiClient.delete<void>(`/deals/payments/${id}/`),
 
   verify: (id: string, status: 'verified' | 'rejected') =>
-    apiClient.post<Payment>(`/payments/${id}/verify`, { status }),
+    apiClient.post<Payment>(`/deals/payments/${id}/verify/`, { status }),
 };
 
 export class ApiError extends Error {

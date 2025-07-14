@@ -6,7 +6,7 @@ import { useDashboardStore } from "@/store/apiCall/Achieve";
 const PaymentVerificationStatus = () => {
   const { data, loading, error, sendRequest, cancel, retry } =
     useDashboardStore();
-  const endpoint = `${process.env.NEXT_PUBLIC_API_URL}/dashboard/dashboard/`;
+  const endpoint = `${process.env.NEXT_PUBLIC_API_URL}/dashboard/`;
 
   useEffect(() => {
     if (!process.env.NEXT_PUBLIC_API_URL) {

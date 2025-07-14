@@ -70,35 +70,17 @@ export function AddNewUserFormWrapper({ onClose, onFormSubmit, initialData, isEd
 
   // Roles for the current organization (fallback to all roles if user not tied to org)
   const organizationId = user?.organizationId ?? "";
-  // Fetch roles – always call both hooks to satisfy Rules of Hooks
-  const orgRolesQuery = useOrganizationRoles(organizationId);
-  const allRolesQuery = useAllRoles();
+  const { data: apiRoles, isLoading: orgRolesLoading } = useOrganizationRoles(organizationId);
 
-  let organizationRoles: Array<{ id: string | number; name: string }> = [];
-
-  if (organizationId && (orgRolesQuery.data as Role[])?.length) {
-    organizationRoles = (orgRolesQuery.data as Role[]);
-  } else if ((allRolesQuery.data as Role[])?.length) {
-    organizationRoles = (allRolesQuery.data as Role[]);
-  } else {
-    // Fallback to static roles if API returned nothing or failed
-    organizationRoles = FALLBACK_ROLES;
-  }
-
-  // Normalise to common shape {id, name}
-  organizationRoles = organizationRoles.map((r: any) => ({ id: r.id ?? r.name, name: r.name }));
+  // Use API roles if available, otherwise use the hardcoded fallback
+  const availableRoles = (apiRoles && apiRoles.length > 0) ? apiRoles : FALLBACK_ROLES;
 
   // Filter roles to only show the ones that should be available for user creation
-  // Exclude admin roles (Org Admin, Super Admin, Organization Admin)
   const allowedRoleNames = ['Salesperson', 'Verifier', 'Supervisor', 'Team Member'];
-  const filteredRoles = organizationRoles.filter(role => 
+  const organizationRoles = availableRoles.filter(role => 
     allowedRoleNames.includes(role.name)
-  );
+  ).map(r => ({ id: r.id ?? r.name, name: r.name }));
 
-  // Use filtered roles for the form
-  organizationRoles = filteredRoles;
-
-  const orgRolesLoading = orgRolesQuery.isLoading || allRolesQuery.isLoading;
 
   // Helper: map role ID to name for default values in edit mode
   const findRoleIdByName = (name?: string): string => {
@@ -126,8 +108,8 @@ export function AddNewUserFormWrapper({ onClose, onFormSubmit, initialData, isEd
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
-      console.log('📝 [USER_TABLE_DEBUG] Form submission started');
-      console.log('📝 [USER_TABLE_DEBUG] Form values:', values);
+      // console.log('📝 [USER_TABLE_DEBUG] Form submission started');
+      // console.log('📝 [USER_TABLE_DEBUG] Form values:', values);
       
       // Prepare user data
       const [firstName, ...lastNameParts] = values.fullName.trim().split(' ');
@@ -140,57 +122,34 @@ export function AddNewUserFormWrapper({ onClose, onFormSubmit, initialData, isEd
         email: values.email,
         contact_number: `+977-${values.contactNumber}`,
         password: values.password,
-        // Always attempt to send a numeric role ID to the backend. If the selected value
-        // is not purely numeric we try to resolve it via the fetched organizationRoles.
-        ...(() => {
-          // Try direct numeric match first
-          if (/^\d+$/.test(values.role)) {
-            return { role: parseInt(values.role, 10) };
-          }
-
-          // Otherwise look up the role object by value (could be name or id stored as string)
-          const matchedRole = organizationRoles.find(r =>
-            r.id.toString() === values.role || r.name.toLowerCase() === values.role.toLowerCase()
-          );
-
-          if (matchedRole && /^\d+$/.test(matchedRole.id.toString())) {
-            // We successfully resolved to a numeric ID
-            return { role: parseInt(matchedRole.id.toString(), 10) };
-          }
-
-          // Fallback: send nothing and log for debugging (backend will assign default)
-          console.warn('⚠️ [USER_TABLE_DEBUG] Unable to resolve numeric role ID for value:', values.role);
-          return {};
-        })(),
+        role: values.role, // Pass the role name (string) directly
         is_active: true,
-        // Ensure the new user is tied to the current organization
-        organization: parseInt(organizationId, 10),
       };
 
-      console.log('📤 [USER_TABLE_DEBUG] Sending user data:', userData);
+      // console.log('📤 [USER_TABLE_DEBUG] Sending user data:', userData);
 
       if (values.team) {
         userData.teams = [values.team];
       }
 
       if (isEdit && initialData?.id) {
-        console.log('🔄 [USER_TABLE_DEBUG] Updating existing user...');
+        // console.log('🔄 [USER_TABLE_DEBUG] Updating existing user...');
         await updateUserMutation.mutateAsync({
           id: initialData.id,
           data: userData,
         });
         window.dispatchEvent(new CustomEvent('userUpdated', { detail: { id: initialData.id } }));
       } else {
-        console.log('➕ [USER_TABLE_DEBUG] Creating new user...');
+        // console.log('➕ [USER_TABLE_DEBUG] Creating new user...');
         const result = await createUserMutation.mutateAsync(userData);
-        console.log('✅ [USER_TABLE_DEBUG] User created successfully, dispatching events...');
+        // console.log('✅ [USER_TABLE_DEBUG] User created successfully, dispatching events...');
         
         // Dispatch custom event for compatibility
         window.dispatchEvent(new CustomEvent('userCreated', { detail: { id: result.id } }));
         
         // Additional manual refresh trigger - dispatch a custom event that ManageUsersPage can listen to
         setTimeout(() => {
-          console.log('🔄 [USER_TABLE_DEBUG] Dispatching manual refresh event...');
+          // console.log('🔄 [USER_TABLE_DEBUG] Dispatching manual refresh event...');
           window.dispatchEvent(new CustomEvent('forceUserTableRefresh', { detail: { userId: result.id } }));
         }, 500);
       }
@@ -201,7 +160,7 @@ export function AddNewUserFormWrapper({ onClose, onFormSubmit, initialData, isEd
       }
       onClose();
     } catch (error) {
-      console.error('❌ [USER_TABLE_DEBUG] Error in form submission:', error);
+      // console.error('❌ [USER_TABLE_DEBUG] Error in form submission:', error);
     }
   };
 
@@ -427,13 +386,17 @@ export function AddNewUserFormWrapper({ onClose, onFormSubmit, initialData, isEd
                     <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
                       Role<span className="text-red-500 ml-1">*</span>
                     </FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading || orgRolesLoading}>
-                      <SelectTrigger className="w-full h-[48px] border-gray-300 focus:border-[#4F46E5] rounded-lg">
-                        <SelectValue placeholder={orgRolesLoading ? "Loading roles..." : "Select role"} />
-                      </SelectTrigger>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
+                      <FormControl>
+                        <SelectTrigger className="h-[48px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg">
+                          <SelectValue placeholder="Select a role" />
+                        </SelectTrigger>
+                      </FormControl>
                       <SelectContent>
                         {organizationRoles.map((role) => (
-                          <SelectItem key={role.id} value={role.id.toString()}>{role.name}</SelectItem>
+                          <SelectItem key={role.id} value={role.name}>
+                            {role.name}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

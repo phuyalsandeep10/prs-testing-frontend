@@ -100,7 +100,7 @@ export const useDashboard = () => {
   return useQuery({
     queryKey: dashboardKeys.main(),
     queryFn: (): Promise<DashboardResponse> => 
-      apiClient.get('/dashboard/dashboard/'),
+      apiClient.get('/dashboard/'),
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 5 * 60 * 1000,
   });

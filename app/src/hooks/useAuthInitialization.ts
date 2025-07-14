@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/authStore';
 
 /**
@@ -7,17 +8,20 @@ import { useAuthStore } from '@/stores/authStore';
  */
 export const useAuthInitialization = () => {
   const { isAuthInitialized, setAuthInitialized } = useAuthStore();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     // Ensure auth is marked as initialized after hydration
     if (!isAuthInitialized) {
       const timer = setTimeout(() => {
+        // Clear the query cache to ensure fresh data on app load
+        queryClient.clear();
         setAuthInitialized(true);
       }, 100); // Small delay to ensure hydration completes
 
       return () => clearTimeout(timer);
     }
-  }, [isAuthInitialized, setAuthInitialized]);
+  }, [isAuthInitialized, setAuthInitialized, queryClient]);
 
   return isAuthInitialized;
 };

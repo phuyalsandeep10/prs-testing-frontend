@@ -7,7 +7,7 @@ import * as z from "zod";
 import { toast } from "sonner";
 import { Loader2, X } from "lucide-react";
 import type { Client } from "@/lib/types/roles";
-import { clientApi } from "@/lib/api";
+import { useCreateClient } from "@/hooks/api";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -38,15 +38,15 @@ const formSchema = z.object({
 
 interface AddNewClientFormProps {
   onClose: () => void;
-  onClientAdded: (newClient: Client) => void;
+  onClientAdded?: (newClient: Client) => void;
 }
 
 export default function AddNewClientForm({
   onClose,
   onClientAdded,
 }: AddNewClientFormProps) {
-  const [isLoading, setIsLoading] = React.useState(false);
   const [isVisible, setIsVisible] = React.useState(false);
+  const createClientMutation = useCreateClient();
 
   React.useEffect(() => {
     // Trigger slide-in animation
@@ -66,62 +66,51 @@ export default function AddNewClientForm({
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setIsLoading(true);
     try {
       const phoneRaw = values.phone_number.trim();
-      const payload: any = {
-        name: values.client_name,
+      const payload = {
+        client_name: values.client_name,
         email: values.email,
         nationality: values.nationality,
         remarks: values.remarks || '',
-        phoneNumber: phoneRaw.startsWith('+') ? phoneRaw : `+977${phoneRaw}`,
+        phone_number: phoneRaw.startsWith('+') ? phoneRaw : `+977${phoneRaw}`,
       };
       
-      const response = await clientApi.create(payload);
+      const newClient = await createClientMutation.mutateAsync(payload);
+      toast.success("Client created successfully!");
       
-      if (response.success && response.data) {
-        toast.success("Client created successfully!");
-        // Map API response to table shape (convert camelCase keys)
-        const apiClientObj: any = response.data;
-        const mappedClient: Client = {
-          ...(apiClientObj as any),
-          client_name: apiClientObj.name,
-          phone_number: apiClientObj.phoneNumber,
-          created_at: apiClientObj.createdAt || new Date().toISOString(),
-        };
-        onClientAdded(mappedClient);
-        handleClose();
-      } else {
-        toast.error(response.message || "Failed to create client.");
+      if (onClientAdded) {
+        onClientAdded(newClient);
       }
+      handleClose();
     } catch (error: any) {
       console.error("Failed to create client:", error);
       
-      if (error.code === '401') {
+      if (error.status === 401) {
         toast.error("Authentication failed. Please login again.");
-      } else if (error.details) {
-        // Handle validation errors from backend
-        if (error.details.email) {
-          toast.error(`Email Error: ${error.details.email[0]}`);
-        } else if (error.details.phone_number) {
-          toast.error(`Phone Error: ${error.details.phone_number[0]}`);
-        } else if (error.details.client_name) {
-          toast.error(`Name Error: ${error.details.client_name[0]}`);
+      } else if (error.response?.data) {
+        const errorData = error.response.data;
+        if (errorData.email) {
+          toast.error(`Email Error: ${errorData.email[0]}`);
+        } else if (errorData.phone_number) {
+          toast.error(`Phone Error: ${errorData.phone_number[0]}`);
+        } else if (errorData.client_name) {
+          toast.error(`Name Error: ${errorData.client_name[0]}`);
+        } else if (errorData.nationality) {
+          toast.error(`Nationality Error: ${errorData.nationality[0]}`);
         } else {
-          const firstKey = Object.keys(error.details)[0];
-          const firstMsg = error.details[firstKey]?.[0] || error.message;
+          const firstKey = Object.keys(errorData)[0];
+          const firstMsg = errorData[firstKey]?.[0] || error.message;
           toast.error(`${firstKey}: ${firstMsg}`);
         }
       } else {
         toast.error(error.message || "Failed to create client. Please try again.");
       }
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleClear = () => {
-    if (!isLoading) {
+    if (!createClientMutation.isPending) {
       form.reset();
       toast.info("Form cleared");
     }
@@ -215,7 +204,7 @@ export default function AddNewClientForm({
                         className="h-[48px] border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg"
                         placeholder="Abinash Gokte Babu Tiwari"
                         {...field}
-                        disabled={isLoading}
+                        disabled={createClientMutation.isPending}
                       />
                     </FormControl>
                     <FormMessage className="text-[12px] text-red-500 mt-1" />
@@ -238,7 +227,7 @@ export default function AddNewClientForm({
                         className="h-[48px] border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg"
                         placeholder="Abinashgoktebabutiwari666@gmail.com"
                         {...field}
-                        disabled={isLoading}
+                        disabled={createClientMutation.isPending}
                       />
                     </FormControl>
                     <FormMessage className="text-[12px] text-red-500 mt-1" />
@@ -258,7 +247,7 @@ export default function AddNewClientForm({
                         <span className="text-red-500 ml-1">*</span>
                       </FormLabel>
                       <div className="flex items-center gap-0">
-                        <Select defaultValue="+977" disabled={isLoading}>
+                        <Select defaultValue="+977" disabled={createClientMutation.isPending}>
                           <SelectTrigger className="w-[80px] h-[48px] border-2 border-[#4F46E5] focus:border-[#4F46E5] rounded-r-none rounded-l-lg">
                             <SelectValue />
                           </SelectTrigger>
@@ -272,7 +261,7 @@ export default function AddNewClientForm({
                             placeholder="9807057526"
                             {...field}
                             className="h-[48px] border-2 border-[#4F46E5] border-l-0 focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-l-none rounded-r-lg"
-                            disabled={isLoading}
+                            disabled={createClientMutation.isPending}
                           />
                         </FormControl>
                       </div>
@@ -298,7 +287,7 @@ export default function AddNewClientForm({
                             className="h-[48px] border-2 border-[#4F46E5] border-l-0 focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-l-none rounded-r-lg"
                             placeholder="Nepalese"
                             {...field}
-                            disabled={isLoading}
+                            disabled={createClientMutation.isPending}
                           />
                         </FormControl>
                       </div>
@@ -329,7 +318,7 @@ export default function AddNewClientForm({
                         className="min-h-[120px] border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-lg resize-none"
                         placeholder="Enter remarks"
                         {...field}
-                        disabled={isLoading}
+                        disabled={createClientMutation.isPending}
                       />
                     </FormControl>
                     <FormMessage className="text-[12px] text-red-500 mt-1" />
@@ -346,17 +335,17 @@ export default function AddNewClientForm({
             <Button
               type="button"
               onClick={handleClear}
-              disabled={isLoading}
+              disabled={createClientMutation.isPending}
               className="bg-[#EF4444] hover:bg-[#DC2626] text-white px-8 py-2 h-[44px] text-[14px] font-medium rounded-lg"
             >
               Clear
             </Button>
             <Button
               onClick={form.handleSubmit(onSubmit)}
-              disabled={isLoading}
+              disabled={createClientMutation.isPending}
               className="bg-[#22C55E] hover:bg-[#16A34A] text-white px-8 py-2 h-[44px] text-[14px] font-medium rounded-lg"
             >
-              {isLoading ? (
+              {createClientMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Saving...

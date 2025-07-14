@@ -157,6 +157,11 @@ export const useDeleteOrganization = () => {
       
       // Invalidate lists
       queryClient.invalidateQueries({ queryKey: organizationKeys.lists() });
+
+      // Dispatch event so dashboards can refresh
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('organizationDeleted', { detail: organizationId }));
+      }
     },
     
     onError: (error) => {

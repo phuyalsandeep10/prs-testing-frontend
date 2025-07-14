@@ -33,7 +33,14 @@ export class StandardApiClient {
   private timeout: number;
 
   constructor() {
-    this.baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+    // Determine API base URL (defaults to Django `/api` namespace)
+    const rawBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+
+    // 1. Remove any trailing slashes so we can safely append our own
+    let normalized = rawBase.replace(/\/+$/, '');
+
+    // 2. Use normalized base as-is (do not enforce additional path segments)
+    this.baseURL = normalized;
     this.timeout = 10000;
   }
 
@@ -71,9 +78,12 @@ export class StandardApiClient {
     options: RequestInit = {},
     includeAuth = true
   ): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
+    // Join base and endpoint with exactly one slash between them
+    const url = `${this.baseURL.replace(/\/+$/, '')}/${endpoint.replace(/^\/+/, '')}`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+
 
     try {
       const response = await fetch(url, {
@@ -86,6 +96,8 @@ export class StandardApiClient {
       });
 
       clearTimeout(timeoutId);
+
+
 
       // Handle authentication failures (401). Keep token for 403 (permission error)
       if (response.status === 401) {
@@ -104,6 +116,11 @@ export class StandardApiClient {
           'PERMISSION_DENIED',
           errorData
         );
+      }
+
+      // Handle successful but empty responses (e.g., 204 No Content)
+      if (response.status === 204) {
+        return Promise.resolve(null as T);
       }
 
       if (!response.ok) {
@@ -185,15 +202,15 @@ export class StandardApiClient {
   /**
    * DELETE request
    */
-  async delete<T>(endpoint: string): Promise<T> {
-    return this.request<T>(endpoint, { method: 'DELETE' });
+  async delete(endpoint: string): Promise<void> {
+    await this.request(endpoint, { method: 'DELETE' });
   }
 
   /**
    * File upload with FormData
    */
   async upload<T>(endpoint: string, formData: FormData): Promise<T> {
-    const url = `${this.baseURL}${endpoint}`;
+    const url = `${this.baseURL.replace(/\/+$/, '')}/${endpoint.replace(/^\/+/, '')}`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 

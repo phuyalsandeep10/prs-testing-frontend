@@ -18,11 +18,11 @@ import jsPDF from "jspdf";
 import autoTable from 'jspdf-autotable';
 import { UnifiedTable } from "@/components/core/UnifiedTable";
 import { CommissionFilter } from "./CommissionFilter";
-import { useCommissionQuery, useBulkUpdateCommissionMutation } from "@/hooks/useIntegratedQuery";
+import { useOrgAdminCommissionQuery, useBulkUpdateCommissionMutation } from "@/hooks/useIntegratedQuery";
 import { useUI } from "@/stores";
 
 interface CommissionData {
-  id: number;
+  id: string | null;
   fullName: string;
   totalSales: number;
   currency: 'NEP' | 'AUD' | 'USD';
@@ -48,16 +48,16 @@ interface CommissionFilterData {
 }
 
 const initialCommissionData: Omit<CommissionData, 'convertedAmt' | 'total' | 'totalReceivable'>[] = [
-    { id: 1, fullName: "Yubesh Parsad Koirala", totalSales: 200000, currency: "NEP", rate: 1, percentage: 5, bonus: 20000, penalty: 0, checked: false },
-    { id: 2, fullName: "Abinash Babu Tiwari", totalSales: 300000, currency: "AUD", rate: 85.00, percentage: 5, bonus: 20000, penalty: 2, checked: true },
-    { id: 3, fullName: "Lalit Rai", totalSales: 200000, currency: "USD", rate: 140.55, percentage: 5, bonus: 20000, penalty: 0, checked: false },
-    { id: 4, fullName: "Kumar Chaudhary", totalSales: 500000, currency: "NEP", rate: 1, percentage: 5, bonus: 40000, penalty: 5, checked: false },
-    { id: 5, fullName: "Ali Khan", totalSales: 1200000, currency: "AUD", rate: 85.00, percentage: 9, bonus: 50000, penalty: 2, checked: false },
-    { id: 6, fullName: "Yogesh Prasad Koirala", totalSales: 400000, currency: "USD", rate: 140.55, percentage: 5, bonus: 60000, penalty: 0, checked: false },
-    { id: 7, fullName: "Badri Pangeni", totalSales: 300000, currency: "USD", rate: 140.55, percentage: 5, bonus: 20000, penalty: 0, checked: false },
-    { id: 8, fullName: "Lalita Rai", totalSales: 1000000, currency: "AUD", rate: 85.00, percentage: 9, bonus: 20000, penalty: 0, checked: false },
-    { id: 9, fullName: "Yamuna Shrestha", totalSales: 200000, currency: "NEP", rate: 1, percentage: 5, bonus: 20000, penalty: 0, checked: false },
-    { id: 10, fullName: "Alia Bhatt", totalSales: 200000, currency: "AUD", rate: 85.00, percentage: 5, bonus: 20000, penalty: 0, checked: false },
+    { id: "1", fullName: "Yubesh Parsad Koirala", totalSales: 200000, currency: "NEP", rate: 1, percentage: 5, bonus: 20000, penalty: 0, checked: false },
+    { id: "2", fullName: "Abinash Babu Tiwari", totalSales: 300000, currency: "AUD", rate: 85.00, percentage: 5, bonus: 20000, penalty: 2, checked: true },
+    { id: "3", fullName: "Lalit Rai", totalSales: 200000, currency: "USD", rate: 140.55, percentage: 5, bonus: 20000, penalty: 0, checked: false },
+    { id: "4", fullName: "Kumar Chaudhary", totalSales: 500000, currency: "NEP", rate: 1, percentage: 5, bonus: 40000, penalty: 5, checked: false },
+    { id: "5", fullName: "Ali Khan", totalSales: 1200000, currency: "AUD", rate: 85.00, percentage: 9, bonus: 50000, penalty: 2, checked: false },
+    { id: "6", fullName: "Yogesh Prasad Koirala", totalSales: 400000, currency: "USD", rate: 140.55, percentage: 5, bonus: 60000, penalty: 0, checked: false },
+    { id: "7", fullName: "Badri Pangeni", totalSales: 300000, currency: "USD", rate: 140.55, percentage: 5, bonus: 20000, penalty: 0, checked: false },
+    { id: "8", fullName: "Lalita Rai", totalSales: 1000000, currency: "AUD", rate: 85.00, percentage: 9, bonus: 20000, penalty: 0, checked: false },
+    { id: "9", fullName: "Yamuna Shrestha", totalSales: 200000, currency: "NEP", rate: 1, percentage: 5, bonus: 20000, penalty: 0, checked: false },
+    { id: "10", fullName: "Alia Bhatt", totalSales: 200000, currency: "AUD", rate: 85.00, percentage: 5, bonus: 20000, penalty: 0, checked: false },
 ];
 
 const formatNumber = (num: number) => new Intl.NumberFormat('en-IN').format(num);
@@ -114,17 +114,13 @@ export const CommissionClient = () => {
   const { addNotification } = useUI();
 
   // API Hooks
-  const { data: commissionResponse, isLoading, error, refetch } = useCommissionQuery();
+  const { data: commissionResponse, isLoading, error, refetch } = useOrgAdminCommissionQuery();
   const bulkUpdateMutation = useBulkUpdateCommissionMutation();
 
   // Process commission data from API and update local state
   useEffect(() => {
     if (commissionResponse && Array.isArray(commissionResponse)) {
-      console.log('API Response:', commissionResponse); // Debug log
-      
       const processedData = commissionResponse.map((item: any) => {
-        console.log('Processing item:', item); // Debug log
-        
         const baseData = {
           id: item.id,
           fullName: item.fullName || '',
@@ -140,17 +136,13 @@ export const CommissionClient = () => {
           totalReceivable: 0,
         };
         
-        console.log('Base data before calculation:', baseData); // Debug log
-        
         // Calculate derived fields using the correct formula
-        const calculatedData = calculateRow(baseData);
-        console.log('Calculated data:', calculatedData); // Debug log
-        
-        return calculatedData;
+        return calculateRow(baseData);
       });
+      
       setCommissionData(processedData);
     }
-  }, [commissionResponse]);
+  }, [commissionResponse, isLoading, error]);
 
   // Global search function that searches across ALL columns
   const searchAllColumns = (row: CommissionData, query: string): boolean => {
@@ -213,15 +205,17 @@ export const CommissionClient = () => {
 
   const handleSaveData = async () => {
     try {
-      const dataToSave = commissionData.map(row => ({
-        id: row.id,
-        totalSales: row.totalSales,
-        currency: row.currency,
-        rate: row.rate,
-        percentage: row.percentage,
-        bonus: row.bonus,
-        penalty: row.penalty,
-      }));
+      const dataToSave = commissionData
+        .filter(row => row.id !== null && row.id !== undefined)
+        .map(row => ({
+          id: row.id as string,
+          totalSales: row.totalSales,
+          currency: row.currency,
+          rate: row.rate,
+          percentage: row.percentage,
+          bonus: row.bonus,
+          penalty: row.penalty,
+        }));
       
       await bulkUpdateMutation.mutateAsync(dataToSave);
       // Success notification is handled by the mutation

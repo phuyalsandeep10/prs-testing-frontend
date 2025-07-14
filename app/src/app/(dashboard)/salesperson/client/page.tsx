@@ -79,8 +79,13 @@ const ClientsPage = React.memo(() => {
   const { searchValue, debouncedSearchValue, setSearchValue } = useDebouncedSearch('', 300);
 
   // Use standardized client hooks
-  const { data: clients = [], isLoading: loading, error } = useClients();
+  const { data: clients = [], isLoading: loading, error, refetch } = useClients();
   const deleteClientMutation = useDeleteClient();
+
+  // Force a refetch whenever the page is focused or re-mounted
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
 
   // Memoized search function
   const searchAllClientColumns = useCallback((client: Client, query: string): boolean => {
@@ -88,7 +93,7 @@ const ClientsPage = React.memo(() => {
       client.client_name,
       client.email,
       client.id,
-      client.payment_status,
+      client.status,
       client.satisfaction,
       client.remarks,
       client.phone_number,
@@ -154,10 +159,10 @@ const ClientsPage = React.memo(() => {
       ),
     },
     {
-      accessorKey: "payment_status",
+      accessorKey: "status",
       header: "Status",
       cell: ({ row }: any) => {
-        const status = row.getValue("payment_status") as string;
+        const status = row.getValue("status") as string;
         return (
           <span className={getStatusColor(status)}>
             {status ? status.charAt(0).toUpperCase() + status.slice(1) : 'N/A'}
@@ -375,7 +380,6 @@ const ClientsPage = React.memo(() => {
         <AddNewClientForm
           onClose={() => setShowAddModal(false)}
           onClientAdded={() => {
-            // React Query will automatically update the cache
             setShowAddModal(false);
           }}
         />
@@ -394,8 +398,8 @@ const ClientsPage = React.memo(() => {
             client={selectedClient}
             onClose={() => setShowEditModal(false)}
             onClientUpdated={() => {
-              // React Query will automatically update the cache
               setShowEditModal(false);
+              setSelectedClient(null);
             }}
           />
         )}

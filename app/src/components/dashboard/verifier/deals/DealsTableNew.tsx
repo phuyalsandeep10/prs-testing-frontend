@@ -51,7 +51,7 @@ const DealsTableNew: React.FC<DealsTableProps> = ({ searchTerm = "" }) => {
     refetch,
   } = useDealsQuery({
     ...tableState,
-    status: "pending", // adjust to your backend filter key if different
+    verification_status: "pending", // filter for deals that need verification
   });
 
   // Role configuration (permissions, etc.)

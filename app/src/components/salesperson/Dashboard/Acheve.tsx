@@ -19,7 +19,7 @@ import { useDashboardStore } from "@/store/apiCall/Achieve";
 const Acheve = () => {
   const { data, loading, error, sendRequest, cancel, retry } =
     useDashboardStore();
-  const endpoint = `${process.env.NEXT_PUBLIC_API_URL}/dashboard/dashboard/`;
+  const endpoint = `${process.env.NEXT_PUBLIC_API_URL}/dashboard/`; // Corrected duplicate path
   console.log(endpoint);
   useEffect(() => {
     if (!process.env.NEXT_PUBLIC_API_URL) {

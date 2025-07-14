@@ -16,17 +16,35 @@ const toSnakeCase = (str: string) => {
 };
 
 const transformDataForApi = (data: DealFormData) => {
+  console.log('Starting transform with data:', data);
   const transformed: { [key: string]: any } = {};
   for (const key in data) {
-    if (Object.prototype.hasOwnProperty.call(data, key)) {
-      const snakeKey = toSnakeCase(key);
-      if (key === 'payStatus') {
-        transformed[snakeKey] = data[key] === 'Full Pay' ? 'full_payment' : 'partial_payment';
-      } else {
-        transformed[snakeKey] = (data as any)[key];
-      }
+    if (!Object.prototype.hasOwnProperty.call(data, key)) continue;
+    console.log(`Processing key: ${key}, value:`, (data as any)[key]);
+
+    if (key === 'clientName') {
+      console.log('Mapping clientName to client_id:', (data as any)[key]);
+      transformed['client_id'] = (data as any)[key];
+      continue;
     }
+
+    if (key === 'payStatus') {
+      console.log('Mapping payStatus to payment_status:', (data as any)[key]);
+      transformed['payment_status'] = (data as any)[key] === 'Full Pay' ? 'full_payment' : 'partial_payment';
+      continue;
+    }
+
+    if (key === 'payMethod') {
+      console.log('Mapping payMethod to payment_method:', (data as any)[key]);
+      transformed['payment_method'] = (data as any)[key];
+      continue;
+    }
+
+    const snakeKey = toSnakeCase(key);
+    console.log(`Converting ${key} to ${snakeKey}:`, (data as any)[key]);
+    transformed[snakeKey] = (data as any)[key];
   }
+  console.log('Final transformed data:', transformed);
   return transformed;
 };
 
@@ -36,8 +54,10 @@ const fetchClients = async (): Promise<Client[]> => {
 };
 
 const submitDealData = async (data: DealFormData) => {
+  console.log('Raw form data:', data);
   const transformedData = transformDataForApi(data);
-  const response = await apiClient.post('/deals/', transformedData);
+  console.log('Transformed data for API:', transformedData);
+  const response = await apiClient.post('/deals/deals/', transformedData);
   return response.data;
 };
 
@@ -62,7 +82,43 @@ const DealForm = () => {
     onSuccess: (data) => {
       console.log("Deal created successfully:", data);
       reset();
+      // Invalidate all deal-related queries to ensure all tables update
       queryClient.invalidateQueries({ queryKey: ["deals"] });
+      queryClient.invalidateQueries({ queryKey: ["deals", "list"] });
+      queryClient.invalidateQueries({ queryKey: ["deals", "list", {}] });
+      
+      // Invalidate cache-based queries
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const queryKey = query.queryKey;
+          return Array.isArray(queryKey) && 
+                 (queryKey.includes('deals') || 
+                  queryKey.includes('DEALS') ||
+                  (queryKey[0] === 'deals'));
+        }
+      });
+      
+      // Force refetch all deals queries
+      queryClient.refetchQueries({ 
+        predicate: (query) => {
+          const queryKey = query.queryKey;
+          return Array.isArray(queryKey) && 
+                 (queryKey.includes('deals') || 
+                  queryKey.includes('DEALS') ||
+                  (queryKey[0] === 'deals'));
+        }
+      });
+      
+      // Specifically invalidate the salesperson deals table pattern
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const queryKey = query.queryKey;
+          return Array.isArray(queryKey) && 
+                 queryKey.length >= 2 && 
+                 queryKey[0] === 'deals' && 
+                 typeof queryKey[1] === 'object';
+        }
+      });
     },
     onError: (error: any) => {
       console.error("Failed to create deal:", error);
@@ -115,7 +171,7 @@ const DealForm = () => {
                   >
                     <option value="">{isLoadingClients ? 'Loading...' : 'Select Client'}</option>
                     {clients?.map((client) => (
-                      <option key={client.id} value={client.client_name}>
+                      <option key={client.id} value={client.id}>
                         {client.client_name}
                       </option>
                     ))}
@@ -211,6 +267,27 @@ const DealForm = () => {
                   {errors.dealValue && (
                     <p className="mt-1 text-sm text-red-600">
                       {errors.dealValue.message}
+                    </p>
+                  )}
+                </div>
+                <div className="w-full lg:w-[133px]">
+                  <label htmlFor="payMethod" className="block text-[13px] font-semibold">
+                    Payment Method<span className="text-[#F61818]">*</span>
+                  </label>
+                  <select
+                    id="payMethod"
+                    {...register("payMethod")}
+                    className="mt-1 block w-full p-2 border rounded-[6px] h-[48px] text-[12px] font-normal border-[#C3C3CB] outline-none bg-white"
+                  >
+                    <option value="">Select method</option>
+                    <option value="wallet">Mobile Wallet</option>
+                    <option value="bank">Bank Transfer</option>
+                    <option value="cheque">Cheque</option>
+                    <option value="cash">Cash</option>
+                  </select>
+                  {errors.payMethod && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.payMethod.message}
                     </p>
                   )}
                 </div>

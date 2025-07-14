@@ -95,7 +95,7 @@ const useOTPRequestMutation = () => {
       userType: "super_admin" | "org_admin";
     }): Promise<OTPResponse> => {
       const endpoint =
-        userType === "super_admin" ? "super-admin/login" : "org-admin/login";
+        userType === "super_admin" ? "login/super-admin" : "login/org-admin";
       const response = await apiClient.post<OTPResponse>(`/auth/${endpoint}/`, {
         email,
         password,
@@ -135,7 +135,9 @@ const useOTPVerifyMutation = () => {
       userType: "super_admin" | "org_admin";
     }): Promise<OTPVerifyResponse> => {
       const endpoint =
-        userType === "super_admin" ? "super-admin/verify" : "org-admin/verify";
+        userType === "super_admin"
+          ? "login/super-admin/verify"
+          : "login/org-admin/verify";
       const response = await apiClient.post<OTPVerifyResponse>(
         `/auth/${endpoint}/`,
         { email, otp }

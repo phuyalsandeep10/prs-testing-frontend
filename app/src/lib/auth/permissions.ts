@@ -15,6 +15,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'deny:deals',
   ],
   'org-admin': [
+    'view_user',
+    'view_all_teams',
     'manage:users',
     'create:teams',
     'view:analytics',
@@ -23,12 +25,15 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'manage:deals', // Can view all deals in organization
   ],
   'supervisor': [
+    'view_user',
+    'view_all_teams',
     'view:analytics', // Team analytics only
     'manage:deals', // Team deals only
     'manage:clients', // Team clients only
     'send:notifications', // Team notifications only
   ],
   'salesperson': [
+    'view_user',
     'manage:deals', // Own deals only
     'manage:clients', // Own clients only
     'view:analytics', // Own analytics only
@@ -41,6 +46,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'send:notifications', // Deal-related notifications only
   ],
   'team-member': [
+    'view_user',
     'view:analytics', // Own analytics only
     'manage:clients', // Assigned clients only
   ],

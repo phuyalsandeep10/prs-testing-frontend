@@ -262,17 +262,19 @@ export class CacheWarmer {
    * Warm dashboard cache on app startup
    */
   warmDashboardCache() {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+    
     // Prefetch critical dashboard data
     this.queryClient.prefetchQuery({
       queryKey: cacheKeys.dashboard.main(),
-      queryFn: () => fetch('/api/dashboard/main').then(res => res.json()),
+      queryFn: () => fetch(`${API_BASE_URL}/dashboard/`).then(res => res.json()),
       staleTime: 2 * 60 * 1000, // 2 minutes for dashboard
     });
 
     // Prefetch commission data
     this.queryClient.prefetchQuery({
       queryKey: cacheKeys.dashboard.commission(),
-      queryFn: () => fetch('/api/dashboard/commission').then(res => res.json()),
+      queryFn: () => fetch(`${API_BASE_URL}/dashboard/commission/`).then(res => res.json()),
       staleTime: 5 * 60 * 1000,
     });
   }
@@ -281,10 +283,12 @@ export class CacheWarmer {
    * Warm client-related cache for client management pages
    */
   warmClientCache() {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+    
     // Prefetch client list
     this.queryClient.prefetchQuery({
       queryKey: cacheKeys.clients.lists(),
-      queryFn: () => fetch('/api/clients').then(res => res.json()),
+      queryFn: () => fetch(`${API_BASE_URL}/clients/`).then(res => res.json()),
       staleTime: 5 * 60 * 1000,
     });
   }
@@ -293,10 +297,12 @@ export class CacheWarmer {
    * Warm deal-related cache for deal management
    */
   warmDealCache() {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+    
     // Prefetch recent deals
     this.queryClient.prefetchQuery({
       queryKey: cacheKeys.deals.list({ limit: 20, sort: 'created_at' }),
-      queryFn: () => fetch('/api/deals?limit=20&sort=created_at').then(res => res.json()),
+      queryFn: () => fetch(`${API_BASE_URL}/deals/deals/?limit=20&sort=created_at`).then(res => res.json()),
       staleTime: 2 * 60 * 1000,
     });
   }
@@ -324,13 +330,15 @@ export class CacheWarmer {
   }
 
   private warmClientDetailsCache() {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+    
     // Get client list from cache and prefetch first 5 client details
     const clientsData = this.queryClient.getQueryData(cacheKeys.clients.lists());
     if (Array.isArray(clientsData)) {
       clientsData.slice(0, 5).forEach((client: any) => {
         this.queryClient.prefetchQuery({
           queryKey: cacheKeys.clients.detail(client.id),
-          queryFn: () => fetch(`/api/clients/${client.id}`).then(res => res.json()),
+          queryFn: () => fetch(`${API_BASE_URL}/clients/${client.id}/`).then(res => res.json()),
           staleTime: 5 * 60 * 1000,
         });
       });
@@ -338,9 +346,11 @@ export class CacheWarmer {
   }
 
   private warmPaymentCache() {
+    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+    
     this.queryClient.prefetchQuery({
       queryKey: cacheKeys.payments.lists(),
-      queryFn: () => fetch('/api/payments').then(res => res.json()),
+      queryFn: () => fetch(`${API_BASE_URL}/deals/payments/`).then(res => res.json()),
       staleTime: 2 * 60 * 1000,
     });
   }

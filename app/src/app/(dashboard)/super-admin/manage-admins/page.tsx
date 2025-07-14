@@ -36,20 +36,10 @@ export default function ManageAdminsPage() {
   // Load admins from API
   const loadAdmins = async () => {
     try {
-      const responses = await Promise.all([
-        apiClient.get<any>('/auth/users/', { role: 'Organization Admin' }),
-        apiClient.get<any>('/auth/users/', { role: 'Org Admin' }),
-      ]);
+      const response = await apiClient.get<any>('/auth/users/', { role: 'Org Admin' });
 
-      const combined: any[] = [];
-      responses.forEach(res => {
-        const list = Array.isArray(res.data) ? res.data : res.data?.results || [];
-        combined.push(...list);
-      });
-
-      // Remove duplicates by user ID
-      const uniqueAdmins = Array.from(new Map(combined.map(a => [a.id, a])).values());
-      setAdmins(uniqueAdmins);
+      const adminsData = Array.isArray(response.data) ? response.data : response.data?.results || [];
+      setAdmins(adminsData);
     } catch (error: any) {
       console.error('Error loading admins:', error);
       if (error instanceof ApiError) {
@@ -73,11 +63,16 @@ export default function ManageAdminsPage() {
     try {
       console.log(`Attempting to delete admin ${adminId}: ${adminName} (${adminEmail})`);
 
-      await apiClient.delete<void>(`/v1/auth/users/${adminId}/`);
+      await apiClient.delete<void>(`/auth/users/${adminId}/`);
 
       toast.success(`Admin "${adminName}" has been deleted successfully`);
       // Remove from local state
       setAdmins(prev => prev.filter(admin => admin.id !== adminId));
+
+      // Dispatch event for dashboard sync
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('adminDeleted', { detail: adminId }));
+      }
     } catch (error: any) {
       console.error('Error deleting admin:', error);
       if (error instanceof ApiError) {

@@ -1,17 +1,29 @@
 "use client";
 
 import React, { useMemo, useState, useCallback, useEffect } from "react";
-import { useDealsQuery } from "@/hooks/useDeals";
+import { useDealsQuery, useDeleteDeal } from "@/hooks/useDeals";
 import { ColumnDef, Row } from "@tanstack/react-table";
-import { Edit, Plus } from "lucide-react";
-import deleteIcon from "@/assets/icons/delete.svg";
-import Image from "next/image";
+import { Edit, Plus, ChevronRight, ChevronDown, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import { format } from "date-fns";
 import { UnifiedTable } from "@/components/core";
 import ExpandButton from "@/components/shared/ExpandButton";
 import { useRoleConfig } from "@/hooks/useRoleBasedColumns";
 import { Deal, Payment } from "@/types/deals";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 // Helper function to convert index to ordinal words
 const getOrdinalWord = (index: number): string => {
@@ -65,12 +77,32 @@ const DealsTable: React.FC<DealsTableProps> = ({
   onAddPayment,
   searchTerm = "",
 }) => {
+  const deleteDealMutation = useDeleteDeal();
   const { data: dealsResponse, isLoading, error } = useDealsQuery({
     search: searchTerm,
     ordering: "-created_at",
   });
   
-  const deals = useMemo(() => dealsResponse?.data ?? [], [dealsResponse]);
+  // Debug logging
+  console.log('🔍 [ORG_ADMIN_DEALS_TABLE_DEBUG] ===== ORG ADMIN DEALS TABLE DEBUG =====');
+  console.log('🔍 [ORG_ADMIN_DEALS_TABLE_DEBUG] dealsResponse:', dealsResponse);
+  console.log('🔍 [ORG_ADMIN_DEALS_TABLE_DEBUG] isLoading:', isLoading);
+  console.log('🔍 [ORG_ADMIN_DEALS_TABLE_DEBUG] error:', error);
+  console.log('🔍 [ORG_ADMIN_DEALS_TABLE_DEBUG] dealsResponse?.data:', dealsResponse?.data);
+  console.log('🔍 [ORG_ADMIN_DEALS_TABLE_DEBUG] dealsResponse?.data?.length:', dealsResponse?.data?.length);
+  console.log('🔍 [ORG_ADMIN_DEALS_TABLE_DEBUG] ===========================================');
+  
+  // Handle the data structure like salesperson table
+  const deals = useMemo(() => {
+    if (Array.isArray(dealsResponse?.data)) {
+      return dealsResponse.data;
+    } else if (dealsResponse?.data && typeof dealsResponse.data === 'object' && 'results' in dealsResponse.data) {
+      return (dealsResponse.data as { results: Deal[] }).results;
+    }
+    return [];
+  }, [dealsResponse]);
+  
+  console.log('🔍 [ORG_ADMIN_DEALS_TABLE_DEBUG] Final deals array length:', deals.length);
 
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const roleConfig = useRoleConfig();
@@ -82,93 +114,177 @@ const DealsTable: React.FC<DealsTableProps> = ({
     }));
   }, []);
 
+  // Expanded content renderer
+  const renderExpandedContent = (row: any) => {
+    const payments = row.original.payments || [];
+    
+    return (
+      <div className="p-4 bg-gray-50 border-t">
+        <h4 className="font-semibold text-gray-900 mb-3">Payment Details</h4>
+        {payments.length === 0 ? (
+          <p className="text-gray-500">No payments found for this deal</p>
+        ) : (
+          <div className="space-y-3">
+            {payments.map((payment: Payment, index: number) => (
+              <div key={payment.id} className="bg-white p-3 rounded-lg border">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <span className="font-medium text-gray-700">Amount:</span>
+                    <div className="text-gray-900">${payment.received_amount}</div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Method:</span>
+                    <div className="text-gray-900">{payment.payment_method || 'N/A'}</div>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Status:</span>
+                    <span className={cn(
+                      "px-2 py-1 rounded-full text-xs font-medium",
+                      payment.status === "verified" ? "bg-green-100 text-green-700" :
+                      payment.status === "rejected" ? "bg-red-100 text-red-700" :
+                      "bg-yellow-100 text-yellow-700"
+                    )}>
+                      {payment.status || row.original.verification_status}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium text-gray-700">Date:</span>
+                    <div className="text-gray-900">
+                      {payment.payment_date ? format(new Date(payment.payment_date), "MMM d, yyyy") : 'N/A'}
+                    </div>
+                  </div>
+                </div>
+                {payment.payment_remarks && (
+                  <div className="mt-2 pt-2 border-t">
+                    <span className="font-medium text-gray-700">Remarks:</span>
+                    <div className="text-gray-900 text-sm">{payment.payment_remarks}</div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const columns: ColumnDef<Deal>[] = useMemo(
     () => [
       {
-        id: "expander",
-        header: () => null,
-        cell: ({ row }) => (
-          <ExpandButton
-            isExpanded={row.getIsExpanded()}
-            onToggle={row.getToggleExpandedHandler()}
-            variant="org-admin"
-          />
-        ),
-      },
-      {
-        accessorKey: "deal_name",
+        id: "deal_name",
         header: "Deal Name",
+        accessorKey: "deal_name",
         cell: ({ row }) => (
-          <div className="text-[12px] font-medium text-gray-900">
+          <span className="text-sm font-medium text-gray-900">
             {row.original.deal_name}
-          </div>
+          </span>
         ),
       },
       {
-        accessorKey: "client_name",
+        id: "client_name",
         header: "Client Name",
-        cell: ({ row }) => <div className="text-[12px] text-gray-700">{row.original.client_name}</div>,
+        accessorKey: "client_name",
+        cell: ({ row }) => (
+          <span className="text-sm text-gray-700">
+            {row.original.client_name}
+          </span>
+        ),
       },
       {
+        id: "pay_status",
+        header: "Status",
         accessorKey: "pay_status",
-        header: "Pay Status",
         cell: ({ row }) => {
-          const status = row.original.pay_status === 'full_payment' ? "Full Pay" : "Partial Pay";
-          const getStatusColor = () => {
-            switch (status.toLowerCase()) {
-              case "full pay":
-                return "bg-[#E6F7FF] text-[#16A34A] px-3 py-1 text-[12px] font-medium rounded-full";
-              case "partial pay":
-                return "bg-[#FFF7ED] text-[#EA580C] px-3 py-1 text-[12px] font-medium rounded-full";
-              default:
-                return "bg-gray-100 text-gray-600 px-3 py-1 text-[12px] font-medium rounded-full";
-            }
-          };
-          return <span className={getStatusColor()}>{status}</span>;
+          const statusRaw = row.original.pay_status; // full_payment | partial_payment
+          const statusLabel = statusRaw === "full_payment" ? "Full Pay" : "Partial Pay";
+          const badgeClass =
+            statusRaw === "full_payment"
+              ? "bg-green-100 text-green-700"
+              : "bg-yellow-100 text-yellow-700";
+          return (
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${badgeClass}`}>{
+              statusLabel
+            }</span>
+          );
         },
       },
       {
-        accessorKey: "deal_remarks",
+        id: "remarks",
         header: "Remarks",
+        accessorKey: "deal_remarks",
         cell: ({ row }) => (
-          <div className="text-[12px] text-gray-700 max-w-xs truncate">{row.original.deal_remarks || 'N/A'}</div>
+          <span className="truncate max-w-[150px] block text-sm text-gray-700">
+            {row.original.deal_remarks || "-"}
+          </span>
         ),
       },
       {
-        accessorKey: "deal_value",
+        id: "deal_value",
         header: "Deal Value",
-        cell: ({ row }) => (
-          <div className="text-[12px] font-medium text-gray-900">{row.original.deal_value}</div>
-        ),
+        accessorKey: "deal_value",
+        cell: ({ row }) => {
+          const value = row.original.deal_value;
+          const numericValue = typeof value === 'number' ? value : parseFloat(String(value || '0'));
+          const formattedValue = `रू ${numericValue.toLocaleString()}`;
+          return (
+            <span className="text-sm text-gray-900 font-medium">{formattedValue}</span>
+          );
+        },
       },
       {
-        accessorKey: "deal_date",
+        id: "deal_date",
         header: "Deal Date",
+        accessorKey: "deal_date",
         cell: ({ row }) => (
-          <div className="text-[12px] text-gray-700">{format(new Date(row.original.deal_date), "MMM d, yyyy")}</div>
+          <span className="text-sm text-gray-700">
+            {row.original.deal_date ? format(new Date(row.original.deal_date), "MMM d, yyyy") : "-"}
+          </span>
         ),
       },
       {
-        accessorKey: "payments",
+        id: "payment",
         header: "Payment",
         cell: ({ row }) => {
-          const payments = row.original.payments;
-          if (!payments || payments.length === 0) return "No Payments";
-
+          const payments = row.original.payments || [];
+          const dealStatus = row.original.verification_status;
+          
+          // If no payments exist, show deal status
+          if (payments.length === 0) {
+            const statusColor = 
+              dealStatus === "verified" ? "text-green-600" :
+              dealStatus === "rejected" ? "text-red-600" : 
+              "text-orange-500"; // pending = orange
+            
+            return (
+              <div className="flex gap-1">
+                <span className={`text-xs font-semibold ${statusColor}`}>
+                  First
+                </span>
+              </div>
+            );
+          }
+          
+          // If payments exist, show them with proper status colors
           return (
-            <div className="flex gap-1 flex-wrap">
-              {payments.map((p, index) => {
-                const isVerified = p.status === 'verified';
-                const badgeClass = isVerified
-                  ? "bg-green-100 text-green-800 border-green-200"
-                  : "bg-red-100 text-red-800 border-red-200";
-
+            <div className="flex gap-1">
+              {payments.slice(0, 2).map((p: Payment, idx: number) => {
+                // Determine payment status - if payment has status, use it; otherwise use deal status
+                const paymentStatus = p.status || dealStatus;
+                const statusColor = 
+                  paymentStatus === "verified" ? "text-green-600" :
+                  paymentStatus === "rejected" ? "text-red-600" : 
+                  "text-orange-500"; // pending = orange
+                
                 return (
-                  <PaymentTooltip key={p.id} amount={`$${p.received_amount}`}>
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${badgeClass}`}>
-                      {getOrdinalWord(index)}
-                    </span>
-                  </PaymentTooltip>
+                  <span
+                    key={p.id}
+                    className={cn(
+                      "text-xs font-semibold",
+                      statusColor
+                    )}
+                  >
+                    {idx === 0 ? "First" : "Second"}
+                  </span>
                 );
               })}
             </div>
@@ -176,188 +292,170 @@ const DealsTable: React.FC<DealsTableProps> = ({
         },
       },
       {
-        id: 'payment_method',
+        id: "pay_method",
         header: "Pay Method",
         cell: ({ row }) => {
-          const payments = row.original.payments;
-          if (!payments || payments.length === 0) {
-            return <div className="text-[12px] text-gray-700">N/A</div>;
+          const payments = row.original.payments || [];
+          
+          // If no payments exist, show deal's payment method
+          if (payments.length === 0) {
+            const dealPaymentMethod = row.original.payment_method;
+            return <span className="text-sm">{dealPaymentMethod || "-"}</span>;
           }
-          const methods = [...new Set(payments.map(p => p.payment_method))];
-          return <div className="text-[12px] text-gray-700">{methods.join(', ')}</div>;
+          
+          // If payments exist, show first payment's method
+          return <span className="text-sm">{payments[0]?.payment_method || "-"}</span>;
         },
       },
       {
-        accessorKey: "due_date",
+        id: "due_date",
         header: "Due Date",
+        accessorKey: "due_date",
         cell: ({ row }) => (
-          <div className="text-[12px] text-gray-700">{format(new Date(row.original.due_date), "MMM d, yyyy")}</div>
+          <span className="text-sm text-gray-700">
+            {row.original.due_date ? format(new Date(row.original.due_date), "MMM d, yyyy") : "-"}
+          </span>
         ),
       },
       {
-        accessorKey: "version",
+        id: "version",
         header: "Version",
-        cell: ({ row }) => {
-          const versionText = row.original.version > 1 ? "Edited" : "Original";
-          return (
-            <span
-              className={`px-2 py-1 text-[12px] font-medium rounded ${
-                versionText === 'Edited' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              {versionText}
-            </span>
-          );
-        },
+        cell: ({ row }) => (
+          <span className="text-sm">
+            {row.original.version === 'edited' ? "Edited" : "Original"}
+          </span>
+        ),
       },
-      ...(roleConfig.shouldShowSalesperson ? [{
-          accessorKey: "created_by.full_name",
-          header: "Sales Person",
-          cell: ({ row }: { row: { original: Deal } }) => (
-            <div className="text-[12px] text-gray-700">{row.original.created_by?.full_name || 'N/A'}</div>
-          ),
-      } as ColumnDef<Deal>] : []),
+      // Sales Person column - always show for org-admin
+      {
+        id: "sales_person",
+        header: "Sales Person",
+        cell: ({ row }: any) => (
+          <span className="text-sm">{row.original.created_by?.full_name || "-"}</span>
+        ),
+      },
       {
         id: "actions",
         header: "Actions",
         cell: ({ row }) => (
-          <div className="flex items-center justify-center gap-1">
-            {roleConfig.allowedActions.includes("edit") && (
-              <button onClick={() => onEditDeal?.(row.original.id)} className="w-6 h-6 rounded-full bg-[#4F46E5] text-white flex items-center justify-center hover:bg-[#4338CA] transition-colors" title="Edit Deal">
-                <Edit className="w-3 h-3" />
-              </button>
+          <div className="flex gap-2">
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRowExpand(row.id);
+              }}
+              title={expandedRows[row.id] ? "Collapse" : "Expand"}
+            >
+              {expandedRows[row.id] ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </Button>
+            {roleConfig.allowedActions.includes('edit') && (
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => onEditDeal?.(row.original.id)}
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
             )}
-            {roleConfig.allowedActions.includes("addPayment") && (
-              <button onClick={() => onAddPayment?.(row.original.id)} className="w-6 h-6 rounded-full bg-[#22C55E] text-white flex items-center justify-center hover:bg-[#16A34A] transition-colors" title="Add Payment">
-                <Plus className="w-3 h-3" />
-              </button>
+            {roleConfig.allowedActions.includes('addPayment') && (
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => onAddPayment?.(row.original.id)}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
             )}
-            {roleConfig.allowedActions.includes("delete") && (
-              <button title="Delete Deal" className="w-8 h-8 flex items-center justify-center rounded-full bg-red-100 hover:bg-red-200 transition-colors">
-                <Image src={deleteIcon} alt="Delete" width={16} height={16} />
-              </button>
+            {roleConfig.allowedActions.includes('delete') && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    className="text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete the deal
+                      "{row.original.deal_name}".
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={async () => {
+                        try {
+                          await deleteDealMutation.mutateAsync(row.original.id);
+                          toast.success("Deal deleted successfully!");
+                        } catch (error: any) {
+                          toast.error(error.message || "Failed to delete deal");
+                        }
+                      }}
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      Continue
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
           </div>
         ),
       },
     ],
-    [handleRowExpand, onEditDeal, onAddPayment, roleConfig]
+    [onEditDeal, onAddPayment, roleConfig.allowedActions, expandedRows, handleRowExpand]
   );
-  
-  const nestedColumns: ColumnDef<Payment>[] = useMemo(() => [
-    {
-      accessorKey: 'payment_date',
-      header: 'Payment Date',
-      cell: ({ row }) => <div className="text-[12px] text-gray-800">{format(new Date(row.original.payment_date), 'MMM d, yyyy')}</div>
-    },
-    {
-      accessorKey: 'received_amount',
-      header: 'Amount',
-      cell: ({ row }) => <div className="text-[12px] text-gray-800">{row.original.received_amount}</div>
-    },
-    {
-      accessorKey: 'payment_method',
-      header: 'Method',
-      cell: ({ row }) => <div className="text-[12px] text-gray-800">{row.original.payment_method}</div>
-    },
-    {
-      accessorKey: 'status',
-      header: 'Status',
-      cell: ({ row }) => {
-        const status = row.original.status;
-        const getStatusColor = () => {
-          switch (status.toLowerCase()) {
-            case 'verified':
-              return 'bg-[#E6F7FF] text-[#16A34A] px-3 py-1 text-[12px] font-medium rounded-full';
-            case 'rejected':
-              return 'bg-[#FEF2F2] text-[#DC2626] px-3 py-1 text-[12px] font-medium rounded-full';
-            case 'pending':
-              return 'bg-[#FFF7ED] text-[#EA580C] px-3 py-1 text-[12px] font-medium rounded-full';
-            default:
-              return 'bg-gray-100 text-gray-600 px-3 py-1 text-[12px] font-medium rounded-full';
-          }
-        };
-        return <span className={getStatusColor()}>{status}</span>;
-      },
-    },
-    {
-      accessorKey: 'verified_by.full_name',
-      header: 'Verified By',
-      cell: ({ row }) => <div className="text-[12px] text-gray-800">{row.original.verified_by ? row.original.verified_by.full_name : 'N/A'}</div>
-    },
-    {
-      accessorKey: 'verification_remarks',
-      header: 'Verifier Remarks',
-      cell: ({ row }) => <div className="text-[12px] text-gray-800">{row.original.verification_remarks || 'N/A'}</div>
-    },
-    {
-      accessorKey: 'receipt_file',
-      header: 'Receipt',
-      cell: ({ row }) => (row.original.receipt_file ? (
-        <a href={row.original.receipt_file as string} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-[12px]">View</a>
-      ) : (
-        <div className="text-[12px] text-gray-800">N/A</div>
-      ))
-    },
-  ], []);
 
+  // Get row className for styling
   const getRowClassName = (row: Row<Deal>) => {
-    const hasRejectedPayment = row.original.payments?.some(p => p.status === 'rejected');
-    return hasRejectedPayment ? "bg-red-50" : "";
+    const payments = row.original.payments as Payment[] | undefined;
+    const hasRejected = payments?.some((p) => p.status === "rejected");
+    return hasRejected ? "bg-red-50" : "";
   };
 
-  const expandedContent = useCallback(
-    (row: Row<Deal>) => (
-      <div className="bg-gray-50 p-4">
-        <h3 className="font-semibold text-lg mb-2">Payment Details</h3>
-        <UnifiedTable
-          data={row.original.payments || []}
-          columns={nestedColumns as ColumnDef<any>[]}
-          config={{
-            features: { pagination: false, sorting: false, filtering: false, selection: false, expansion: false, columnVisibility: false, globalSearch: false },
-            styling: { variant: 'compact' },
-          }}
-        />
-      </div>
-    ),
-    [nestedColumns]
-  );
-  
-  if (isLoading) {
-    return <div>Loading deals...</div>;
-  }
-
-  if (error) {
-    return (
-      <div className="text-red-500 text-center p-4">
-        Error loading deals: {error.message}
-      </div>
-    );
-  }
-
   return (
-    <UnifiedTable<Deal>
+    <UnifiedTable
       data={deals}
-      columns={columns}
-      getRowCanExpand={() => true}
-      getRowId={(row) => row.id.toString()}
+      columns={columns as any}
+      loading={isLoading}
+      error={error ? "Failed to load deals" : undefined}
+      expandedContent={renderExpandedContent}
       expandedRows={expandedRows}
       onExpandedRowsChange={setExpandedRows}
       getRowProps={(row) => ({
-        className: getRowClassName(row),
+        className: getRowClassName(row as Row<Deal>),
       })}
-      expandedContent={expandedContent}
-      className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
       config={{
+        styling: { variant: "figma" },
         features: {
-          expansion: true,
           pagination: true,
-          globalSearch: false,
+          sorting: true,
+          selection: false,
+          export: false,
+          refresh: false,
           columnVisibility: false,
+          globalSearch: false,
+          expansion: true,
         },
-        styling: {
-          variant: "figma",
-          size: "sm",
+        pagination: {
+          pageSize: 10,
+          showSizeSelector: true,
+          showInfo: true,
+        },
+        messages: {
+          empty: "No deals found.",
+          loading: "Loading deals...",
         },
       }}
     />

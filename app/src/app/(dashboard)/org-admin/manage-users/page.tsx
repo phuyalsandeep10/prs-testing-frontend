@@ -146,14 +146,14 @@ export default function ManageUsersPage() {
   const teams = Array.isArray(teamsResponse) ? teamsResponse : (teamsResponse?.data || []);
   const projects: Project[] = []; // This seems unused in the original, keeping for compatibility
 
-  // Debug logging for table update tracking
-  console.log('📊 [USER_TABLE_DEBUG] ManageUsersPage rendered');
-  console.log('📊 [USER_TABLE_DEBUG] Users count:', users.length);
-  console.log('📊 [USER_TABLE_DEBUG] Users loading:', usersLoading);
+  // Debug logging removed for production
+  // console.log('📊 [USER_TABLE_DEBUG] ManageUsersPage rendered');
+  // console.log('📊 [USER_TABLE_DEBUG] Users count:', users.length);
+  // console.log('📊 [USER_TABLE_DEBUG] Users loading:', usersLoading);
   
   // Manual refresh function for debugging
   const handleManualRefresh = () => {
-    console.log('🔄 [USER_TABLE_DEBUG] Manual refresh triggered');
+    // console.log('🔄 [USER_TABLE_DEBUG] Manual refresh triggered');
     refetchUsers();
     refetchTeams();
   };
@@ -168,7 +168,7 @@ export default function ManageUsersPage() {
       return fullName.includes(searchLower) || email.includes(searchLower);
     });
     
-    console.log('🔍 [USER_TABLE_DEBUG] Filtered users:', filtered.length, 'of', users.length);
+    // console.log('🔍 [USER_TABLE_DEBUG] Filtered users:', filtered.length, 'of', users.length);
     return filtered;
   }, [users, searchTerm]);
 
@@ -194,10 +194,10 @@ export default function ManageUsersPage() {
 
   // Track when users data changes
   useEffect(() => {
-    console.log('🔄 [USER_TABLE_DEBUG] Users data changed! New count:', users.length);
-    if (users.length > 0) {
-      console.log('👥 [USER_TABLE_DEBUG] Current users:', users.map(u => `${u.first_name} ${u.last_name} (${u.email})`));
-    }
+    // console.log('🔄 [USER_TABLE_DEBUG] Users data changed! New count:', users.length);
+    // if (users.length > 0) {
+    //   console.log('👥 [USER_TABLE_DEBUG] Current users:', users.map(u => `${u.first_name} ${u.last_name} (${u.email})`));
+    // }
   }, [users]);
 
   // Event handlers for form completion - React Query will auto-refresh
@@ -226,8 +226,8 @@ export default function ManageUsersPage() {
   useEffect(() => {
     // Force refresh handler
     const handleForceUserTableRefresh = (event: any) => {
-      console.log('🔄 [USER_TABLE_DEBUG] Force refresh event received');
-      console.log('🔄 [USER_TABLE_DEBUG] Event detail:', event.detail);
+      // console.log('🔄 [USER_TABLE_DEBUG] Force refresh event received');
+      // console.log('🔄 [USER_TABLE_DEBUG] Event detail:', event.detail);
       refetchUsers();
     };
 
@@ -259,7 +259,7 @@ export default function ManageUsersPage() {
     const endIndex = startIndex + usersPagination.pageSize;
     const paginated = filteredUsers.slice(startIndex, endIndex);
     
-    console.log('📄 [USER_TABLE_DEBUG] Paginated users:', paginated.length, 'on page', usersPagination.page);
+    // console.log('📄 [USER_TABLE_DEBUG] Paginated users:', paginated.length, 'on page', usersPagination.page);
     return paginated;
   }, [filteredUsers, usersPagination.page, usersPagination.pageSize]);
 
@@ -298,7 +298,7 @@ export default function ManageUsersPage() {
       return transformedUser;
     });
     
-    console.log('final transformed users:', transformed);
+    // console.log('final transformed users:', transformed);
     return transformed;
   }, []);
 
@@ -440,7 +440,7 @@ export default function ManageUsersPage() {
             {/* Debug: Manual Refetch Button */}
             <Button
               onClick={() => {
-                console.log('[ManageUsersPage] Manual refetch triggered');
+                // console.log('[ManageUsersPage] Manual refetch triggered');
                 refetchUsers();
               }}
               variant="outline"
@@ -532,14 +532,14 @@ export default function ManageUsersPage() {
             ) : (
               (() => {
                 const tableData = transformUsersForTable(paginatedUsers as any);
-                console.log('=== RENDERING USER TABLE ===');
-                console.log('table data being passed to UserTable:', tableData);
-                console.log('table data length:', tableData.length);
-                console.log('pagination props:', {
-                  page: usersPagination.page,
-                  pageSize: usersPagination.pageSize,
-                  total: usersPagination.total,
-                });
+                // console.log('=== RENDERING USER TABLE ===');
+                // console.log('table data being passed to UserTable:', tableData);
+                // console.log('table data length:', tableData.length);
+                // console.log('pagination props:', {
+                //   page: usersPagination.page,
+                //   pageSize: usersPagination.pageSize,
+                //   total: usersPagination.total,
+                // });
                 return (
                   <UserTable
                     data={tableData}

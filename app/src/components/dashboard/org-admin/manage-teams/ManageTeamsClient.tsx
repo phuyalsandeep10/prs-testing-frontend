@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Search, Filter, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -75,6 +75,12 @@ export function ManageTeamsClient() {
   const [selectedTeams, setSelectedTeams] = useState<UiTeam[]>([]);
 
   const teams: UiTeam[] = React.useMemo(() => (teamsData?.data ?? []) as any, [teamsData]);
+
+  // Lightweight debug to verify data flow – remove or comment in production
+  useEffect(() => {
+    console.log('[TEAMS_TABLE_DEBUG] raw teamsData ->', teamsData);
+    console.log('[TEAMS_TABLE_DEBUG] derived teams[] ->', teams);
+  }, [teamsData, teams]);
 
   // ------------------- Columns -------------------
   const columns: ColumnDef<UiTeam>[] = [

@@ -46,10 +46,13 @@ export function AddNewTeamFormWrapper({
   const { user } = useAuth();
   const { addNotification } = useUI();
 
-  const { data: usersData, isLoading: usersLoading } = useUsersQuery();
-  
-  // Use standardized projects hook
-  const { data: projects = [], isLoading: projectsLoading } = useProjects();
+  // Correctly get and parse organization ID
+  const orgIdStr = user?.organizationId ? String(user.organizationId) : '';
+  const orgIdNum = user?.organizationId ? parseInt(user.organizationId, 10) : undefined;
+
+  // Correctly call the query hooks with the organization ID
+  const { data: usersData, isLoading: usersLoading } = useUsersQuery(orgIdStr, { page_size: 1000 });
+  const { data: projects = [], isLoading: projectsLoading } = useProjects(orgIdNum);
 
   console.log('[AddNewTeamFormWrapper] Data received from useUsersQuery:', usersData);
   console.log('[AddNewTeamFormWrapper] Users loading state:', usersLoading);
@@ -72,20 +75,22 @@ export function AddNewTeamFormWrapper({
   const extractRoleName = (u: any) => (typeof u.role === 'string' ? u.role : u.role?.name || '');
 
   const teamLeads = users.filter((u: any) => {
+    if (!u || !u.id) return false;
     const roleName = extractRoleName(u).toLowerCase();
     return ['supervisor', 'teamlead', 'team lead', 'org-admin', 'super-admin'].some(r => roleName.includes(r));
   }).map((u: any) => ({
-    ...u,
-    displayName: `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() || u.name || u.username,
-  }));
+      ...u,
+      displayName: `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() || u.name || u.username,
+    }));
 
   const teamMembers = users.filter((u: any) => {
+    if (!u || !u.id) return false;
     const roleName = extractRoleName(u).toLowerCase();
     return !['super-admin', 'org-admin'].includes(roleName);
   }).map((u: any) => ({
-    ...u,
-    displayName: `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() || u.name || u.username,
-  }));
+      ...u,
+      displayName: `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() || u.name || u.username,
+    }));
 
   // Debug logs (can be removed in production)
   React.useEffect(() => {
@@ -175,34 +180,40 @@ export function AddNewTeamFormWrapper({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">
-            {isEdit ? 'Edit Team' : 'Add New Team'}
+    <div className="h-full flex flex-col bg-white">
+      {/* Header */}
+      <div className="px-6 py-4 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-green-600">
+            {isEdit ? "Edit Team" : "Add New Team"}
           </h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          <button 
+            onClick={onClose} 
+            className="text-gray-400 hover:text-gray-600 rounded-full p-1"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
+        <p className="text-sm text-gray-500 mt-1">Add Information</p>
+      </div>
 
-        {/* Form */}
+      {/* Form Body */}
+      <div className="flex-1 overflow-y-auto px-6 py-6">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="p-6 space-y-6">
+          <form id="team-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             {/* Team Name */}
             <FormField
               control={form.control}
               name="teamName"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Team Name *</FormLabel>
+                  <FormLabel className="text-sm font-medium text-indigo-600">
+                    Team Name<span className="text-red-500 ml-1">*</span>
+                  </FormLabel>
                   <FormControl>
                     <Input 
-                      placeholder="Enter team name" 
+                      className="h-12 border-indigo-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-lg"
+                      placeholder="Sales Person Name" 
                       {...field} 
                       disabled={isLoading}
                     />
@@ -218,11 +229,13 @@ export function AddNewTeamFormWrapper({
               name="teamLead"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Team Lead *</FormLabel>
+                  <FormLabel className="text-sm font-medium text-indigo-600">
+                    Team Lead<span className="text-red-500 ml-1">*</span>
+                  </FormLabel>
                   <FormControl>
                     <Select value={field.value} onValueChange={field.onChange} disabled={isLoading}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a team lead" />
+                      <SelectTrigger className="h-12 border-indigo-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-lg">
+                        <SelectValue placeholder="Sales Leader Name" />
                       </SelectTrigger>
                       <SelectContent>
                         {teamLeads.map((lead) => (
@@ -244,9 +257,11 @@ export function AddNewTeamFormWrapper({
               name="teamMembers"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Team Members *</FormLabel>
+                  <FormLabel className="text-sm font-medium text-indigo-600">
+                    Team Member<span className="text-red-500 ml-1">*</span>
+                  </FormLabel>
                   <FormControl>
-                    <div className="space-y-2 max-h-40 overflow-y-auto border rounded-md p-2">
+                    <div className="h-auto p-2 space-y-2 border border-indigo-300 rounded-lg min-h-[48px]">
                       {teamMembers.map((member) => (
                         <div key={member.id} className="flex items-center space-x-2">
                           <Checkbox
@@ -266,7 +281,7 @@ export function AddNewTeamFormWrapper({
                             htmlFor={`member-${member.id}`}
                             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                           >
-                            {member.displayName} ({member.email})
+                            {member.displayName}
                           </label>
                         </div>
                       ))}
@@ -283,14 +298,15 @@ export function AddNewTeamFormWrapper({
               name="assignedProject"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Assigned Project</FormLabel>
+                  <FormLabel className="text-sm font-medium text-indigo-600">
+                    Assigned Project<span className="text-red-500 ml-1">*</span>
+                  </FormLabel>
                   <FormControl>
                     <Select value={field.value} onValueChange={field.onChange} disabled={isLoading}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a project (optional)" />
+                      <SelectTrigger className="h-12 border-indigo-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-lg">
+                        <SelectValue placeholder="Calilia, Leedheed CRM...." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No project assigned</SelectItem>
                         {projects.map((project) => (
                           <SelectItem key={project.id} value={project.id.toString()}>
                             {project.name}
@@ -310,10 +326,13 @@ export function AddNewTeamFormWrapper({
               name="contactNumber"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Contact Number</FormLabel>
+                  <FormLabel className="text-sm font-medium text-indigo-600">
+                    Contact Number<span className="text-red-500 ml-1">*</span>
+                  </FormLabel>
                   <FormControl>
                     <Input 
-                      placeholder="Enter contact number" 
+                      className="h-12 border-indigo-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-lg"
+                      placeholder="+977 - 9807057526" 
                       {...field} 
                       disabled={isLoading}
                     />
@@ -322,41 +341,35 @@ export function AddNewTeamFormWrapper({
                 </FormItem>
               )}
             />
-
-            {/* Form Actions */}
-            <div className="flex justify-end space-x-4 pt-4 border-t border-gray-200">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleClear}
-                disabled={isLoading}
-              >
-                Clear
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onClose}
-                disabled={isLoading}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {isEdit ? 'Updating...' : 'Creating...'}
-                  </>
-                ) : (
-                  isEdit ? 'Update Team' : 'Create Team'
-                )}
-              </Button>
-            </div>
           </form>
         </Form>
+      </div>
+      
+      {/* Footer with buttons */}
+      <div className="px-6 py-4 bg-blue-600 flex justify-end space-x-3">
+        <Button
+          type="button"
+          onClick={handleClear}
+          className="bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-6 rounded-lg"
+          disabled={isLoading}
+        >
+          Clear
+        </Button>
+        <Button
+          type="submit"
+          form="team-form" // Make sure this matches the form id if you add one
+          className="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-6 rounded-lg"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {isEdit ? 'Updating...' : 'Saving...'}
+            </>
+          ) : (
+            'Save Team'
+          )}
+        </Button>
       </div>
     </div>
   );

@@ -4,7 +4,8 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api-client';
+import { apiClient, StandardApiClient } from '@/lib/api-client';
+import { useAuth } from '@/stores'; // Corrected import path
 
 // ==================== QUERY KEYS ====================
 export const projectKeys = {
@@ -47,28 +48,35 @@ interface UpdateProjectData extends Partial<CreateProjectData> {
 // ==================== QUERY HOOKS ====================
 
 /**
- * Fetch all projects
+ * Custom hook to fetch the list of projects.
+ * Now standardized to use the `StandardApiClient`.
  */
-export const useProjects = () => {
-  return useQuery({
-    queryKey: projectKeys.lists(),
-    queryFn: async (): Promise<Project[]> => {
-      const response = await apiClient.get<ProjectsResponse | Project[]>('/projects/');
-      
-      // Handle both paginated and direct array responses
-      if (Array.isArray(response)) {
-        return response;
+export function useProjects(organizationId?: number) {
+  const { user } = useAuth();
+  const orgId = organizationId ?? user?.organizationId;
+
+  return useQuery<Project[]>({
+    queryKey: ['projects', orgId],
+    queryFn: async () => {
+      if (!orgId) {
+        // Return an empty array if no organization ID is available.
+        return [];
       }
-      
-      return (response as ProjectsResponse).results || [];
+      // Corrected URL from `/api/projects/` to `/api/project/`
+      const response = await apiClient.get<Project[]>(`/project/`, {
+        params: { organization: orgId }
+      });
+      return response; // The API client returns the data directly
     },
+    enabled: !!orgId,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: true,
   });
-};
+}
 
 /**
- * Fetch a single project by ID
+ * Standardized hook to fetch a single project by its ID.
  */
 export const useProject = (projectId: string) => {
   return useQuery({

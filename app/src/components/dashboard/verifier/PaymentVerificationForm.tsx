@@ -4,11 +4,14 @@ import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import SelectField from "@/components/ui/clientForm/SelectField";
 import TextAreaField from "@/components/ui/clientForm/TextAreaField";
 import { Button } from "@/components/ui/button";
 import InputField from "@/components/ui/clientForm/InputField";
 import { useUpdatePaymentStatus } from "@/hooks/api";
+import { apiClient } from "@/lib/api-client";
+import Swal from "sweetalert2";
 
 const createSchema = (action: "verify" | "deny" | "refund") =>
   z.object({
@@ -70,13 +73,14 @@ function getErrorMessage(error: any): string | null {
 
 // Using standardized hooks - no manual API functions needed
 
-const PaymentVerificationForm: React.FC<PaymentVerificationFormProps> = ({
+  const PaymentVerificationForm: React.FC<PaymentVerificationFormProps> = ({
   mode = "verification",
   invoiceData,
   paymentId: invoiceId, // Renaming for clarity
   onSave,
   onCancel,
 }) => {
+  const queryClient = useQueryClient();
   const [activityLogs, setActivityLogs] = useState<
     Array<{ id: number; message: string; timestamp: string }>
   >([]);
@@ -87,6 +91,31 @@ const PaymentVerificationForm: React.FC<PaymentVerificationFormProps> = ({
   const [errorMessages, setErrorMessages] = useState<string[]>([]);
   
   const validationMode = mode; // Align with existing prop name
+
+  // Fetch payment data when paymentId is provided
+  const {
+    data: paymentData,
+    isLoading: isLoadingPayment,
+    error: paymentError,
+  } = useQuery({
+    queryKey: ['payment-verifier-form', invoiceId],
+    queryFn: async () => {
+      if (!invoiceId) return null;
+      console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] Making API call to:', `/verifier/verifier-form/${invoiceId}/`);
+      try {
+        const response = await apiClient.get<any>(`/verifier/verifier-form/${invoiceId}/`);
+        console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] API response:', response);
+        console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] API response type:', typeof response);
+        console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] API response keys:', response ? Object.keys(response) : 'No response');
+        return response;
+      } catch (error) {
+        console.error('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] API call failed:', error);
+        throw error;
+      }
+    },
+    enabled: !!invoiceId,
+    retry: 1,
+  });
 
   const {
     register,
@@ -103,28 +132,88 @@ const PaymentVerificationForm: React.FC<PaymentVerificationFormProps> = ({
     mode: "onSubmit",
   });
 
+  // Populate form when payment data is loaded
+  useEffect(() => {
+    if (paymentData && !isLoadingPayment) {
+      const deal = paymentData.deal;
+      const payment = paymentData.payment;
+      
+      reset({
+        dealId: deal?.deal_id || '',
+        clientName: deal?.client?.client_name || '',
+        dealName: deal?.deal_name || '',
+        payMethod: payment?.payment_method || '',
+        paymentValue: payment?.received_amount?.toString() || '',
+        chequeNumber: payment?.cheque_number || '',
+        paymentDate: payment?.payment_date ? new Date(payment.payment_date).toISOString().split('T')[0] : '',
+        requestedBy: deal?.created_by?.full_name || '',
+        salesPersonRemarks: payment?.payment_remarks || '',
+        amountInInvoice: payment?.received_amount?.toString() || '',
+        verifierRemarks: '',
+      });
+    }
+  }, [paymentData, isLoadingPayment, reset]);
+
   // Use standardized hook for payment verification
   const updatePaymentStatusMutation = useUpdatePaymentStatus();
 
   const onSubmit = async (data: PaymentVerificationData) => {
     try {
-      // Extract payment ID from the deal ID or use a provided payment ID
-      const paymentId = invoiceId || data.dealId;
+      // Use the payment ID from the fetched data
+      const paymentId = paymentData?.payment?.id || invoiceId;
       
-      await updatePaymentStatusMutation.mutateAsync({
-        paymentId: String(paymentId),
-        status: validationMode === "verification" ? "verified" : "rejected",
-        notes: data.verifierRemarks,
+      if (!paymentId) {
+        console.error("No payment ID available for submission");
+        return;
+      }
+      
+      // Create FormData for the backend (expects form data, not JSON)
+      const formData = new FormData();
+      formData.append('invoice_status', currentAction === "verify" ? "verified" : "rejected");
+      formData.append('verifier_remarks', data.verifierRemarks || '');
+      formData.append('amount_in_invoice', data.amountInInvoice || '0');
+      
+      // Submit to the verifier form endpoint using FormData
+      const response = await apiClient.upload<any>(`/verifier/verifier-form/${paymentId}/`, formData);
+      
+      console.log("Payment verification submitted successfully", response);
+      reset();
+      
+      // Show success notification
+      const actionText = currentAction === "verify" ? "verified" : "rejected";
+      await Swal.fire({
+        icon: "success",
+        title: "Payment Verification Successful!",
+        text: `Payment has been ${actionText} successfully.`,
+        timer: 2000,
+        showConfirmButton: false,
       });
       
-      console.log("Payment verification submitted successfully");
-      reset();
+      // Invalidate and refetch relevant queries to update the UI
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['invoices'] }),
+        queryClient.invalidateQueries({ queryKey: ['deals'] }),
+        queryClient.invalidateQueries({ queryKey: ['verification-queue'] }),
+        queryClient.invalidateQueries({ queryKey: ['payment-verifier-form', invoiceId] }),
+        queryClient.invalidateQueries({ predicate: (query) => 
+          query.queryKey[0] === 'deals' || 
+          query.queryKey[0] === 'invoices' ||
+          query.queryKey.includes('verification')
+        }),
+      ]);
       
       if (onSave) {
         onSave(data);
       }
     } catch (error) {
       console.error("Submission failed:", error);
+      
+      // Show error notification
+      await Swal.fire({
+        icon: "error",
+        title: "Verification Failed",
+        text: error instanceof Error ? error.message : "An error occurred during verification.",
+      });
     }
   };
 
@@ -146,6 +235,50 @@ const PaymentVerificationForm: React.FC<PaymentVerificationFormProps> = ({
   const uploadInvoiceErrorMsg = getErrorMessage(errors.uploadInvoice);
 
   const isViewMode = mode === "view";
+
+  // Debug logging
+  console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] ===== PAYMENT VERIFICATION FORM DEBUG =====');
+  console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] paymentId:', invoiceId);
+  console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] mode:', mode);
+  console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] paymentData:', paymentData);
+  console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] paymentData type:', typeof paymentData);
+  console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] paymentData keys:', paymentData ? Object.keys(paymentData) : 'No data');
+  console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] isLoadingPayment:', isLoadingPayment);
+  console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] paymentError:', paymentError);
+  console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] Query enabled:', !!invoiceId);
+  console.log('🔍 [PAYMENT_VERIFICATION_FORM_DEBUG] ===========================================');
+
+  // Show loading state while fetching payment data
+  if (isLoadingPayment) {
+    return (
+      <div className="h-full w-full flex flex-col overflow-hidden">
+        <div className="flex-1 p-6 overflow-auto">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading payment details...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state if payment fetch failed
+  if (paymentError) {
+    return (
+      <div className="h-full w-full flex flex-col overflow-hidden">
+        <div className="flex-1 p-6 overflow-auto">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <p className="text-red-600 mb-4">Failed to load payment details</p>
+              <p className="text-gray-600 text-sm">{paymentError.message}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <form className="h-full w-full flex flex-col overflow-hidden" onSubmit={handleSubmit(onSubmit)}>

@@ -16,27 +16,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import type { ColumnDef } from '@tanstack/react-table';
-
-// Client interface with all required properties
-interface Client {
-  id: string;
-  client_name: string;
-  email: string;
-  phone_number: string;
-  status: string;
-  satisfaction: string;
-  created_at: string;
-  remarks?: string;
-}
-
-// Extended client interface with UI-specific data
-interface UiLead { id: string; avatar?: string; name: string; }
-interface UiClient extends Client { 
-  sales_leads?: UiLead[]; 
-}
+import { useAuth } from '@/stores';
+import type { Client } from '@/lib/types/roles';
 
 export function ManageClientsClient() {
   const { addNotification } = useUI();
+  const { user } = useAuth();
   const [view, setView] = useState<'table' | 'kanban'>('table');
   
   // Table state management
@@ -56,7 +41,7 @@ export function ManageClientsClient() {
     isLoading,
     error,
     refetch
-  } = useClientsQuery(queryParams);
+  } = useClientsQuery(user?.organizationId, queryParams);
 
   // Extract clients from response
   const clients = clientsData?.data || [];
@@ -89,13 +74,16 @@ export function ManageClientsClient() {
     addNotification({ type: 'info', title: 'Edit Client', message: 'Client edit modal coming soon.' });
   };
 
+  const deleteClientMutation = useDeleteClientMutation();
+
   const handleDeleteClient = async (client: Client) => {
     try {
-      // Add delete logic here when mutation is available
-      addNotification({ type: 'success', title: 'Success', message: 'Client deleted successfully!' });
+      await deleteClientMutation.mutateAsync(client.id);
+      // Success notification is handled by the mutation
       refetch();
     } catch (error: any) {
-      addNotification({ type: 'error', title: 'Error', message: error.message || 'Failed to delete client' });
+      // Error notification is handled by the mutation
+      console.error('Delete failed:', error);
     }
   };
 
@@ -135,32 +123,8 @@ export function ManageClientsClient() {
     }
   };
 
-  // Sales lead avatars component
-  const SalesLeadAvatars: React.FC<{ leads: { id: string; avatar?: string; name: string }[] }> = ({ leads }) => {
-    const maxVisible = 3;
-    const visibleLeads = leads.slice(0, maxVisible);
-    const remainder = leads.length - maxVisible;
-
-    return (
-      <div className="flex -space-x-2">
-        {visibleLeads.map((lead) => (
-          <Avatar key={lead.id} className="h-6 w-6 border-2 border-white">
-            {lead.avatar ? (<AvatarImage src={lead.avatar} alt={lead.name} />) : (
-              <AvatarFallback>{lead.name.split(' ').map(n=>n[0]).join('').slice(0,2).toUpperCase()}</AvatarFallback>
-            )}
-          </Avatar>
-        ))}
-        {remainder > 0 && (
-          <div className="h-6 w-6 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-medium text-gray-600 border-2 border-white">
-            +{remainder}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   // Table columns
-  const columns: ColumnDef<UiClient>[] = [
+  const columns: ColumnDef<Client>[] = [
     {
       accessorKey: 'client_name',
       header: 'Client Name',
@@ -185,9 +149,9 @@ export function ManageClientsClient() {
       ),
     },
     {
-      accessorKey: 'sales_leads',
-      header: 'Sales Leads',
-      cell: ({ row }) => <SalesLeadAvatars leads={(row.original as UiClient).sales_leads || []} />,
+      accessorKey: 'created_by_name',
+      header: 'Sales Lead',
+      cell: ({ row }) => <span className="text-[14px] text-gray-700">{row.original.created_by_name || 'N/A'}</span>,
     },
     {
       accessorKey: 'satisfaction',

@@ -25,23 +25,47 @@ export const useDealsQuery = (filters?: Record<string, any>) => {
     queryKey: dealQueryKeys.list(filters),
     queryFn: async () => {
       const allFilters = { ...filters };
-      if (organizationId) {
-        allFilters.organization = organizationId;
-      }
+      // Don't add organization filter - backend handles this based on user authentication
       // Use apiClient directly to get deals data
-      const response = await apiClient.get<Deal[]>('/deals/', { params: allFilters });
-      // Transform flat array to paginated structure
-      return {
-        data: response.data || [],
-        pagination: {
-          page: 1,
-          limit: response.data?.length || 0,
-          total: response.data?.length || 0,
-          totalPages: 1,
-        },
-      };
+      const response = await apiClient.get<any>('/deals/deals/', { params: allFilters });
+      
+      // Handle Django REST Framework pagination format
+      if (response.data && typeof response.data === 'object' && 'results' in response.data) {
+        // Paginated response from Django REST Framework
+        return {
+          data: response.data.results || [],
+          pagination: {
+            page: response.data.page || 1,
+            limit: response.data.page_size || 25,
+            total: response.data.count || 0,
+            totalPages: Math.ceil((response.data.count || 0) / (response.data.page_size || 25)),
+          },
+        };
+      } else if (Array.isArray(response.data)) {
+        // Flat array response (fallback)
+        return {
+          data: response.data || [],
+          pagination: {
+            page: 1,
+            limit: response.data?.length || 0,
+            total: response.data?.length || 0,
+            totalPages: 1,
+          },
+        };
+      } else {
+        // Unknown format, return empty
+        return {
+          data: [],
+          pagination: {
+            page: 1,
+            limit: 0,
+            total: 0,
+            totalPages: 1,
+          },
+        };
+      }
     },
-    enabled: isAuthInitialized && !!organizationId, // Remove permission check for salesperson role
+    enabled: isAuthInitialized, // Remove organization check since backend handles it
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 

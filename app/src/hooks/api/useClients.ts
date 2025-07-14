@@ -8,6 +8,7 @@ import { apiClient } from '@/lib/api-client';
 import { cacheKeys, CacheInvalidator } from '@/lib/cache';
 import type { Client } from '@/lib/types/roles';
 import { useAuth } from '@/stores';
+import { toast } from 'sonner';
 
 // ==================== QUERY KEYS ====================
 // Use unified cache keys from the cache system
@@ -180,20 +181,23 @@ export const useDeleteClient = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (clientId: string) =>
-      apiClient.delete(`/clients/${clientId}/`),
-    
+    mutationFn: (clientId: string) => apiClient.delete(`/clients/${clientId}/`),
+
     onSuccess: (_, clientId) => {
-      // Remove from cache
+      toast.success(`Client has been deleted successfully.`);
+      // Use the 'variables' (clientId) passed to the mutation
+      // Remove from detailed cache
       queryClient.removeQueries({ queryKey: clientKeys.detail(clientId) });
-      
-      // Invalidate lists
+
+      // Invalidate lists to trigger refetch
       queryClient.invalidateQueries({ queryKey: clientKeys.lists() });
-      queryClient.invalidateQueries({ queryKey: [...clientKeys.all, 'dashboard'] });
+      queryClient.invalidateQueries({
+        queryKey: [...clientKeys.all, "dashboard"],
+      });
     },
-    
+
     onError: (error) => {
-      console.error('Failed to delete client:', error);
+      console.error("Failed to delete client:", error);
     },
   });
 };

@@ -55,12 +55,17 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
 
     const onSubmit = async (data: DealFormData) => {
       try {
+        // Map form data to backend field names
         const dealData = {
-          client: data.clientName,
-          deal_amount: parseFloat(data.dealValue.replace(/[$,]/g, '')),
-          deal_type: data.sourceType,
-          deal_details: data.dealRemarks,
-          expected_closing_date: data.dueDate,
+          client_id: data.clientName, // Now this is the client ID
+          deal_value: parseFloat(data.dealValue.replace(/[$,]/g, '')),
+          source_type: data.sourceType,
+          payment_status: data.payStatus === 'Full Pay' ? 'full_payment' : 'partial_payment',
+          payment_method: data.payMethod,
+          deal_name: data.dealName,
+          deal_remarks: data.dealRemarks,
+          due_date: data.dueDate,
+          deal_date: data.dealDate,
         };
 
         await createDealMutation.mutateAsync(dealData);
@@ -137,7 +142,7 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                       options={
                         clients && Array.isArray(clients)
                           ? clients.map((c) => ({
-                              value: c.client_name,
+                              value: c.id,
                               label: c.client_name,
                             }))
                           : []

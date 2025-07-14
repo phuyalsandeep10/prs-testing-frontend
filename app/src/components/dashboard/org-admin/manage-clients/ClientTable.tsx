@@ -8,6 +8,19 @@ import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { UnifiedTable } from "@/components/core";
 import { type Client } from "@/lib/types/roles";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useDeleteClientMutation } from "@/hooks/useIntegratedQuery";
+import { toast } from "sonner";
 
 const formatDate = (dateString: string) => {
   try {
@@ -24,7 +37,7 @@ const formatDate = (dateString: string) => {
   }
 };
 
-const columns: ColumnDef<Client>[] = [
+const createColumns = (deleteClientMutation: any): ColumnDef<Client>[] => [
   {
     id: "select",
     header: ({ table }) => (
@@ -115,9 +128,38 @@ const columns: ColumnDef<Client>[] = [
               <Eye className="h-4 w-4" />
             </button>
           </Link>
-          <button className="w-8 h-8 rounded-full bg-[#EF4444] text-white flex items-center justify-center hover:bg-[#DC2626] transition-colors">
-            <Trash2 className="h-4 w-4" />
-          </button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button className="w-8 h-8 rounded-full bg-[#EF4444] text-white flex items-center justify-center hover:bg-[#DC2626] transition-colors">
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete the client
+                  "{client.client_name}".
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction 
+                  onClick={async () => {
+                    try {
+                      await deleteClientMutation.mutateAsync(client.id);
+                      toast.success("Client deleted successfully!");
+                    } catch (error: any) {
+                      toast.error(error.message || "Failed to delete client");
+                    }
+                  }}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  Continue
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       );
     },
@@ -141,6 +183,9 @@ export function ClientTable({
   onExport,
   onRowClick
 }: ClientTableProps) {
+  const deleteClientMutation = useDeleteClientMutation();
+  const columns = createColumns(deleteClientMutation);
+  
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
       <UnifiedTable

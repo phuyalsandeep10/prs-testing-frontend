@@ -42,11 +42,16 @@ interface PaymentsResponse {
 }
 
 interface CreateDealData {
-  client: string;
-  deal_amount: number;
-  deal_type: string;
-  deal_details?: string;
-  expected_closing_date?: string;
+  client_id: string;
+  deal_value: number;
+  source_type: string;
+  payment_status: string;
+  payment_method: string;
+  deal_name?: string;
+  deal_remarks?: string;
+  due_date?: string;
+  deal_date?: string;
+  currency?: string;
 }
 
 interface UpdateDealData extends Partial<CreateDealData> {
@@ -64,7 +69,10 @@ interface CreatePaymentData {
 
 interface DealFilters {
   client?: string;
-  status?: string;
+  payment_status?: string;
+  verification_status?: string;
+  source_type?: string;
+  payment_method?: string;
   page?: number;
   limit?: number;
 }
@@ -89,11 +97,14 @@ export const useDeals = (filters: DealFilters = {}) => {
       const params = new URLSearchParams();
       
       if (filters.client) params.append('client', filters.client);
-      if (filters.status) params.append('status', filters.status);
+      if (filters.payment_status) params.append('payment_status', filters.payment_status);
+      if (filters.verification_status) params.append('verification_status', filters.verification_status);
+      if (filters.source_type) params.append('source_type', filters.source_type);
+      if (filters.payment_method) params.append('payment_method', filters.payment_method);
       if (filters.page) params.append('page', filters.page.toString());
       if (filters.limit) params.append('limit', filters.limit.toString());
 
-      const response = await apiClient.get<DealsResponse>(`/deals/?${params.toString()}`);
+      const response = await apiClient.get<DealsResponse>(`/deals/deals/?${params.toString()}`);
       
       // Handle both paginated and direct array responses
       return Array.isArray(response) ? response : response.results || [];
@@ -109,7 +120,7 @@ export const useDeals = (filters: DealFilters = {}) => {
 export const useDeal = (dealId: string) => {
   return useQuery({
     queryKey: dealKeys.detail(dealId),
-    queryFn: () => apiClient.get<Deal>(`/deals/${dealId}/`),
+    queryFn: () => apiClient.get<Deal>(`/deals/deals/${dealId}/`),
     enabled: !!dealId,
     staleTime: 5 * 60 * 1000,
   });
@@ -122,7 +133,7 @@ export const useClientDeals = (clientId: string) => {
   return useQuery({
     queryKey: dealKeys.list(JSON.stringify({ client: clientId })),
     queryFn: async (): Promise<Deal[]> => {
-      const response = await apiClient.get<DealsResponse>(`/deals/?client=${clientId}`);
+      const response = await apiClient.get<DealsResponse>(`/deals/deals/?client=${clientId}`);
       return Array.isArray(response) ? response : response.results || [];
     },
     enabled: !!clientId,
@@ -181,11 +192,46 @@ export const useCreateDeal = () => {
 
   return useMutation({
     mutationFn: (data: CreateDealData) => 
-      apiClient.post<Deal>('/deals/', data),
+      apiClient.post<Deal>('/deals/deals/', data),
     
     onSuccess: (newDeal) => {
-      // Invalidate deal lists
+      // Invalidate all deal-related queries to ensure all tables update
+      queryClient.invalidateQueries({ queryKey: ['deals'] });
       queryClient.invalidateQueries({ queryKey: dealKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: dealKeys.all });
+      
+      // Invalidate cache-based queries
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const queryKey = query.queryKey;
+          return Array.isArray(queryKey) && 
+                 (queryKey.includes('deals') || 
+                  queryKey.includes('DEALS') ||
+                  (queryKey[0] === 'deals'));
+        }
+      });
+      
+      // Force refetch all deals queries
+      queryClient.refetchQueries({ 
+        predicate: (query) => {
+          const queryKey = query.queryKey;
+          return Array.isArray(queryKey) && 
+                 (queryKey.includes('deals') || 
+                  queryKey.includes('DEALS') ||
+                  (queryKey[0] === 'deals'));
+        }
+      });
+      
+      // Specifically invalidate the salesperson deals table pattern
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const queryKey = query.queryKey;
+          return Array.isArray(queryKey) && 
+                 queryKey.length >= 2 && 
+                 queryKey[0] === 'deals' && 
+                 typeof queryKey[1] === 'object';
+        }
+      });
       
       // Set the new deal data
       queryClient.setQueryData(dealKeys.detail(newDeal.id.toString()), newDeal);
@@ -213,7 +259,7 @@ export const useUpdateDeal = () => {
 
   return useMutation({
     mutationFn: ({ id, ...data }: UpdateDealData) =>
-      apiClient.put<Deal>(`/deals/${id}/`, data),
+      apiClient.put<Deal>(`/deals/deals/${id}/`, data),
     
     onSuccess: (updatedDeal, variables) => {
       // Update the specific deal in cache
@@ -240,7 +286,7 @@ export const useDeleteDeal = () => {
 
   return useMutation({
     mutationFn: (dealId: string) =>
-      apiClient.delete(`/deals/${dealId}/`),
+      apiClient.delete(`/deals/deals/${dealId}/`),
     
     onSuccess: (_, dealId) => {
       // Remove from cache

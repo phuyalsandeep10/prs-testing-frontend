@@ -7,7 +7,7 @@ import * as z from "zod";
 import { toast } from "sonner";
 import { Loader2, X } from "lucide-react";
 import type { Client } from "@/lib/types/roles";
-import { clientApi } from "@/lib/api";
+import { useCreateClient, useUpdateClient } from "@/hooks/api";
 
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -64,8 +64,9 @@ export function ClientFormWrapper({
   onClientUpdated,
   onSuccess 
 }: ClientFormWrapperProps) {
-  const [isLoading, setIsLoading] = React.useState(false);
   const [isVisible, setIsVisible] = React.useState(false);
+  const createClientMutation = useCreateClient();
+  const updateClientMutation = useUpdateClient();
 
   // Determine schema based on variant
   const getSchema = () => {
@@ -153,11 +154,11 @@ export function ClientFormWrapper({
       // Prepare payload for add/edit
       const phoneRaw = values.phone_number || values.contactNumber || "";
       const payload: any = {
-        name: values.client_name || values.clientName,
+        client_name: values.client_name || values.clientName,
         email: values.email,
         nationality: values.nationality,
         remarks: values.remarks || '',
-        phoneNumber: phoneRaw.trim().startsWith('+') ? phoneRaw.trim() : `+977${phoneRaw.trim()}`,
+        phone_number: phoneRaw.trim().startsWith('+') ? phoneRaw.trim() : `+977${phoneRaw.trim()}`,
       };
 
       if (variant === 'edit' && values.status) {
@@ -175,9 +176,9 @@ export function ClientFormWrapper({
           const apiObj: any = response.data;
           const mapped: Client = {
             ...(apiObj as any),
-            client_name: apiObj.name,
-            phone_number: apiObj.phoneNumber,
-            created_at: apiObj.createdAt || client.created_at,
+            client_name: apiObj.client_name,
+            phone_number: apiObj.phone_number,
+            created_at: apiObj.created_at || client.created_at,
           };
           if (onClientUpdated) {
             onClientUpdated(mapped);
@@ -190,9 +191,9 @@ export function ClientFormWrapper({
           const apiClientObj: any = response.data;
           const mappedClient: Client = {
             ...(apiClientObj as any),
-            client_name: apiClientObj.name,
-            phone_number: apiClientObj.phoneNumber,
-            created_at: apiClientObj.createdAt || new Date().toISOString(),
+            client_name: apiClientObj.client_name,
+            phone_number: apiClientObj.phone_number,
+            created_at: apiClientObj.created_at || new Date().toISOString(),
           };
           if (onClientAdded) {
             onClientAdded(mappedClient);
@@ -232,6 +233,7 @@ export function ClientFormWrapper({
   };
 
   const handleClear = () => {
+    const isLoading = createClientMutation.isPending || updateClientMutation.isPending;
     if (!isLoading) {
       form.reset();
       if (variant === 'salesperson') {

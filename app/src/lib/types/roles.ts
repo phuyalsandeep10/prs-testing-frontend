@@ -18,6 +18,17 @@ export type Permission =
   | 'send:notifications'
   | 'approve:deals'
   | 'deny:deals'
+  // Team management permissions
+  | 'view_team'
+  | 'view_all_teams'
+  | 'add_team'
+  | 'change_team'
+  | 'delete_team'
+  // User management permissions
+  | 'view_user'
+  | 'add_user'
+  | 'change_user'
+  | 'delete_user'
   // granular client permissions
   | 'view_own_clients'
   | 'view_all_clients'
@@ -163,8 +174,9 @@ export interface Client {
   updated_at: string;
   remarks: string | null;
   satisfaction: 'excellent' | 'good' | 'average' | 'poor' | null;
-  payment_status: 'clear' | 'pending' | 'bad_debt' | null;
+  status: 'clear' | 'pending' | 'bad_debt' | null;
   created_by: number;
+  created_by_name?: string;
   organization: number;
   total_value: number | null;
 }
