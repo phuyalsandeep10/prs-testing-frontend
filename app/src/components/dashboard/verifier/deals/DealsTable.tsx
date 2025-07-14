@@ -12,15 +12,10 @@ import { useRoleConfig } from "@/hooks/useRoleBasedColumns";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-// Fetch deals function for verifier (gets deals that need verification)
-const fetchDeals = async (searchTerm: string): Promise<Deal[]> => {
-      const response = await apiClient.get<Deal[]>("/deals/deals/", {
-      search: searchTerm,
-      page: 1,
-      limit: 25, // Use the actual limit that works
-      ordering: "-created_at", // Sort by creation date descending to get newest first
-    });
-  return response.data || [];
+// Helper function to convert index to ordinal words
+const getOrdinalWord = (index: number): string => {
+  const ordinals = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth"];
+  return ordinals[index] || `${index + 1}th`;
 };
 
 // Tooltip component for payment amounts
@@ -63,11 +58,7 @@ PaymentTooltip.displayName = "PaymentTooltip";
 interface DealsTableProps {
   onEditDeal?: (dealId: string) => void;
   onAddPayment?: (dealId: string) => void;
-  onVerifyPayment?: (
-    dealId: string,
-    paymentId: string,
-    status: "verified" | "rejected"
-  ) => void;
+  onVerifyPayment?: (dealId: string, paymentId: string, status: 'verified' | 'rejected') => void;
   searchTerm?: string;
 }
 
@@ -77,8 +68,9 @@ const DealsTable: React.FC<DealsTableProps> = ({
   onVerifyPayment,
   searchTerm = "",
 }) => {
-  const roleConfig = useRoleBasedColumns();
-
+  const roleConfig = useRoleConfig();
+  
+  // Use the same hook as salesperson table
   const {
     data: dealsResponse,
     isLoading,
@@ -209,21 +201,17 @@ const DealsTable: React.FC<DealsTableProps> = ({
         header: "Status",
         accessorKey: "pay_status",
         cell: ({ row }) => {
-          const status =
-            row.original.pay_status === "full_payment"
-              ? "Full Pay"
-              : "Partial Pay";
-          const getStatusColor = () => {
-            switch (status.toLowerCase()) {
-              case "full pay":
-                return "bg-[#E6F7FF] text-[#16A34A] px-3 py-1 text-[12px] font-medium rounded-full";
-              case "partial pay":
-                return "bg-[#FFF7ED] text-[#EA580C] px-3 py-1 text-[12px] font-medium rounded-full";
-              default:
-                return "bg-gray-100 text-gray-600 px-3 py-1 text-[12px] font-medium rounded-full";
-            }
-          };
-          return <span className={getStatusColor()}>{status}</span>;
+          const statusRaw = row.original.pay_status; // full_payment | partial_payment
+          const statusLabel = statusRaw === "full_payment" ? "Full Pay" : "Partial Pay";
+          const badgeClass =
+            statusRaw === "full_payment"
+              ? "bg-green-100 text-green-700"
+              : "bg-yellow-100 text-yellow-700";
+          return (
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${badgeClass}`}>{
+              statusLabel
+            }</span>
+          );
         },
       },
       {
@@ -231,9 +219,9 @@ const DealsTable: React.FC<DealsTableProps> = ({
         header: "Remarks",
         accessorKey: "deal_remarks",
         cell: ({ row }) => (
-          <div className="text-[12px] text-gray-700 max-w-xs truncate">
-            {row.original.deal_remarks || "N/A"}
-          </div>
+          <span className="truncate max-w-[150px] block text-sm text-gray-700">
+            {row.original.deal_remarks || "-"}
+          </span>
         ),
       },
       {
@@ -263,9 +251,26 @@ const DealsTable: React.FC<DealsTableProps> = ({
         id: "payment",
         header: "Payment",
         cell: ({ row }) => {
-          const payments = row.original.payments;
-          if (!payments || payments.length === 0) return "No Payments";
-
+          const payments = row.original.payments || [];
+          const dealStatus = row.original.verification_status;
+          
+          // If no payments exist, show deal status
+          if (payments.length === 0) {
+            const statusColor = 
+              dealStatus === "verified" ? "text-green-600" :
+              dealStatus === "rejected" ? "text-red-600" : 
+              "text-orange-500"; // pending = orange
+            
+            return (
+              <div className="flex gap-1">
+                <span className={`text-xs font-semibold ${statusColor}`}>
+                  First
+                </span>
+              </div>
+            );
+          }
+          
+          // If payments exist, show them with proper status colors
           return (
             <div className="flex gap-1">
               {payments.slice(0, 2).map((p: Payment, idx: number) => {
@@ -277,13 +282,15 @@ const DealsTable: React.FC<DealsTableProps> = ({
                   "text-orange-500"; // pending = orange
                 
                 return (
-                  <PaymentTooltip key={index} amount={`$${p.received_amount}`}>
-                    <span
-                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${badgeClass}`}
-                    >
-                      {`Pay ${index + 1}`}
-                    </span>
-                  </PaymentTooltip>
+                  <span
+                    key={p.id}
+                    className={cn(
+                      "text-xs font-semibold",
+                      statusColor
+                    )}
+                  >
+                    {idx === 0 ? "First" : "Second"}
+                  </span>
                 );
               })}
             </div>
@@ -301,12 +308,9 @@ const DealsTable: React.FC<DealsTableProps> = ({
             const dealPaymentMethod = row.original.payment_method;
             return <span className="text-sm">{dealPaymentMethod || "-"}</span>;
           }
-          const methods = [...new Set(payments.map((p) => p.payment_method))];
-          return (
-            <div className="text-[12px] text-gray-700">
-              {methods.join(", ")}
-            </div>
-          );
+          
+          // If payments exist, show first payment's method
+          return <span className="text-sm">{payments[0]?.payment_method || "-"}</span>;
         },
       },
       {
@@ -322,64 +326,56 @@ const DealsTable: React.FC<DealsTableProps> = ({
       {
         id: "version",
         header: "Version",
-        cell: ({ row }) => {
-          const versionText = row.original.version > 1 ? "Edited" : "Original";
-          return (
-            <span
-              className={`px-2 py-1 text-[12px] font-medium rounded ${
-                versionText === "Edited"
-                  ? "bg-blue-100 text-blue-700"
-                  : "bg-gray-100 text-gray-600"
-              }`}
-            >
-              {versionText}
-            </span>
-          );
-        },
+        cell: ({ row }) => (
+          <span className="text-sm">
+            {row.original.version === 'edited' ? "Edited" : "Original"}
+          </span>
+        ),
       },
-      // Conditionally include Sales Person column based on role
-      ...(roleConfig.shouldShowSalesperson
-        ? [
-            {
-              accessorKey: "created_by.full_name" as const,
-              header: "Sales Person",
-              cell: ({ row }: { row: { original: Deal } }) => (
-                <div className="text-[12px] text-gray-700">
-                  {row.original.created_by?.full_name || "N/A"}
-                </div>
-              ),
-            },
-          ]
-        : []),
+      // Sales Person column - always show for verifier
+      {
+        id: "sales_person",
+        header: "Sales Person",
+        cell: ({ row }: any) => (
+          <span className="text-sm">{row.original.created_by?.full_name || "-"}</span>
+        ),
+      },
       {
         id: "actions",
         header: "Actions",
         cell: ({ row }) => (
-          <div className="flex items-center justify-center gap-1">
-            {roleConfig.allowedActions.includes("verify") && (
+          <div className="flex gap-2">
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleRowExpansion(row.id);
+              }}
+              title={expandedRows[row.id] ? "Collapse" : "Expand"}
+            >
+              {expandedRows[row.id] ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+            </Button>
+            {roleConfig.allowedActions.includes('verify') && (
               <>
-                <button
-                  onClick={() =>
-                    onVerifyPayment?.(
-                      row.original.id,
-                      row.original.payments?.[0]?.id || "",
-                      "verified"
-                    )
-                  }
-                  className="w-6 h-6 rounded-full bg-[#22C55E] text-white flex items-center justify-center hover:bg-[#16A34A] transition-colors"
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={() => onVerifyPayment?.(row.original.id, row.original.payments?.[0]?.id || '', 'verified')}
+                  className="text-green-600 hover:text-green-700"
                   title="Verify Payment"
                 >
-                  <Check className="w-3 h-3" />
-                </button>
-                <button
-                  onClick={() =>
-                    onVerifyPayment?.(
-                      row.original.id,
-                      row.original.payments?.[0]?.id || "",
-                      "rejected"
-                    )
-                  }
-                  className="w-6 h-6 rounded-full bg-[#EF4444] text-white flex items-center justify-center hover:bg-[#DC2626] transition-colors"
+                  <Check className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  onClick={() => onVerifyPayment?.(row.original.id, row.original.payments?.[0]?.id || '', 'rejected')}
+                  className="text-red-600 hover:text-red-700"
                   title="Reject Payment"
                 >
                   <X className="h-4 w-4" />
@@ -390,193 +386,15 @@ const DealsTable: React.FC<DealsTableProps> = ({
         ),
       },
     ],
-    [roleConfig, onVerifyPayment]
-  );
-
-  const nestedColumns: ColumnDef<Payment>[] = useMemo(
-    () => [
-      {
-        accessorKey: "payment_date",
-        header: "Payment Date",
-        cell: ({ row }) => (
-          <div className="text-[12px] text-gray-800">
-            {format(new Date(row.original.payment_date), "MMM d, yyyy")}
-          </div>
-        ),
-      },
-      {
-        accessorKey: "received_amount",
-        header: "Amount",
-        cell: ({ row }) => (
-          <div className="text-[12px] text-gray-800">
-            {row.original.received_amount}
-          </div>
-        ),
-      },
-      {
-        accessorKey: "payment_method",
-        header: "Method",
-        cell: ({ row }) => (
-          <div className="text-[12px] text-gray-800">
-            {row.original.payment_method}
-          </div>
-        ),
-      },
-      {
-        accessorKey: "status",
-        header: "Status",
-        cell: ({ row }) => {
-          const status = row.original.status;
-          const getStatusColor = () => {
-            switch (status.toLowerCase()) {
-              case "verified":
-                return "bg-[#E6F7FF] text-[#16A34A] px-3 py-1 text-[12px] font-medium rounded-full";
-              case "rejected":
-                return "bg-[#FEF2F2] text-[#DC2626] px-3 py-1 text-[12px] font-medium rounded-full";
-              case "pending":
-                return "bg-[#FFF7ED] text-[#EA580C] px-3 py-1 text-[12px] font-medium rounded-full";
-              default:
-                return "bg-gray-100 text-gray-600 px-3 py-1 text-[12px] font-medium rounded-full";
-            }
-          };
-          return <span className={getStatusColor()}>{status}</span>;
-        },
-      },
-      {
-        accessorKey: "verified_by.full_name",
-        header: "Verified By",
-        cell: ({ row }) => (
-          <div className="text-[12px] text-gray-800">
-            {row.original.verified_by
-              ? row.original.verified_by.full_name
-              : "N/A"}
-          </div>
-        ),
-      },
-      {
-        accessorKey: "verification_remarks",
-        header: "Verifier Remarks",
-        cell: ({ row }) => (
-          <div className="text-[12px] text-gray-800">
-            {row.original.verification_remarks || "N/A"}
-          </div>
-        ),
-      },
-      {
-        accessorKey: "receipt_file",
-        header: "Receipt",
-        cell: ({ row }) =>
-          row.original.receipt_file ? (
-            <a
-              href={row.original.receipt_file}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline text-[12px]"
-            >
-              View
-            </a>
-          ) : (
-            <div className="text-[12px] text-gray-800">N/A</div>
-          ),
-      },
-      // Note: Verification actions handled separately in createNestedColumns
-    ],
-    []
-  );
-
-  // Helper to pass deal ID to nested payment actions
-  const createNestedColumns = useCallback(
-    (dealId: string): ColumnDef<Payment>[] => [
-      ...nestedColumns.slice(0, -1), // Remove the last action column
-      {
-        id: "verification_actions",
-        header: "Actions",
-        cell: ({ row }) => (
-          <div className="flex items-center justify-center gap-1">
-            {row.original.status === "pending" && (
-              <>
-                <button
-                  onClick={() =>
-                    onVerifyPayment?.(dealId, row.original.id, "verified")
-                  }
-                  className="w-5 h-5 rounded-full bg-[#22C55E] text-white flex items-center justify-center hover:bg-[#16A34A] transition-colors"
-                  title="Verify"
-                >
-                  <Check className="w-3 h-3" />
-                </button>
-                <button
-                  onClick={() =>
-                    onVerifyPayment?.(dealId, row.original.id, "rejected")
-                  }
-                  className="w-5 h-5 rounded-full bg-[#EF4444] text-white flex items-center justify-center hover:bg-[#DC2626] transition-colors"
-                  title="Reject"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </>
-            )}
-          </div>
-        ),
-      },
-    ],
-    [nestedColumns, onVerifyPayment]
-  );
-
-  const expandedContent = useCallback(
-    (row: Row<Deal>) => (
-      <div className="bg-gray-50 p-4">
-        <UnifiedTable
-          columns={createNestedColumns(row.original.id) as ColumnDef<unknown>[]}
-          data={row.original.payments || []}
-          config={{
-            features: {
-              pagination: false,
-              sorting: false,
-              filtering: false,
-              selection: false,
-              expansion: false,
-              columnVisibility: false,
-              globalSearch: false,
-            },
-            styling: {
-              variant: "compact",
-            },
-          }}
-        />
-      </div>
-    ),
-    [createNestedColumns]
+    [onVerifyPayment, roleConfig.allowedActions, expandedRows]
   );
 
   // Get row className for styling
   const getRowClassName = (row: Row<Deal>) => {
-    const hasRejectedPayment = row.original.payments?.some(
-      (p: Payment) => p.status === "rejected"
-    );
-    const hasPendingPayment = row.original.payments?.some(
-      (p: Payment) => p.status === "pending"
-    );
-
-    if (hasRejectedPayment) {
-      return "bg-red-50 hover:bg-red-100 transition-colors";
-    }
-    if (hasPendingPayment) {
-      return "bg-yellow-50 hover:bg-yellow-100 transition-colors";
-    }
-    return "";
+    const payments = row.original.payments as Payment[] | undefined;
+    const hasRejected = payments?.some((p) => p.status === "rejected");
+    return hasRejected ? "bg-red-50" : "";
   };
-
-  if (isLoading) {
-    return <div className="p-4 text-center">Loading deals...</div>;
-  }
-
-  if (isError) {
-    return (
-      <div className="p-4 text-center text-red-500">
-        Error fetching deals: {error.message}
-      </div>
-    );
-  }
 
   return (
     <UnifiedTable

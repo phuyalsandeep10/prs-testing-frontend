@@ -221,19 +221,12 @@ export default function LoginForm() {
     const isSuperAdmin = values.email.toLowerCase().includes('super');
     const isAdmin = isSuperAdmin || values.email.toLowerCase().includes('admin');
     
-    try {
-      console.log('🔍 Attempting login for:', values.email);
-      
-      // Try regular login first - the backend will tell us what to do
-      const apiUrl = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/auth/login/direct/`;
-      console.log('🌐 Making login request to:', apiUrl);
-      
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+    const determinedUserType = isSuperAdmin ? 'super_admin' : 'org_admin';
+
+    if (isAdmin) {
+      // Admin users should go through the OTP flow
+      try {
+        await otpRequestMutation.mutateAsync({
           email: values.email,
           password: values.password,
           userType: determinedUserType,

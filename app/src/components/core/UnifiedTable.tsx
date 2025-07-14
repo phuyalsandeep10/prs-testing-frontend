@@ -27,7 +27,6 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  ChevronRight as ExpandIcon,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -110,7 +109,11 @@ export interface TableConfig {
     error?: string;
     searchPlaceholder?: string;
   };
-  getRowId?: (row: any) => string;
+  splitTable?: {
+    // NEW: Split table configuration
+    scrollableColumns?: ColumnDef<any>[];
+    rightColumns?: ColumnDef<any>[];
+  };
 }
 
 export interface UnifiedTableProps<TData> {
@@ -129,7 +132,10 @@ export interface UnifiedTableProps<TData> {
   getRowProps?: (row: Row<TData>) => React.HTMLAttributes<HTMLTableRowElement>;
   expandedRows?: Record<string, boolean>;
   onExpandedRowsChange?: (expandedRows: Record<string, boolean>) => void;
-  hideExpansionColumn?: boolean;
+  // NEW: Split table props
+  scrollableColumns?: ColumnDef<TData>[];
+  rightColumns?: ColumnDef<TData>[];
+  customLoadingComponent?: React.ReactNode;
 }
 
 // ==================== DEFAULT CONFIGURATIONS ====================
@@ -173,7 +179,7 @@ const getTableVariant = (variant: string, size: string) => {
       cell: "px-6 py-4 whitespace-nowrap text-sm text-gray-900",
     },
     minimal: {
-      table: "w-[100%]",
+      table: "w-auto",
       header: "border-b",
       headerCell: "pb-3 text-left text-sm font-medium text-gray-700",
       row: "border-b border-gray-100 hover:bg-gray-25",
@@ -181,7 +187,7 @@ const getTableVariant = (variant: string, size: string) => {
     },
     professional: {
       table:
-        "w-[100%] border-collapse bg-white shadow-sm rounded-lg overflow-hidden",
+        "w-auto border-collapse bg-white shadow-sm rounded-lg overflow-hidden",
       header:
         "bg-gradient-to-r from-blue-50 to-indigo-50 border-b-2 border-blue-200",
       headerCell:
@@ -190,7 +196,7 @@ const getTableVariant = (variant: string, size: string) => {
       cell: "px-6 py-4 text-sm text-gray-800",
     },
     compact: {
-      table: "w-[100%] text-sm",
+      table: "w-auto text-sm",
       header: "bg-gray-100 border-b",
       headerCell:
         "px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase",
@@ -242,52 +248,169 @@ const getTableVariant = (variant: string, size: string) => {
   return variants[variant as keyof typeof variants] || variants.default;
 };
 
-// ==================== EXPANSION COLUMN ====================
-const createExpansionColumn = <TData,>(
-  features: TableFeatures,
-  currentExpandedRows: Record<string, boolean>,
-  setCurrentExpandedRows: (expandedRows: Record<string, boolean>) => void,
-  expandedContent?: (row: Row<TData>) => React.ReactNode
-): ColumnDef<TData> => ({
-  id: "expansion",
-  header: "",
-  cell: ({ row }) => {
-    const isExpanded = currentExpandedRows[row.id];
-    const hasExpandedContent = expandedContent && features.expansion;
+// ==================== SPLIT TABLE COMPONENT ====================
+interface SplitTableProps<TData> {
+  data: TData[];
+  scrollableColumns: ColumnDef<TData>[];
+  rightColumns: ColumnDef<TData>[];
+  styling: TableStyling;
+  messages: any;
+}
 
-    if (!hasExpandedContent) {
-      return null;
-    }
+const SplitTable = <TData,>({
+  data,
+  scrollableColumns,
+  rightColumns,
+  styling,
+  messages,
+}: SplitTableProps<TData>) => {
+  const leftTableRef = React.useRef<HTMLTableElement>(null);
+  const rightTableRef = React.useRef<HTMLTableElement>(null);
 
-    const handleToggle = () => {
-      setCurrentExpandedRows({
-        ...currentExpandedRows,
-        [row.id]: !isExpanded,
+  const leftTable = useReactTable({
+    data,
+    columns: scrollableColumns,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
+  const rightTable = useReactTable({
+    data,
+    columns: rightColumns,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
+  const styles = React.useMemo(
+    () => getTableVariant(styling.variant!, styling.size!),
+    [styling.variant, styling.size]
+  );
+
+  // Sync row heights between left and right tables
+  React.useEffect(() => {
+    const syncRowHeights = () => {
+      if (!leftTableRef.current || !rightTableRef.current) return;
+
+      const leftRows = leftTableRef.current.querySelectorAll("tbody tr");
+      const rightRows = rightTableRef.current.querySelectorAll("tbody tr");
+
+      // Reset heights first
+      leftRows.forEach((row) => {
+        (row as HTMLElement).style.height = "auto";
       });
+      rightRows.forEach((row) => {
+        (row as HTMLElement).style.height = "auto";
+      });
+
+      // Calculate and apply max heights
+      for (let i = 0; i < Math.min(leftRows.length, rightRows.length); i++) {
+        const leftRowHeight = (leftRows[i] as HTMLElement).offsetHeight;
+        const rightRowHeight = (rightRows[i] as HTMLElement).offsetHeight;
+        const maxHeight = Math.max(leftRowHeight, rightRowHeight);
+
+        (leftRows[i] as HTMLElement).style.height = `${maxHeight}px`;
+        (rightRows[i] as HTMLElement).style.height = `${maxHeight}px`;
+      }
     };
 
-    return (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          handleToggle();
-        }}
-        className="p-1 hover:bg-gray-100 rounded transition-colors chrome-transition-optimized"
-        title={isExpanded ? "Collapse" : "Expand"}
-      >
-        <ExpandIcon
-          className={cn(
-            "h-4 w-4 text-gray-500 transition-transform duration-200 chrome-transition-optimized",
-            isExpanded && "rotate-90"
-          )}
-        />
-      </button>
-    );
-  },
-  size: 40,
-  enableSorting: false,
-  enableHiding: false,
-});
+    syncRowHeights();
+
+    // Sync heights when Select dropdown changes
+    const observer = new ResizeObserver(syncRowHeights);
+    if (leftTableRef.current) observer.observe(leftTableRef.current);
+    if (rightTableRef.current) observer.observe(rightTableRef.current);
+
+    return () => observer.disconnect();
+  }, [data]);
+
+  return (
+    <div className="w-full border border-gray-200 rounded-lg overflow-hidden bg-white">
+      <div className="flex h-full">
+        {/* Scrollable left section */}
+        <div className="flex-1 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <table ref={leftTableRef} className={styles.table}>
+            <thead className={styles.header}>
+              {leftTable.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <th key={header.id} className={styles.headerCell}>
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {leftTable.getRowModel().rows.map((row, index) => (
+                <tr
+                  key={row.id}
+                  className={cn(
+                    styles.row,
+                    index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                  )}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className={styles.cell}>
+                      <div className="flex items-center min-h-[24px]">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Fixed right section */}
+        <div className="flex-shrink-0">
+          <table ref={rightTableRef} className={styles.table}>
+            <thead className={cn(styles.header, "z-20")}>
+              {rightTable.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <th key={header.id} className={styles.headerCell}>
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {rightTable.getRowModel().rows.map((row, index) => (
+                <tr
+                  key={row.id}
+                  className={cn(
+                    styles.row,
+                    index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                  )}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className={styles.cell}>
+                      <div className="flex items-center min-h-[24px]">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // ==================== PAGINATION COMPONENT ====================
 interface PaginationProps {
@@ -621,7 +744,9 @@ export const UnifiedTable = React.memo(
     getRowProps,
     expandedRows,
     onExpandedRowsChange,
-    hideExpansionColumn,
+    scrollableColumns,
+    rightColumns,
+    customLoadingComponent,
   }: UnifiedTableProps<TData>) => {
     // Memoize configurations to prevent unnecessary re-calculations
     const features = React.useMemo(
@@ -654,37 +779,16 @@ export const UnifiedTable = React.memo(
     const setCurrentExpandedRows =
       onExpandedRowsChange || setInternalExpandedRows;
 
-    // Create expansion column if expansion is enabled
-    const expansionColumn = React.useMemo(
-      () =>
-        features.expansion && expandedContent && !hideExpansionColumn
-          ? createExpansionColumn(
-              features,
-              currentExpandedRows,
-              setCurrentExpandedRows,
-              expandedContent
-            )
-          : null,
-      [
-        features.expansion,
-        expandedContent,
-        currentExpandedRows,
-        setCurrentExpandedRows,
-        hideExpansionColumn,
-      ]
-    );
-
-    // Combine columns with expansion column
-    const allColumns = React.useMemo(
-      () => (expansionColumn ? [expansionColumn, ...columns] : columns),
-      [expansionColumn, columns]
-    );
+    // Check if using external pagination
+    const isExternalPagination = config.pagination?.page !== undefined && 
+      config.pagination?.total !== undefined && 
+      config.pagination?.onPageChange;
 
     // Memoize table configuration
     const tableConfig = React.useMemo(
       () => ({
         data,
-        columns: allColumns,
+        columns,
         state: {
           sorting,
           columnFilters,
@@ -721,11 +825,10 @@ export const UnifiedTable = React.memo(
               : {}),
           },
         },
-        getRowId: config.getRowId || ((row: any) => row.id),
       }),
       [
         data,
-        allColumns,
+        columns,
         sorting,
         columnFilters,
         columnVisibility,
@@ -734,7 +837,9 @@ export const UnifiedTable = React.memo(
         features.selection,
         features.pagination,
         config.pagination?.pageSize,
-        config.getRowId,
+        config.pagination?.page,
+        config.pagination?.total,
+        isExternalPagination,
       ]
     );
 
@@ -880,21 +985,13 @@ export const UnifiedTable = React.memo(
         )}
 
         {/* Table */}
-        <div className="rounded-md border overflow-hidden chrome-table-render-optimized">
-          <Table className={cn(styles.table, "chrome-table-border-optimized")}>
-            <TableHeader
-              className={`!w-auto bg-[#D1D1D1] h-[45px] ${styles.header} chrome-table-header-optimized`}
-            >
+        <div className="rounded-md border overflow-hidden">
+          <Table className={styles.table}>
+            <TableHeader className={`!w-auto ${styles.header}`}>
               {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id} className="chrome-row-optimized">
+                <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => (
-                    <TableHead
-                      key={header.id}
-                      className={cn(
-                        styles.headerCell,
-                        "chrome-table-cell-optimized"
-                      )}
-                    >
+                    <TableHead key={header.id} className={styles.headerCell}>
                       {header.isPlaceholder ? null : (
                         <div
                           className={cn(
@@ -931,64 +1028,48 @@ export const UnifiedTable = React.memo(
                 </TableRow>
               ))}
             </TableHeader>
-            <TableBody className="chrome-table-body-optimized h-[45px] bg-[#F9FAFB]">
+            <TableBody>
               {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => {
-                  return (
-                    <React.Fragment
-                      key={`row-${row.id}-${
-                        currentExpandedRows[row.id] ? "expanded" : "collapsed"
-                      }`}
+                table.getRowModel().rows.map((row) => (
+                  <React.Fragment key={row.id}>
+                    <TableRow
+                      data-state={row.getIsSelected() && "selected"}
+                      className={cn(
+                        styles.row,
+                        onRowClick && "cursor-pointer",
+                        row.getIsSelected() && "bg-blue-50"
+                      )}
+                      onClick={() => handleRowClick(row)}
+                      {...(getRowProps
+                        ? getRowProps(row)
+                        : ({} as React.HTMLAttributes<HTMLTableRowElement>))}
                     >
-                      <TableRow
-                        data-state={row.getIsSelected() && "selected"}
-                        className={cn(
-                          styles.row,
-                          onRowClick && "cursor-pointer",
-                          row.getIsSelected() && "bg-blue-50",
-                          "chrome-row-optimized chrome-hover-optimized"
-                        )}
-                        onClick={() => handleRowClick(row)}
-                        {...(getRowProps
-                          ? getRowProps(row)
-                          : ({} as React.HTMLAttributes<HTMLTableRowElement>))}
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <TableCell
-                            key={cell.id}
-                            className={cn(
-                              styles.cell,
-                              "chrome-table-cell-optimized"
-                            )}
-                          >
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id} className={styles.cell}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                    {features.expansion &&
+                      expandedContent &&
+                      currentExpandedRows[row.id] && (
+                        <TableRow>
+                          <TableCell colSpan={columns.length} className="p-0">
+                            <div className="p-4 bg-gray-50 border-t">
+                              {expandedContent(row)}
+                            </div>
                           </TableCell>
-                        ))}
-                      </TableRow>
-                      {features.expansion &&
-                        expandedContent &&
-                        currentExpandedRows[row.id] && (
-                          <TableRow className="chrome-expansion-optimized">
-                            <TableCell
-                              colSpan={allColumns.length}
-                              className="p-0 chrome-table-cell-optimized"
-                            >
-                              <div className="p-4 bg-gray-50 border-t chrome-expand">
-                                {expandedContent(row)}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        )}
-                    </React.Fragment>
-                  );
-                })
+                        </TableRow>
+                      )}
+                  </React.Fragment>
+                ))
               ) : (
                 <TableRow>
                   <TableCell
-                    colSpan={allColumns.length}
+                    colSpan={columns.length}
                     className="h-24 text-center text-gray-500"
                   >
                     {messages.empty}
