@@ -19,10 +19,14 @@ export const organizationKeys = {
 export interface Organization {
   id: number;
   name: string;
+  description?: string;
   admin_email?: string;
   is_active: boolean;
   created_at?: string;
-  updated_at?: string;
+  created_by?: number;
+  created_by_username?: string;
+  user_count?: number;
+  role_count?: number;
 }
 
 interface OrganizationsResponse {
