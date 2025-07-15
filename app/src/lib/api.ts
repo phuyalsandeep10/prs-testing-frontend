@@ -22,7 +22,7 @@ import {
 
 // ==================== API CONFIGURATION ====================
 // Use NEXT_PUBLIC_API_URL as complete base (e.g. http://localhost:8000/api)
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api').replace(/\/+$/, '');
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || 'https://backend-prs.onrender.com/api').replace(/\/+$/, '');
 const API_TIMEOUT = 10000;
 
 class ApiClient {
