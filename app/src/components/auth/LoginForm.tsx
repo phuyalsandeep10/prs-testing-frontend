@@ -63,7 +63,7 @@ const useLoginMutation = () => {
   return useMutation({
     mutationFn: async (credentials: { email: string; password: string }): Promise<LoginResponse> => {
       const response = await apiClient.post<LoginResponse>(
-        "/auth/login/direct/",
+        "/auth/login/",
         credentials
       );
       return response.data!;

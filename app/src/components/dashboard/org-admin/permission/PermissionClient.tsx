@@ -241,7 +241,7 @@ export const PermissionClient = () => {
             </div>
             <Button 
               onClick={() => setIsDialogOpen(true)} 
-              className="bg-[#4F46E5] hover:bg-[#4F46E5]/90 text-white px-6 py-2 h-[40px] flex items-center gap-2"
+              className=" hover:bg-[#4F46E5]/90 text-white px-6 py-2 h-[40px] flex items-center gap-2"
               disabled={createRoleMutation.isPending}
             >
               {createRoleMutation.isPending ? (
