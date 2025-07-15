@@ -7,6 +7,7 @@ import { useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { hasPermission as hasRolePermission } from '@/lib/auth/permissions';
 import { redirectUserByRole } from '@/lib/utils/routing';
+import { toast } from 'sonner';
 // (no external ApiResponse type)
 
 // Types
@@ -334,11 +335,7 @@ export const useCreateUserMutation = () => {
         }, 1000);
       }
       
-      addNotification({
-        type: 'success',
-        title: 'User created successfully',
-        message: `${data.first_name} ${data.last_name} has been added to the system.`,
-      });
+      toast.success('User created successfully', { description: `${data.first_name} ${data.last_name} has been added to the system.` });
       
       // Add to recent items
       addRecentItem({
@@ -390,19 +387,11 @@ export const useDeleteUserMutation = () => {
       await apiClient.delete(`/auth/users/${userId}/`);
     },
     onSuccess: (data, userId) => {
-      addNotification({
-        type: 'success',
-        title: 'User Deleted',
-        message: `User (ID: ${userId}) has been successfully deleted.`,
-      });
+      toast.success('User Deleted', { description: `User (ID: ${userId}) has been successfully deleted.` });
       queryClient.invalidateQueries({ queryKey: queryKeys.users });
     },
     onError: (err: any, userId) => {
-      addNotification({
-        type: 'error',
-        title: 'Error Deleting User',
-        message: err.message || `Failed to delete user (ID: ${userId}).`,
-      });
+      toast.error('Error Deleting User', { description: err.message || `Failed to delete user (ID: ${userId}).` });
     },
   });
 };
@@ -534,11 +523,7 @@ export const useCreateDealMutation = () => {
         }
       });
       
-      addNotification({
-        type: 'success',
-        title: 'Deal created successfully',
-        message: `Deal "${data.deal_name}" has been created.`,
-      });
+      toast.success('Deal created successfully', { description: `Deal "${data.deal_name}" has been created.` });
       
       addRecentItem({
         id: data.id,
@@ -548,11 +533,7 @@ export const useCreateDealMutation = () => {
       });
     },
     onError: (err: any) => {
-      addNotification({
-        type: 'error',
-        title: 'Error creating deal',
-        message: err.message || 'Failed to create deal',
-      });
+      toast.error('Error creating deal', { description: err.message || 'Failed to create deal' });
     },
   });
 };
@@ -624,11 +605,7 @@ export const useCreateClientMutation = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.clients });
       
-      addNotification({
-        type: 'success',
-        title: 'Client created successfully',
-        message: `${data.client_name} has been added to the system.`,
-      });
+      toast.success('Client created successfully', { description: `${data.client_name} has been added to the system.` });
       
       // Add to recent items
       addRecentItem({
@@ -639,11 +616,7 @@ export const useCreateClientMutation = () => {
       });
     },
     onError: (err: any) => {
-      addNotification({
-        type: 'error',
-        title: 'Error creating client',
-        message: err.message || 'Failed to create client',
-      });
+      toast.error('Error creating client', { description: err.message || 'Failed to create client' });
     },
   });
 };
@@ -661,18 +634,10 @@ export const useUpdateClientMutation = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.clients });
       queryClient.invalidateQueries({ queryKey: queryKeys.client(data.id) });
       
-      addNotification({
-        type: 'success',
-        title: 'Client updated successfully',
-        message: `${data.client_name} has been updated.`,
-      });
+      toast.success('Client updated successfully', { description: `${data.client_name} has been updated.` });
     },
     onError: (err: any) => {
-      addNotification({
-        type: 'error',
-        title: 'Error updating client',
-        message: err.message || 'Failed to update client',
-      });
+      toast.error('Error updating client', { description: err.message || 'Failed to update client' });
     },
   });
 };
@@ -688,18 +653,10 @@ export const useDeleteClientMutation = () => {
     onSuccess: (data, id) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.clients });
       
-      addNotification({
-        type: 'success',
-        title: 'Client deleted successfully',
-        message: 'The client has been removed from the system.',
-      });
+      toast.success('Client deleted successfully', { description: 'The client has been removed from the system.' });
     },
     onError: (err: any) => {
-      addNotification({
-        type: 'error',
-        title: 'Error deleting client',
-        message: err.message || 'Failed to delete client',
-      });
+      toast.error('Error deleting client', { description: err.message || 'Failed to delete client' });
     },
   });
 };
@@ -779,11 +736,7 @@ export const useCreateTeamMutation = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.teams, type: 'all' });
       
-      addNotification({
-        type: 'success',
-        title: 'Team created successfully',
-        message: `${data.name} has been added to the system.`,
-      });
+      toast.success('Team created successfully', { description: `${data.name} has been added to the system.` });
       
       // Add to recent items
       addRecentItem({
@@ -794,11 +747,7 @@ export const useCreateTeamMutation = () => {
       });
     },
     onError: (err: any) => {
-      addNotification({
-        type: 'error',
-        title: 'Error creating team',
-        message: err.message || 'Failed to create team',
-      });
+      toast.error('Error creating team', { description: err.message || 'Failed to create team' });
     },
   });
 };
@@ -874,21 +823,13 @@ export const useLoginMutation = () => {
       const data: any = rawData;
       login(data.token, data.user);
       
-      addNotification({
-        type: 'success',
-        title: 'Login successful',
-        message: `Welcome back, ${data.user.first_name}!`,
-      });
+      toast.success('Login successful', { description: `Welcome back, ${data.user.first_name}!` });
       
       // Use the centralized redirection logic
       redirectUserByRole(data.user, router, addNotification);
     },
     onError: (err: any) => {
-      addNotification({
-        type: 'error',
-        title: 'Login failed',
-        message: err.message || 'Invalid credentials',
-      });
+      toast.error('Login failed', { description: err.message || 'Invalid credentials' });
     },
   });
 };
@@ -1057,11 +998,7 @@ export const useCreateCommissionMutation = () => {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.commission });
       
-      addNotification({
-        type: 'success',
-        title: 'Commission created successfully',
-        message: `Commission for ${data.fullName} has been added to the system.`,
-      });
+      toast.success('Commission created successfully', { description: `Commission for ${data.fullName} has been added to the system.` });
       
       // Add to recent items
       addRecentItem({
@@ -1072,11 +1009,7 @@ export const useCreateCommissionMutation = () => {
       });
     },
     onError: (err: any) => {
-      addNotification({
-        type: 'error',
-        title: 'Error creating commission',
-        message: err.message || 'Failed to create commission',
-      });
+      toast.error('Error creating commission', { description: err.message || 'Failed to create commission' });
     },
   });
 };
@@ -1207,18 +1140,10 @@ export const useVerifyPaymentMutation = () => {
     onSuccess: () => {
       // Refresh deals & payments lists
       queryClient.invalidateQueries({ queryKey: queryKeys.deals });
-      addNotification({
-        type: 'success',
-        title: 'Payment status updated',
-        message: 'Payment verification status has been updated.',
-      });
+      toast.success('Payment status updated', { description: 'Payment verification status has been updated.' });
     },
     onError: (err: any) => {
-      addNotification({
-        type: 'error',
-        title: 'Verification failed',
-        message: err.message || 'Could not update payment status',
-      });
+      toast.error('Verification failed', { description: err.message || 'Could not update payment status' });
     },
   });
 }; 

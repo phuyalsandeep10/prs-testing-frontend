@@ -67,13 +67,22 @@ export class WebSocketConnectionManager {
 
     try {
       // Validate WebSocket URL before attempting connection
-      if (!this.config.url || this.config.url === 'ws://localhost:8000/ws/') {
+      console.log('DEBUG: process.env.NEXT_PUBLIC_WS_URL =', process.env.NEXT_PUBLIC_WS_URL);
+      console.log('DEBUG: this.config.url =', this.config.url);
+      const defaultUrl = 'ws://localhost:8000/ws/';
+      if (!this.config.url || this.config.url === defaultUrl) {
         console.warn('WebSocket URL not configured or using default. Real-time features will be disabled.');
         this.isConnecting = false;
         return;
       }
 
-      this.ws = new WebSocket(this.config.url, this.config.protocols);
+      // Attach auth token if available and not already present in the URL
+      const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+      let urlWithToken = this.config.url;
+      if (token && !urlWithToken.includes('token=')) {
+        urlWithToken += (urlWithToken.includes('?') ? '&' : '?') + `token=${token}`;
+      }
+      this.ws = new WebSocket(urlWithToken, this.config.protocols);
 
       this.ws.onopen = () => {
         console.log('WebSocket connected to:', this.config.url);

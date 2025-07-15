@@ -21,13 +21,37 @@ export const useRealtimeNotifications = () => {
 
     // Subscribe to notifications
     listenerId.current = notificationWebSocket.subscribe((notification: Notification) => {
-      // Update cache
-      queryClient.setQueryData(['notifications'], (old: any) => {
-        if (!old) return old;
-        return {
-          ...old,
-          data: [notification, ...old.data]
-        };
+      // Map backend fields to frontend fields
+      const mappedNotification = {
+        ...notification,
+        notificationType: (notification as any).notification_type || notification.notificationType,
+        isRead: (notification as any).is_read ?? notification.isRead,
+        createdAt: (notification as any).created_at || notification.createdAt,
+      };
+      // Push into every notifications query cache (regardless of filters)
+      queryClient.setQueriesData({ queryKey: ['notifications'] }, (old: any) => {
+        const base = old ?? { data: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } };
+        // Respect possible structures (array, {data:[]}, paginated)
+        let dataArr: any[] = [];
+        if (Array.isArray(base)) {
+          dataArr = base;
+        } else if (base?.data) {
+          dataArr = base.data;
+        } else if (base?.results) {
+          dataArr = base.results;
+        }
+        // Remove any existing notification with same id before prepending
+        const newArr = [mappedNotification, ...dataArr.filter((n: any) => n.id !== mappedNotification.id)];
+        if (Array.isArray(base)) {
+          return newArr;
+        }
+        if (base?.data) {
+          return { ...base, data: newArr };
+        }
+        if (base?.results) {
+          return { ...base, results: newArr };
+        }
+        return newArr;
       });
 
       // Update unread count
@@ -36,17 +60,17 @@ export const useRealtimeNotifications = () => {
       });
 
       // Show toast notification based on priority
-      const toastConfig = getToastConfig(notification);
+      const toastConfig = getToastConfig(mappedNotification);
       
-      switch (notification.priority) {
+      switch (mappedNotification.priority) {
         case 'urgent':
-          toast.error(notification.title, {
-            description: notification.message,
-            action: notification.actionUrl ? {
+          toast.error(mappedNotification.title, {
+            description: mappedNotification.message,
+            action: mappedNotification.actionUrl ? {
               label: 'View',
               onClick: () => {
-                if (notification.actionUrl) {
-                  window.location.href = notification.actionUrl;
+                if (mappedNotification.actionUrl) {
+                  window.location.href = mappedNotification.actionUrl;
                 }
               }
             } : undefined,
@@ -55,13 +79,13 @@ export const useRealtimeNotifications = () => {
           break;
           
         case 'high':
-          toast.warning(notification.title, {
-            description: notification.message,
-            action: notification.actionUrl ? {
+          toast.warning(mappedNotification.title, {
+            description: mappedNotification.message,
+            action: mappedNotification.actionUrl ? {
               label: 'View',
               onClick: () => {
-                if (notification.actionUrl) {
-                  window.location.href = notification.actionUrl;
+                if (mappedNotification.actionUrl) {
+                  window.location.href = mappedNotification.actionUrl;
                 }
               }
             } : undefined,
@@ -70,15 +94,15 @@ export const useRealtimeNotifications = () => {
           break;
           
         case 'medium':
-          toast.info(notification.title, {
-            description: notification.message,
+          toast.info(mappedNotification.title, {
+            description: mappedNotification.message,
             duration: 5000,
           });
           break;
           
         default:
-          toast(notification.title, {
-            description: notification.message,
+          toast(mappedNotification.title, {
+            description: mappedNotification.message,
             duration: 3000,
           });
       }

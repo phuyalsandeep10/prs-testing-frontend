@@ -3,6 +3,7 @@ import { paymentApi } from '@/lib/api';
 import type { Payment } from '@/types/deals';
 import type { PaginatedResponse, CreateInput, UpdateInput } from '@/types';
 import { useAuth, useUI } from '@/stores';
+import { toast } from 'sonner';
 
 // -----------------------
 // Query Key Factory
@@ -73,10 +74,10 @@ export const useCreatePayment = () => {
     ...mutationCommon,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: paymentQueryKeys.all });
-      addNotification({ type: 'success', title: 'Payment added', message: `Payment ${data.id} created.` });
+      toast.success('Payment added', { description: `Payment ${data.id} created.` });
     },
     onError: (err) => {
-      addNotification({ type: 'error', title: 'Create payment failed', message: err.message ?? 'Unknown error' });
+      toast.error('Create payment failed', { description: err.message ?? 'Unknown error' });
     },
   });
 };
@@ -125,10 +126,10 @@ export const useVerifyPayment = () => {
     ...mutationCommon,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: paymentQueryKeys.all });
-      addNotification({ type: 'success', title: 'Payment status updated', message: `Payment ${data.id} marked ${data.status}.` });
+      toast.success('Payment status updated', { description: `Payment ${data.id} marked ${data.status}.` });
     },
     onError: (err) => {
-      addNotification({ type: 'error', title: 'Verification failed', message: err.message ?? 'Unknown error' });
+      toast.error('Verification failed', { description: err.message ?? 'Unknown error' });
     },
   });
 }; 

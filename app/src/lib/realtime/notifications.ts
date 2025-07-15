@@ -33,8 +33,11 @@ class NotificationWebSocketService {
       this.socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
+          console.log('WebSocket message received:', data);
           if (data.type === 'notification') {
             this.notifyListeners(data.notification);
+          } else if (data.type === 'notification_batch' && Array.isArray(data.notifications)) {
+            data.notifications.forEach((n: Notification) => this.notifyListeners(n));
           }
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error);

@@ -12,6 +12,11 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
+/**
+ * NotificationContext is for persistent notification state (notification center),
+ * such as unread counts and real-time updates. For transient notifications (toasts),
+ * use the toast API from sonner directly.
+ */
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { data: unreadCount, isLoading } = useUnreadCount();
   const { isConnected } = useRealtimeNotifications();

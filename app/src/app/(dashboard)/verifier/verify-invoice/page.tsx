@@ -9,10 +9,7 @@ import Cancel from "@/assets/icons/Cancel.svg";
 import file from "@/assets/icons/file.svg";
 import Edit from "@/assets/icons/edit.svg";
 import { Skeleton } from "@/components/ui/skeleton";
-import Swal from "sweetalert2";
-import withReactContent from "sweetalert2-react-content";
-
-const MySwal = withReactContent(Swal);
+import { toast } from 'sonner';
 
 interface InvoiceData {
   id: string;
@@ -116,14 +113,10 @@ const VerifyInvoice = () => {
   const handleVerificationSuccess = () => {
     // Switch to completed tab to show the newly verified payment
     setActiveTab("completed");
-    
     // Show a success message
-    MySwal.fire({
-      icon: "success",
-      title: "Payment Verified!",
-      text: "Payment has been successfully verified and moved to completed tab.",
-      timer: 3000,
-      showConfirmButton: false,
+    toast.success("Payment Verified!", {
+      description: "Payment has been successfully verified and moved to completed tab.",
+      duration: 3000,
     });
   };
 
@@ -147,21 +140,13 @@ const VerifyInvoice = () => {
     onSuccess: async () => {
       await new Promise((resolve) => setTimeout(resolve, 300));
       await queryClient.invalidateQueries({ queryKey: ["invoices", token] });
-
-      MySwal.fire({
-        icon: "success",
-        title: "Cancelled!",
-        text: "Invoice cancelled successfully.",
-        timer: 2000,
-        showConfirmButton: false,
+      toast.success("Cancelled!", {
+        description: "Invoice cancelled successfully.",
+        duration: 2000,
       });
     },
     onError: (error: any) => {
-      MySwal.fire({
-        icon: "error",
-        title: "Error",
-        text: `Error cancelling invoice: ${error.message || error}`,
-      });
+      toast.error(`Error cancelling invoice: ${error.message || error}`);
     },
   });
 
@@ -286,25 +271,14 @@ const VerifyInvoice = () => {
                 <button
                   onClick={async () => {
                     if (!token) {
-                      MySwal.fire({
-                        icon: "error",
-                        title: "Authentication Required",
-                        text: "User not authenticated.",
+                      toast.error("Authentication Required", {
+                        description: "User not authenticated.",
                       });
                       return;
                     }
 
-                    const result = await MySwal.fire({
-                      title: `Cancel invoice ${row.original.id}?`,
-                      text: "Are you sure you want to cancel this invoice?",
-                      icon: "warning",
-                      showCancelButton: true,
-                      confirmButtonColor: "#d33",
-                      cancelButtonColor: "#3085d6",
-                      confirmButtonText: "Yes, cancel it!",
-                    });
-
-                    if (result.isConfirmed) {
+                    const confirmed = window.confirm(`Are you sure you want to cancel invoice ${row.original.id}?`);
+                    if (confirmed) {
                       cancelMutation.mutate({
                         token,
                         invoiceId: row.original.id,

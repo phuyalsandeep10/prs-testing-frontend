@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import InputField from "@/components/ui/clientForm/InputField";
 import { useUpdatePaymentStatus } from "@/hooks/api";
 import { apiClient } from "@/lib/api-client";
-import Swal from "sweetalert2";
+import { toast } from 'sonner';
 
 const createSchema = (action: "verify" | "deny" | "refund") =>
   z.object({
@@ -192,12 +192,9 @@ function getErrorMessage(error: any): string | null {
       // Show success notification based on the backend response
       const actualStatus = response?.status || action === "verify" ? "verified" : "rejected";
       const actionText = actualStatus === "verified" ? "verified" : "rejected";
-      await Swal.fire({
-        icon: "success",
-        title: `Payment ${actionText.charAt(0).toUpperCase() + actionText.slice(1)}!`,
-        text: `Payment has been ${actionText} successfully.`,
-        timer: 2000,
-        showConfirmButton: false,
+      toast.success(`Payment ${actionText.charAt(0).toUpperCase() + actionText.slice(1)}!`, {
+        description: `Payment has been ${actionText} successfully.`,
+        duration: 2000,
       });
       
       // Invalidate and refetch relevant queries to update the UI
@@ -285,11 +282,9 @@ function getErrorMessage(error: any): string | null {
         });
       }
     } catch (error) {
-      await Swal.fire({
-        icon: "error",
-        title: "Verification Failed",
-        text: error instanceof Error ? error.message : "An error occurred during verification.",
-      });
+      toast.error(
+        error instanceof Error ? error.message : "An error occurred during verification."
+      );
     } finally {
       setIsSubmitting(false);
     }

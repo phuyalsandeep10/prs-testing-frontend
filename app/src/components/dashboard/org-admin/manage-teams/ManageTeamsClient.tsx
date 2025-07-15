@@ -18,6 +18,7 @@ import {
 import { useProjects } from '@/hooks/api';
 import { useAuth, useUI } from '@/stores';
 import { AddNewTeamForm } from './AddNewTeamForm';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 // ------------------- Types -------------------
 interface UiTeam {
@@ -208,11 +209,13 @@ export function ManageTeamsClient() {
           <h1 className="text-2xl font-bold text-gray-900">Manage Teams</h1>
           <p className="text-gray-600">Create and manage teams in your organization</p>
         </div>
-        <PermissionGate requiredPermissions={['create:teams']}>
-          <Button onClick={handleCreateTeam}>
-            <Plus className="h-4 w-4 mr-2" /> Add Team
-          </Button>
-        </PermissionGate>
+        <ErrorBoundary fallback={<div className="text-red-600">You do not have permission to add a team.</div>}>
+          <PermissionGate requiredPermissions={['create:teams']}>
+            <Button onClick={handleCreateTeam}>
+              <Plus className="h-4 w-4 mr-2" /> Add Team
+            </Button>
+          </PermissionGate>
+        </ErrorBoundary>
       </div>
 
       {/* Stats */}

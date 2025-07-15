@@ -5,6 +5,7 @@ import RefundSection from './_components/RefundSection';
 import VerificationSection from './_components/VerificationSection';
 import AuditSection from './_components/AuditSection';
 import PaymentChart from './_components/PaymentChart';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 const page = () => {
   return (
@@ -49,31 +50,43 @@ const page = () => {
         <div className="space-y-8">
           {/* Overview Section */}
           <section>
-            <Overview />
+            <ErrorBoundary>
+              <Overview />
+            </ErrorBoundary>
           </section>
 
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="w-full">
-              <PaymentChart />
+              <ErrorBoundary>
+                <PaymentChart />
+              </ErrorBoundary>
             </div>
             <div className="w-full">
-              <AuditSection />
+              <ErrorBoundary>
+                <AuditSection />
+              </ErrorBoundary>
             </div>
           </section>
 
           {/* Payment Section */}
           <section>
-            <PaymentSection />
+            <ErrorBoundary>
+              <PaymentSection />
+            </ErrorBoundary>
           </section>
 
           {/* Refund Section */}
           <section>
-            <RefundSection />
+            <ErrorBoundary>
+              <RefundSection />
+            </ErrorBoundary>
           </section>
 
           {/* Verification Section */}
           <section>
-            <VerificationSection />
+            <ErrorBoundary>
+              <VerificationSection />
+            </ErrorBoundary>
           </section>
         </div>
       </div>

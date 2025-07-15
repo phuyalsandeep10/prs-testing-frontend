@@ -16,7 +16,7 @@ import {
 import Image from "next/image";
 import eyeicon from "@/assets/icons/Eye-fill.svg";
 import plusicon from "@/assets/icons/Plus.svg";
-import editicon from "@/assets/icons/Edit.svg";
+import editicon from "@/assets/icons/edit.svg";
 import { useState } from "react";
 import MeetingDetails from "@/app/(dashboard)/verifier/paymentRecords/MeetingDetails";
 

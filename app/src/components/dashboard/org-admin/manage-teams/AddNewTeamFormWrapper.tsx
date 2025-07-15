@@ -14,6 +14,7 @@ import { useProjects } from "@/hooks/api";
 import { useAuth, useUI } from "@/stores";
 import Image from "next/image";
 import CloseBtn from "@/assets/icons/close-blue.svg";
+import { toast } from 'sonner';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -225,11 +226,7 @@ export function AddNewTeamFormWrapper({
 
       // Use the create mutation (note: update mutation would need to be added to integrated hooks)
       if (isEdit) {
-        addNotification({
-          type: "warning",
-          title: "Edit not implemented",
-          message: "Team editing functionality needs to be implemented.",
-        });
+        toast.warning('Edit not implemented', { description: 'Team editing functionality needs to be implemented.' });
         return;
       }
 

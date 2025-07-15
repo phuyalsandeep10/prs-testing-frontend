@@ -12,6 +12,7 @@ import Analytics from '@/components/dashboard/org-admin/Analytics';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Info } from 'lucide-react';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 export default function OrgAdminDashboard() {
   const { data: dashboardData, isLoading, error } = useOrgDashboard();
@@ -46,64 +47,65 @@ export default function OrgAdminDashboard() {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Demo Mode Notification */}
-      <Alert className="bg-blue-50 border-blue-200">
-        <Info className="h-4 w-4 text-blue-600" />
-        <AlertDescription className="text-blue-800">
-          <strong>Demo Mode:</strong> This dashboard is currently using mock data. 
-          Backend integration will be available once the API endpoints are ready.
-        </AlertDescription>
-      </Alert>
-
-      {/* Enhanced Welcome Header */}
-      <WelcomeHeader dashboardData={dashboardData?.overview} />
-
-      {/* Performance Metrics */}
-      <PerformanceMetrics dashboardData={dashboardData?.overview} />
-
-      {/* Analytics Charts */}
-      <Analytics analyticsData={dashboardData?.analytics} />
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Team Overview */}
-        <div className="lg:col-span-2">
-          <TeamOverview teamData={dashboardData?.team_members} />
+    <ErrorBoundary>
+      <div className="space-y-6 p-6">
+        {/* Demo Mode Notification */}
+        <Alert className="bg-blue-50 border-blue-200">
+          <Info className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-800">
+            <strong>Demo Mode:</strong> This dashboard is currently using mock data. 
+            Backend integration will be available once the API endpoints are ready.
+          </AlertDescription>
+        </Alert>
+        {/* Enhanced Welcome Header */}
+        <WelcomeHeader dashboardData={dashboardData?.overview} />
+        {/* Performance Metrics */}
+        <PerformanceMetrics dashboardData={dashboardData?.overview} />
+        {/* Analytics Charts */}
+        <ErrorBoundary>
+          <Analytics analyticsData={dashboardData?.analytics} />
+        </ErrorBoundary>
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Team Overview */}
+          <div className="lg:col-span-2">
+            <ErrorBoundary>
+              <TeamOverview teamData={dashboardData?.team_members} />
+            </ErrorBoundary>
+          </div>
+          {/* Quick Actions */}
+          <div>
+            <QuickActions systemStatus={dashboardData?.system_status} />
+          </div>
         </div>
-        
-        {/* Quick Actions */}
-        <div>
-          <QuickActions systemStatus={dashboardData?.system_status} />
+        {/* Deal Pipeline */}
+        <ErrorBoundary>
+          <DealPipeline pipelineData={dashboardData?.deal_pipeline} />
+        </ErrorBoundary>
+        {/* Recent Activity */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <RecentActivity activities={dashboardData?.recent_activities} />
+          </div>
+          
+          {/* Additional Stats */}
+          <div className="space-y-4">
+            <StatsCard 
+              title="Pending Approvals" 
+              value={dashboardData?.overview?.pending_approvals?.toString() || "0"} 
+            />
+            <StatsCard 
+              title="System Alerts" 
+              value={dashboardData?.overview?.system_alerts?.toString() || "0"} 
+            />
+            <StatsCard 
+              title="Data Usage" 
+              value={`${dashboardData?.overview?.data_usage || 0}%`} 
+            />
+          </div>
         </div>
       </div>
-
-      {/* Deal Pipeline */}
-      <DealPipeline pipelineData={dashboardData?.deal_pipeline} />
-
-      {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <RecentActivity activities={dashboardData?.recent_activities} />
-        </div>
-        
-        {/* Additional Stats */}
-        <div className="space-y-4">
-          <StatsCard 
-            title="Pending Approvals" 
-            value={dashboardData?.overview?.pending_approvals?.toString() || "0"} 
-          />
-          <StatsCard 
-            title="System Alerts" 
-            value={dashboardData?.overview?.system_alerts?.toString() || "0"} 
-          />
-          <StatsCard 
-            title="Data Usage" 
-            value={`${dashboardData?.overview?.data_usage || 0}%`} 
-          />
-        </div>
-      </div>
-    </div>
+    </ErrorBoundary>
   );
 }
 

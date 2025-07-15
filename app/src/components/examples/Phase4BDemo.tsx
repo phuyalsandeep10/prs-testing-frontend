@@ -91,7 +91,7 @@ export default function Phase4BDemo() {
 
   // WebSocket connection (for demo purposes)
   const webSocketStatus = useWebSocketConnection({
-    url: 'ws://localhost:8000/ws/', // This would be your actual WebSocket URL
+    url: process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/ws/', // Use env var or fallback
   });
 
   // Optimistic update mutation

@@ -20,6 +20,7 @@ import { UnifiedTable } from "@/components/core/UnifiedTable";
 import { CommissionFilter } from "./CommissionFilter";
 import { useOrgAdminCommissionQuery, useBulkUpdateCommissionMutation } from "@/hooks/useIntegratedQuery";
 import { useUI } from "@/stores";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 
 interface Currency {
   code: string;
@@ -749,87 +750,89 @@ export const CommissionClient = () => {
   );
 
   return (
-    <div className="p-8 bg-white">
-      <Toaster position="top-right" richColors />
-      
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-[28px] font-semibold text-gray-900">Commission</h1>
-          <p className="text-sm text-gray-600 mt-1">Total sales shown are from verified deals only</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="outline" 
-            className="flex items-center gap-2 h-10 px-4 border-gray-300" 
-            onClick={handleSaveData} 
-            disabled={bulkUpdateMutation.isPending}
-          >
-            {bulkUpdateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {bulkUpdateMutation.isPending ? 'Saving...' : 'Save Data'}
-          </Button>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-            <Input 
-              placeholder="Search..." 
-              className="pl-10 w-80 h-10 border-gray-300" 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+    <ErrorBoundary fallback={<div className="text-red-600">You do not have permission to view commission data.</div>}>
+      <div className="p-8 bg-white">
+        <Toaster position="top-right" richColors />
+        
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-[28px] font-semibold text-gray-900">Commission</h1>
+            <p className="text-sm text-gray-600 mt-1">Total sales shown are from verified deals only</p>
           </div>
-          <Button 
-            variant="outline" 
-            className="flex items-center gap-2 h-10 px-4 border-gray-300"
-            onClick={() => setIsFilterOpen(true)}
-          >
-            <Filter className="h-4 w-4" /> Filter
-          </Button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2 h-10 px-4 border-gray-300">
-                <HardDriveDownload className="h-4 w-4" /> Export <ChevronDown className="ml-2 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onSelect={handleExportCSV}>Export All as CSV</DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleExportSelectedCSV}>Export Selected as CSV</DropdownMenuItem>
-              <DropdownMenuItem onSelect={handleExportPDF}>Export All as PDF</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2 h-10 px-4 border-gray-300" 
+              onClick={handleSaveData} 
+              disabled={bulkUpdateMutation.isPending}
+            >
+              {bulkUpdateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {bulkUpdateMutation.isPending ? 'Saving...' : 'Save Data'}
+            </Button>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+              <Input 
+                placeholder="Search..." 
+                className="pl-10 w-80 h-10 border-gray-300" 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-2 h-10 px-4 border-gray-300"
+              onClick={() => setIsFilterOpen(true)}
+            >
+              <Filter className="h-4 w-4" /> Filter
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2 h-10 px-4 border-gray-300">
+                  <HardDriveDownload className="h-4 w-4" /> Export <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onSelect={handleExportCSV}>Export All as CSV</DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleExportSelectedCSV}>Export Selected as CSV</DropdownMenuItem>
+                <DropdownMenuItem onSelect={handleExportPDF}>Export All as PDF</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
-      </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-        <UnifiedTable
-          data={filteredData}
-          columns={columns}
-          config={{
-            styling: {
-              variant: "figma"
-            },
-            features: {
-              pagination: true,
-              sorting: true,
-              filtering: false,
-              selection: false,
-              expansion: false,
-              columnVisibility: false,
-              globalSearch: false,
-              export: false,
-              refresh: false,
-            }
-          }}
+        {/* Table */}
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <UnifiedTable
+            data={filteredData}
+            columns={columns}
+            config={{
+              styling: {
+                variant: "figma"
+              },
+              features: {
+                pagination: true,
+                sorting: true,
+                filtering: false,
+                selection: false,
+                expansion: false,
+                columnVisibility: false,
+                globalSearch: false,
+                export: false,
+                refresh: false,
+              }
+            }}
+          />
+        </div>
+
+        {/* Commission Filter Modal */}
+        <CommissionFilter
+          isOpen={isFilterOpen}
+          onClose={() => setIsFilterOpen(false)}
+          onApplyFilter={handleApplyFilter}
+          onClearFilters={handleClearFilters}
         />
       </div>
-
-      {/* Commission Filter Modal */}
-      <CommissionFilter
-        isOpen={isFilterOpen}
-        onClose={() => setIsFilterOpen(false)}
-        onApplyFilter={handleApplyFilter}
-        onClearFilters={handleClearFilters}
-      />
-    </div>
+    </ErrorBoundary>
   );
 };

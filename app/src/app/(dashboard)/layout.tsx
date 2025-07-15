@@ -6,6 +6,7 @@ import Sidebar from '@/components/dashboard/Sidebar';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/stores';
 import { useAuthInitialization } from '@/hooks/useAuthInitialization';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 // Mark the entire dashboard subtree as dynamic. This avoids build-time errors for client hooks
 // (e.g. useRouter, useSearchParams) used within nested pages that would otherwise require
@@ -52,7 +53,9 @@ export default function DashboardLayout({
           "tab-content-optimized prevent-shift overflow-auto"
         )}>
           <div className="relative h-full">
-            {children}
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
           </div>
         </main>
       </div>

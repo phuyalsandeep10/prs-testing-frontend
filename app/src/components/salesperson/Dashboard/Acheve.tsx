@@ -15,6 +15,7 @@ import box75 from "@/assets/photo/box75.png";
 import box100 from "@/assets/photo/box100.png";
 import { useEffect, useMemo } from "react";
 import { useDashboardStore } from "@/store/apiCall/Achieve";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 
 const Acheve = () => {
   const { data, loading, error, sendRequest, cancel, retry } =
@@ -119,18 +120,20 @@ const Acheve = () => {
 
   if (error) {
     return (
-      <Card className="w-full h-[212px] border rounded-lg p-8 flex flex-col items-center justify-center bg-white shadow-md">
-        <p className="text-md font-outfit font-medium text-red-500 mb-4">
-          {error.displayMessage}
-        </p>
-        <Button
-          variant="outline"
-          className="text-sm font-medium font-outfit text-[#465FFF] hover:text-[#465FFF]"
-          onClick={() => retry()}
-        >
-          Try Again
-        </Button>
-      </Card>
+      <ErrorBoundary fallback={<div className="text-red-600">You do not have permission to view this dashboard section.</div>}>
+        <Card className="w-full h-[212px] border rounded-lg p-8 flex flex-col items-center justify-center bg-white shadow-md">
+          <p className="text-md font-outfit font-medium text-red-500 mb-4">
+            {error.displayMessage}
+          </p>
+          <Button
+            variant="outline"
+            className="text-sm font-medium font-outfit text-[#465FFF] hover:text-[#465FFF]"
+            onClick={() => retry()}
+          >
+            Try Again
+          </Button>
+        </Card>
+      </ErrorBoundary>
     );
   }
 

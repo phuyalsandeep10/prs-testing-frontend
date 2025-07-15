@@ -3,6 +3,7 @@ import { dealApi, apiClient } from '@/lib/api';
 import { useAuth, useUI, useApp } from '@/stores';
 import type { Deal } from '@/types/deals';
 import type { PaginatedResponse, CreateInput, UpdateInput } from '@/types';
+import { toast } from 'sonner';
 
 // -----------------------
 // Query Key Factory
@@ -71,11 +72,7 @@ export const useDealsQuery = (filters?: Record<string, any>) => {
 
   // Unified error toast
   if (query.error) {
-    addNotification({
-      type: 'error',
-      title: 'Failed to load deals',
-      message: query.error.message ?? 'Unknown error',
-    });
+    toast.error('Failed to load deals', { description: query.error.message ?? 'Unknown error' });
   }
 
   return query;
@@ -122,11 +119,7 @@ export const useCreateDeal = () => {
     ...mutationCommonOptions,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: dealQueryKeys.all });
-      addNotification({
-        type: 'success',
-        title: 'Deal created',
-        message: `Deal "${data.deal_name ?? data.id}" has been created`,
-      });
+      toast.success('Deal created', { description: `Deal "${data.deal_name ?? data.id}" has been created` });
       addRecentItem({
         id: data.id,
         type: 'deal',
@@ -135,11 +128,7 @@ export const useCreateDeal = () => {
       });
     },
     onError: (err) => {
-      addNotification({
-        type: 'error',
-        title: 'Create deal failed',
-        message: err.message ?? 'Unknown error',
-      });
+      toast.error('Create deal failed', { description: err.message ?? 'Unknown error' });
     },
   });
 };
@@ -154,18 +143,10 @@ export const useUpdateDeal = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: dealQueryKeys.all });
       queryClient.invalidateQueries({ queryKey: dealQueryKeys.detail(data.id) });
-      addNotification({
-        type: 'success',
-        title: 'Deal updated',
-        message: `Deal "${data.deal_name ?? data.id}" has been updated`,
-      });
+      toast.success('Deal updated', { description: `Deal "${data.deal_name ?? data.id}" has been updated` });
     },
     onError: (err) => {
-      addNotification({
-        type: 'error',
-        title: 'Update deal failed',
-        message: err.message ?? 'Unknown error',
-      });
+      toast.error('Update deal failed', { description: err.message ?? 'Unknown error' });
     },
   });
 };
@@ -179,18 +160,10 @@ export const useDeleteDeal = () => {
     ...mutationCommonOptions,
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: dealQueryKeys.all });
-      addNotification({
-        type: 'success',
-        title: 'Deal deleted',
-        message: `Deal ${id} has been removed`,
-      });
+      toast.success('Deal deleted', { description: `Deal ${id} has been removed` });
     },
     onError: (err) => {
-      addNotification({
-        type: 'error',
-        title: 'Delete deal failed',
-        message: err.message ?? 'Unknown error',
-      });
+      toast.error('Delete deal failed', { description: err.message ?? 'Unknown error' });
     },
   });
 }; 

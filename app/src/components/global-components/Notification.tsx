@@ -3,19 +3,22 @@
 import React, { useState, useEffect } from "react";
 import { useNotifications, useUnreadCount, useMarkAsRead, useMarkAllAsRead } from "@/hooks/useNotifications";
 import type { Notification as NotificationType } from "@/types";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, startOfDay, isSameDay, subDays } from "date-fns";
 import { Bell, Check, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { cn } from "@/lib/utils";
 import {
   Dialog,
+  DialogContent,
+  DialogTrigger,
+  DialogTitle,
   DialogOverlay,
   DialogPortal,
   DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 
 // Custom DialogContent without built-in close button for notifications
@@ -39,10 +42,35 @@ const NotificationContent = React.forwardRef<
 ));
 NotificationContent.displayName = "NotificationContent";
 
+// Utility: group notifications by relative date labels
+const groupByDate = (items: NotificationType[]): Record<string, NotificationType[]> => {
+  const today = startOfDay(new Date());
+  const yesterday = startOfDay(subDays(today, 1));
+  return items.reduce<Record<string, NotificationType[]>>((acc, n) => {
+    const created = n.createdAt ? new Date(n.createdAt) : new Date();
+    let label = "Earlier";
+    if (isSameDay(created, today)) label = "Today";
+    else if (isSameDay(created, yesterday)) label = "Yesterday";
+    if (!acc[label]) acc[label] = [];
+    acc[label].push(n);
+    return acc;
+  }, {});
+};
+
 interface NotificationProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   anchorRef?: React.RefObject<HTMLElement>;
+}
+
+// Define notification category type based on backend
+export type NotificationCategory = 'all' | 'messages' | 'tasks' | 'alerts' | string;
+
+// Tab type with category support
+interface Tab {
+  value: NotificationCategory;
+  label: string;
+  count: number;
 }
 
 const NotificationComponent: React.FC<NotificationProps> = ({
@@ -51,12 +79,13 @@ const NotificationComponent: React.FC<NotificationProps> = ({
   anchorRef,
 }) => {
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
   const [position, setPosition] = useState({ top: 0, right: 0 });
+  // Tabs (All, Messages, Tasks, Alerts)
+  const [activeTab, setActiveTab] = useState<NotificationCategory>('all');
+
   
   const { data: notificationsData, isLoading } = useNotifications({
     unread_only: filter === 'unread',
-    type: typeFilter !== 'all' ? typeFilter : undefined,
     limit: 20
   });
   
@@ -143,11 +172,31 @@ const NotificationComponent: React.FC<NotificationProps> = ({
     }
   }
   // notifications now always an array
+  console.log('Notifications to display:', notifications);
+
+  const categories = notifications.reduce<Record<string, { label: string; count: number }>>((acc, n) => {
+    if (!acc[n.category]) {
+      acc[n.category] = { count: 0, label: n.category.charAt(0).toUpperCase() + n.category.slice(1) };
+    }
+    if (!n.isRead) {
+      acc[n.category].count++;
+    }
+    return acc;
+  }, {});
+
+  const tabs: Tab[] = [
+    { value: 'all', label: 'All', count: unreadCount ?? 0 },
+    ...Object.entries(categories).map(([category, data]) => ({
+      value: category as NotificationCategory,
+      label: data.label,
+      count: data.count
+    }))
+  ];
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <NotificationContent
-        className="p-0 bg-gradient-to-b from-purple-50 via-white to-blue-50 border-0 shadow-xl w-[376px] h-[434px] max-w-[376px] max-h-[434px] rounded-lg"
+        className="p-0 bg-white shadow-2xl w-[540px] max-w-[98vw] h-[700px] max-h-[95vh] rounded-2xl border border-gray-100 mx-auto mt-12 flex flex-col"
         style={{
           position: "fixed",
           top: `${position.top}px`,
@@ -163,113 +212,133 @@ const NotificationComponent: React.FC<NotificationProps> = ({
           }
         }}
       >
+        {/* Accessibility: DialogTitle for screen readers */}
+        <DialogTitle asChild>
+          <VisuallyHidden>Notifications</VisuallyHidden>
+        </DialogTitle>
         {/* Header */}
-        <div className="px-6 py-[11px] border-b border-purple-100">
-          <DialogHeader>
-            <div className="flex items-center justify-between">
-              <DialogTitle className="text-[16px] font-medium text-gray-800 my-5">
-                Notifications
-                {unreadCount && unreadCount > 0 && (
-                  <Badge 
-                    variant="destructive" 
-                    className="ml-2 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
-                  >
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </Badge>
-                )}
-              </DialogTitle>
-              <div className="flex items-center gap-2">
-                <Select value={filter} onValueChange={(value) => setFilter(value as 'all' | 'unread')}>
-                  <SelectTrigger className="w-20 h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="unread">Unread</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onOpenChange(false)}
-                  className="h-6 w-6 p-0 hover:bg-purple-200/50"
-                >
-                  <X className="h-4 w-4 text-gray-500" />
-                </Button>
-              </div>
-            </div>
-          </DialogHeader>
+        <div className="flex items-center justify-between px-8 pt-7 pb-3 border-b border-gray-100 w-full bg-white z-10">
+          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Notifications</h2>
+          <button
+            onClick={() => { window.location.href = '/notifications'; }}
+            className="text-xs font-semibold text-blue-600 hover:underline tracking-wide uppercase"
+          >
+            VIEW ALL
+          </button>
         </div>
 
-        {/* Filters */}
-        <div className="p-4 border-b border-gray-200">
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-full h-10">
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="deal_created">Deals</SelectItem>
-              <SelectItem value="client_created">Clients</SelectItem>
-              <SelectItem value="payment_received">Payments</SelectItem>
-              <SelectItem value="user_created">Users</SelectItem>
-              <SelectItem value="system_alert">System</SelectItem>
-            </SelectContent>
-          </Select>
+        {/* Tabs */}
+        <div className="flex gap-2 px-8 pt-2 pb-2 border-b border-gray-100 select-none text-sm font-semibold w-full bg-white z-10 sticky top-0">
+          {tabs.map((tab: Tab) => (
+            <button
+              key={tab.value}
+              onClick={() => setActiveTab(tab.value)}
+              className={cn(
+                'relative px-2 py-1 rounded transition-colors duration-150',
+                activeTab === tab.value
+                  ? 'text-blue-700 font-bold border-b-2 border-blue-600 bg-transparent'
+                  : 'text-gray-600 hover:bg-gray-100'
+              )}
+              style={{ minWidth: 60, fontSize: '13px' }}
+            >
+              {tab.label}
+              {tab.count > 0 && (
+                <span className="ml-1 inline-flex items-center justify-center text-[11px] font-semibold bg-gray-200 text-blue-700 rounded px-1 min-w-[16px] h-[16px] align-middle">
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
 
         {/* Notifications List */}
-        <div className="px-6 pb-[11px] max-h-96 overflow-y-auto">
+        <div
+          className="flex-1 px-0 py-0 overflow-y-auto focus:outline-none bg-gray-50"
+          role="list"
+          aria-live="polite"
+        >
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-              <span className="ml-2 text-gray-500">Loading notifications...</span>
+            <div className="space-y-4 py-8 px-8">
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  className="h-20 w-full rounded-xl bg-gray-200/60 animate-pulse"
+                />
+              ))}
             </div>
           ) : notifications.length === 0 ? (
-            <div className="py-8 text-center text-gray-500">
-              <Bell className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-              <p>No notifications</p>
+            <div className="py-24 text-center text-gray-400 flex flex-col items-center justify-center">
+              <Bell className="h-12 w-12 mx-auto mb-3 text-gray-200" />
+              <p className="text-lg font-semibold">No notifications</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {notifications.map((notification) => (
-                <div
-                  key={notification.id}
-                  className={cn(
-                    "flex items-start space-x-3 p-3 rounded-lg transition-all duration-200 cursor-pointer hover:bg-purple-50/50",
-                    !notification.isRead && "bg-blue-50"
-                  )}
-                  onClick={() => handleNotificationClick(notification)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      handleNotificationClick(notification);
-                    }
-                  }}
-                >
-                  <div className="flex-shrink-0">
-                    <span className="text-lg">{getTypeIcon(notification.notificationType)}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="text-sm font-medium text-gray-900 truncate">
-                        {notification.title}
-                      </h4>
-                      <div className={cn("w-2 h-2 rounded-full", getPriorityColor(notification.priority))} />
-                    </div>
-                    <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                      {notification.message}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-400">
-                        {notification.createdAt ? formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true }) : 'Unknown time'}
-                      </span>
-                      {notification.isRead && (
-                        <Check className="h-4 w-4 text-green-500" />
-                      )}
-                    </div>
+            <div className="flex flex-col gap-2 px-8 py-4">
+              {Object.entries(groupByDate(notifications)).map(([label, items]) => (
+                <div key={label} className="mb-0 first:mt-0">
+                  <p className="text-xs font-bold text-gray-400 mb-2 px-1 select-none uppercase tracking-widest">{label}</p>
+                  <div className="flex flex-col gap-2">
+                    {items.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className={cn(
+                          "flex items-center gap-4 p-4 rounded-xl bg-white shadow-sm border border-gray-100 transition cursor-pointer hover:bg-blue-50 group",
+                          !notification.isRead ? "border-l-4 border-blue-600" : "border-l-4 border-transparent"
+                        )}
+                        onClick={() => handleNotificationClick(notification)}
+                        role="listitem"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handleNotificationClick(notification);
+                          }
+                        }}
+                      >
+                        {/* Icon/avatar */}
+                        <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 text-blue-600 text-xl font-bold">
+                          {getTypeIcon(notification.notificationType)}
+                        </div>
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="text-base font-semibold text-gray-900 truncate pr-4">
+                              {notification.title}
+                            </h4>
+                            {!notification.isRead && <span className="ml-2 px-2 py-0.5 text-xs font-bold bg-blue-50 text-blue-600 rounded-full">New</span>}
+                          </div>
+                          {notification.message && (
+                            <p className="text-sm text-gray-500 mb-1 line-clamp-2">
+                              {notification.message}
+                            </p>
+                          )}
+                          <div className="flex items-center justify-between text-xs text-gray-400 mt-1">
+                            <span>
+                              {notification.createdAt
+                                ? formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })
+                                : "Unknown time"}
+                            </span>
+                            <div className="flex gap-2">
+                              {!notification.isRead && (
+                                <button
+                                  onClick={e => { e.stopPropagation(); handleMarkAsRead(notification.id); }}
+                                  className="text-blue-600 font-semibold hover:underline px-2 py-0.5 rounded transition"
+                                >
+                                  Mark as read
+                                </button>
+                              )}
+                              {notification.actionUrl && (
+                                <button
+                                  onClick={e => { e.stopPropagation(); window.location.href = notification.actionUrl; }}
+                                  className="text-gray-500 hover:text-blue-600 hover:underline px-2 py-0.5 rounded transition"
+                                >
+                                  View
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -278,24 +347,25 @@ const NotificationComponent: React.FC<NotificationProps> = ({
         </div>
 
         {/* Footer */}
-        {notifications.length > 0 && (
-          <div className="pt-4">
-            <Button
-              onClick={handleMarkAllAsRead}
-              className="w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white font-medium h-[49px]"
-              disabled={markAllAsRead.isPending}
-            >
-              {markAllAsRead.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Marking...
-                </>
-              ) : (
-                'Mark all Read'
-              )}
-            </Button>
-          </div>
-        )}
+        <div className="py-4 px-8 border-t border-gray-100 flex items-center justify-between bg-white rounded-b-2xl gap-4">
+          <Button
+            onClick={handleMarkAllAsRead}
+            className="inline-flex items-center gap-1 text-blue-600 hover:underline text-base font-semibold bg-transparent p-0 shadow-none"
+            disabled={markAllAsRead.isPending}
+            variant="ghost"
+          >
+            {markAllAsRead.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Marking...
+              </>
+            ) : (
+              'Mark all as read'
+            )}
+          </Button>
+          {/* Load more button (if pagination is needed) */}
+          {/* <Button className="text-gray-500 bg-gray-100 hover:bg-gray-200 font-semibold px-4 py-2 rounded-lg" onClick={handleLoadMore}>Load more</Button> */}
+        </div>
       </NotificationContent>
     </Dialog>
   );

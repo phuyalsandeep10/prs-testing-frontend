@@ -67,11 +67,11 @@ export function ManageClientsClient() {
   };
 
   const handleCreateClient = () => {
-    addNotification({ type: 'info', title: 'Add New Client', message: 'Client creation modal coming soon.' });
+    toast.info('Add New Client', { description: 'Client creation modal coming soon.' });
   };
 
   const handleEditClient = (client: Client) => {
-    addNotification({ type: 'info', title: 'Edit Client', message: 'Client edit modal coming soon.' });
+    toast.info('Edit Client', { description: 'Client edit modal coming soon.' });
   };
 
   const deleteClientMutation = useDeleteClientMutation();
@@ -186,42 +186,44 @@ export function ManageClientsClient() {
       cell: ({ row }) => {
         const client = row.original;
         return (
-          <PermissionGate requiredPermissions={['manage:clients']}>
-            <div className="flex items-center justify-center gap-2">
-              <button
-                onClick={() => handleEditClient(client)}
-                className="w-8 h-8 rounded-full bg-[#4F46E5] text-white flex items-center justify-center hover:bg-[#4338CA] transition-colors"
-                title="Edit"
-              >
-                <Edit className="h-4 w-4" />
-              </button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <button
-                    className="w-8 h-8 rounded-full bg-[#EF4444] text-white flex items-center justify-center hover:bg-[#DC2626] transition-colors"
-                    title="Delete"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete the client
-                      "{client.client_name}".
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={() => handleDeleteClient(client)}>
-                      Continue
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
-          </PermissionGate>
+          <ErrorBoundary fallback={<div className="text-red-600">You do not have permission to perform this action.</div>}>
+            <PermissionGate requiredPermissions={['manage:clients']}>
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  onClick={() => handleEditClient(client)}
+                  className="w-8 h-8 rounded-full bg-[#4F46E5] text-white flex items-center justify-center hover:bg-[#4338CA] transition-colors"
+                  title="Edit"
+                >
+                  <Edit className="h-4 w-4" />
+                </button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button
+                      className="w-8 h-8 rounded-full bg-[#EF4444] text-white flex items-center justify-center hover:bg-[#DC2626] transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete the client
+                        "{client.client_name}".
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleDeleteClient(client)}>
+                        Continue
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </PermissionGate>
+          </ErrorBoundary>
         );
       }
     }

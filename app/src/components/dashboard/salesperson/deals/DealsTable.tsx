@@ -24,6 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useDealExpanded } from "@/hooks/api/useDeals";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 
 interface ApiResponse {
   count: number;
@@ -691,39 +692,41 @@ const DealsTable: React.FC<DealsTableProps> = ({
   console.log("Current expanded rows:", currentExpandedRows);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full">
-      <UnifiedTable
-        columns={columns as ColumnDef<unknown>[]}
-        data={filteredData || []}
-        loading={isLoading}
-        error={error?.message || null}
-        expandedContent={expandedContent}
-        expandedRows={currentExpandedRows}
-        onExpandedRowsChange={(newExpandedRows) => {
-          console.log("Expanded rows changed:", newExpandedRows);
-          setExpandedRows(newExpandedRows);
-          // React Query will automatically fetch data when ExpandedRowContent is rendered
-        }}
-        getRowProps={(row: Row<unknown>) => ({
-          className: getRowClassName(row as Row<Deal>),
-        })}
-        config={{
-          features: {
-            expansion: true,
-            pagination: true,
-            globalSearch: false,
-            columnVisibility: false,
-          },
-          styling: {
-            variant: "figma",
-            size: "sm",
-          },
-          pagination: {
-            pageSize: 10,
-          },
-        }}
-      />
-    </div>
+    <ErrorBoundary fallback={<div className="text-red-600">You do not have permission to view deals.</div>}>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden w-full">
+        <UnifiedTable
+          columns={columns as ColumnDef<unknown>[]}
+          data={filteredData || []}
+          loading={isLoading}
+          error={error?.message || null}
+          expandedContent={expandedContent}
+          expandedRows={currentExpandedRows}
+          onExpandedRowsChange={(newExpandedRows) => {
+            console.log("Expanded rows changed:", newExpandedRows);
+            setExpandedRows(newExpandedRows);
+            // React Query will automatically fetch data when ExpandedRowContent is rendered
+          }}
+          getRowProps={(row: Row<unknown>) => ({
+            className: getRowClassName(row as Row<Deal>),
+          })}
+          config={{
+            features: {
+              expansion: true,
+              pagination: true,
+              globalSearch: false,
+              columnVisibility: false,
+            },
+            styling: {
+              variant: "figma",
+              size: "sm",
+            },
+            pagination: {
+              pageSize: 10,
+            },
+          }}
+        />
+      </div>
+    </ErrorBoundary>
   );
 };
 

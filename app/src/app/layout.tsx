@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import Providers from "./providers";
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -49,7 +50,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} antialiased font-outfit`}
       >
         <Providers>
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
           <Toaster richColors position="top-right" />
         </Providers>
       </body>

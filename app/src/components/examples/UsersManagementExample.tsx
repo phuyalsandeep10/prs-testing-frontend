@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Plus, Search, Filter } from 'lucide-react';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 export default function UsersManagementExample() {
   const { user } = useAuth();
@@ -95,12 +96,14 @@ export default function UsersManagementExample() {
           </p>
         </div>
         
-        <PermissionGate requiredPermissions={['manage:users']}>
-          <Button onClick={handleCreateUser}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add User
-          </Button>
-        </PermissionGate>
+        <ErrorBoundary fallback={<div className="text-red-600">You do not have permission to add users.</div>}>
+          <PermissionGate requiredPermissions={['manage:users']}>
+            <Button onClick={handleCreateUser}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add User
+            </Button>
+          </PermissionGate>
+        </ErrorBoundary>
       </div>
       
       {/* Filters */}
@@ -181,11 +184,13 @@ export default function UsersManagementExample() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Last Login
                   </th>
-                  <PermissionGate requiredPermissions={['manage:users']}>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </PermissionGate>
+                  <ErrorBoundary fallback={<th className="text-red-600">No permission</th>}>
+                    <PermissionGate requiredPermissions={['manage:users']}>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </PermissionGate>
+                  </ErrorBoundary>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -224,16 +229,18 @@ export default function UsersManagementExample() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}
                     </td>
-                    <PermissionGate requiredPermissions={['manage:users']}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        <Button variant="outline" size="sm">
-                          Edit
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          View
-                        </Button>
-                      </td>
-                    </PermissionGate>
+                    <ErrorBoundary fallback={<td className="text-red-600">No permission</td>}>
+                      <PermissionGate requiredPermissions={['manage:users']}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                          <Button variant="outline" size="sm">
+                            Edit
+                          </Button>
+                          <Button variant="outline" size="sm">
+                            View
+                          </Button>
+                        </td>
+                      </PermissionGate>
+                    </ErrorBoundary>
                   </tr>
                 ))}
               </tbody>

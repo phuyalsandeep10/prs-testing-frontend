@@ -24,6 +24,7 @@ const FALLBACK_ROLES: Array<{ id: string; name: string }> = [
   { id: "Team Member", name: "Team Member" },
 ];
 import { useAuth, useUI } from "@/stores";
+import { toast } from 'sonner';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -217,11 +218,7 @@ export function AddNewUserFormWrapper({
   const handleClear = () => {
     if (!isLoading) {
       form.reset();
-      addNotification({
-        type: "info",
-        title: "Form cleared",
-        message: "All form fields have been reset.",
-      });
+      toast.info('Form cleared', { description: 'All form fields have been reset.' });
     }
   };
 
