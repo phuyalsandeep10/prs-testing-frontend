@@ -17,13 +17,13 @@ const CommissionSection: React.FC = () => {
   // Use standardized hook for commission data
   const { data: commissionResponse, isLoading, error } = useCommissionData('monthly');
   
-  // Transform the data to match the expected format
+  // Transform the data to match the expected format using the correct backend structure
   const data = commissionResponse ? {
-    achieved: commissionResponse.commission_breakdown?.[0]?.achieved_percentage ?? 0,
-    total: commissionResponse.total_commission ?? 1,
-    increaseLabel: `${commissionResponse.commission_breakdown?.[0]?.growth_percentage ?? 0}%`,
-    salesAmount: `$${commissionResponse.total_commission ?? 0}`,
-    subtitle: commissionResponse.commission_period ?? "",
+    achieved: commissionResponse.company_goal_chart?.achieved_percentage ?? 0,
+    total: commissionResponse.organization_goal ?? 1,
+    increaseLabel: `${commissionResponse.company_goal_chart?.sales_growth_percentage ?? 0}%`,
+    salesAmount: `$${commissionResponse.company_goal_chart?.current_sales ?? 0}`,
+    subtitle: commissionResponse.period_summary?.period ?? "Monthly",
   } : null;
 
   if (isLoading) {

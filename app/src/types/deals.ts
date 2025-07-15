@@ -57,6 +57,7 @@ export interface Deal {
   created_at: string;
   updated_at: string;
   payments?: Payment[];
+  payments_read?: Payment[]; // Read-only payments from backend
   activity_logs?: ActivityLog[];
   
   // Aliases provided by backend serializer

@@ -191,42 +191,19 @@ export const useDealExpanded = (dealId: string | null) => {
     queryFn: async (): Promise<any> => {
       if (!dealId) return null;
       
-      console.log('🔍 [USE_DEAL_EXPANDED] Fetching expanded data for dealId:', dealId);
-      const response = await apiClient.get<any>(`/deals/deals/${dealId}/expand/`);
-      
-      console.log('🔍 [USE_DEAL_EXPANDED] Raw response:', response);
-      console.log('🔍 [USE_DEAL_EXPANDED] Response data:', response.data);
-      console.log('🔍 [USE_DEAL_EXPANDED] Response keys:', Object.keys(response));
-      console.log('🔍 [USE_DEAL_EXPANDED] Response type:', typeof response);
-      
-      // Handle different response structures
-      let nestedData;
-      if (response.data !== undefined) {
-        nestedData = response.data;
-      } else if (response.payment_history !== undefined) {
-        nestedData = response;
-      } else {
-        nestedData = response;
+      try {
+        const response = await apiClient.get<any>(`/deals/deals/${dealId}/expand/`);
+        
+        // The response contains the DealExpandedViewSerializer data directly
+        // which has a payment_history field with the payment array
+        const paymentHistory = response?.payment_history;
+        
+        // Return the payment history array directly
+        return paymentHistory || [];
+      } catch (error) {
+        console.error('🔍 [USE_DEAL_EXPANDED] Error fetching expanded data:', error);
+        throw error;
       }
-      
-      console.log('🔍 [USE_DEAL_EXPANDED] Nested data:', nestedData);
-      console.log('🔍 [USE_DEAL_EXPANDED] Payment history:', nestedData?.payment_history);
-      console.log('🔍 [USE_DEAL_EXPANDED] Is payment_history array?', Array.isArray(nestedData?.payment_history));
-      
-      // Transform the data: extract payment_history (no need to merge since fields are already included)
-      let transformedData = [];
-      if (
-        nestedData &&
-        nestedData.payment_history &&
-        Array.isArray(nestedData.payment_history)
-      ) {
-        transformedData = nestedData.payment_history;
-      }
-      
-      console.log('🔍 [USE_DEAL_EXPANDED] Transformed data:', transformedData);
-      console.log('🔍 [USE_DEAL_EXPANDED] Transformed data length:', transformedData.length);
-      
-      return transformedData;
     },
     enabled: !!dealId,
     staleTime: 1 * 60 * 1000, // 1 minute

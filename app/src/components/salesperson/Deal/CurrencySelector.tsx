@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { ChevronDown, Search } from "lucide-react";
+import { apiClient } from "@/lib/api-client";
 
 interface BackendCurrency {
   code: string;
@@ -27,7 +28,6 @@ const formatNumber = (num: number) => new Intl.NumberFormat('en-IN').format(num)
 
 const CurrencyIcon = ({ currency, currencies }: { currency: string; currencies: BackendCurrency[] }) => {
     const currencyData = currencies.find(c => c.code === currency);
-    console.log('🔍 [CurrencyIcon] Looking for currency:', currency, 'Found:', currencyData?.country?.flag_emoji || 'NO FLAG');
     if (currencyData?.country?.flag_emoji) {
         return <span className="mr-2">{currencyData.country.flag_emoji}</span>;
     }
@@ -52,24 +52,10 @@ const CurrencySelector: React.FC<CurrencySelectorProps> = ({
   useEffect(() => {
     const fetchCurrencies = async () => {
       try {
-        const token = localStorage.getItem('authToken');
-        console.log('🔍 [CurrencySelector] Fetching currencies from API...');
-        const response = await fetch('http://localhost:8000/api/commission/currencies/', {
-          headers: {
-            'Authorization': `Token ${token}`,
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache',
-          },
-        });
-        if (!response.ok) {
-          throw new Error('Failed to fetch currencies');
-        }
-        const data: BackendCurrency[] = await response.json();
-        console.log('✅ [CurrencySelector] Fetched currencies:', data.length, 'currencies');
-        console.log('🔍 [CurrencySelector] Sample currencies:', data.slice(0, 5).map(c => ({ code: c.code, flag: c.country?.flag_emoji || 'NO FLAG' })));
+        const data: BackendCurrency[] = await apiClient.get('/commission/currencies/');
         setCurrencies(data);
       } catch (error) {
-        console.error('❌ [CurrencySelector] Error fetching currencies:', error);
+        console.error('Error fetching currencies:', error);
         // Fallback to a few common currencies if API fails
         setCurrencies([
           { code: 'USD', name: 'US Dollar', numeric: '840', symbol: '$', country: { name: 'United States', alpha_2: 'US', alpha_3: 'USA', flag_emoji: '🇺🇸' } },

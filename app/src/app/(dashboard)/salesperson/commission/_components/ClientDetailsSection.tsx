@@ -48,13 +48,48 @@ const ClientDetailsSection: React.FC = () => {
 
   const { data: clients = [], isLoading } = useDashboardClients();
 
-  const handleView = useCallback((client: ApiClient) => {
-    setSelectedClient(client);
+  console.log('🔍 [CLIENT_DETAILS_SECTION] Clients data:', clients);
+  console.log('🔍 [CLIENT_DETAILS_SECTION] Loading:', isLoading);
+
+  const handleView = useCallback((client: any) => {
+    // Transform backend client data to match ApiClient interface
+    const transformedClient: ApiClient = {
+      id: client.client_id?.toString() || client.id?.toString() || '',
+      client_name: client.client_name,
+      email: client.email,
+      phone_number: client.phone_number,
+      nationality: null,
+      created_at: '',
+      updated_at: '',
+      remarks: client.remarks,
+      satisfaction: null,
+      status: client.payment_status,
+      created_by: 0,
+      organization: 0,
+      total_value: client.total_value,
+    };
+    setSelectedClient(transformedClient);
     setShowViewModal(true);
   }, []);
 
-  const handleEdit = useCallback((client: ApiClient) => {
-    setSelectedClient(client);
+  const handleEdit = useCallback((client: any) => {
+    // Transform backend client data to match ApiClient interface
+    const transformedClient: ApiClient = {
+      id: client.client_id?.toString() || client.id?.toString() || '',
+      client_name: client.client_name,
+      email: client.email,
+      phone_number: client.phone_number,
+      nationality: null,
+      created_at: '',
+      updated_at: '',
+      remarks: client.remarks,
+      satisfaction: null,
+      status: client.payment_status,
+      created_by: 0,
+      organization: 0,
+      total_value: client.total_value,
+    };
+    setSelectedClient(transformedClient);
     setShowEditModal(true);
   }, []);
 
@@ -77,7 +112,7 @@ const ClientDetailsSection: React.FC = () => {
   const columns: any = useMemo(
     () => [
       {
-        accessorFn: (row: ApiClient) => row.client_name,
+        accessorFn: (row: any) => row.client_name,
         id: "name",
         header: "Client Name",
         cell: ({ row }) => (
@@ -87,7 +122,17 @@ const ClientDetailsSection: React.FC = () => {
         ),
       },
       {
-        accessorFn: (row: ApiClient) => (row as any).total_deals ?? 0,
+        accessorFn: (row: any) => row.total_deals ?? 0,
+        id: "totalDeals",
+        header: "Total Deals",
+        cell: ({ row }) => (
+          <div className="text-[14px] text-gray-700 font-medium">
+            {row.getValue("totalDeals")}
+          </div>
+        ),
+      },
+      {
+        accessorFn: (row: any) => row.total_value ?? 0,
         id: "totalSales",
         header: "Total Sales",
         cell: ({ row }) => (
@@ -97,8 +142,17 @@ const ClientDetailsSection: React.FC = () => {
         ),
       },
       {
-        accessorFn: (row: ApiClient) =>
-          (row as any).payment_status ?? "pending",
+        accessorFn: (row: any) => row.outstanding_amount ?? 0,
+        id: "outstandingAmount",
+        header: "Outstanding",
+        cell: ({ row }) => (
+          <div className="text-[14px] text-gray-700 font-medium">
+            ${row.getValue("outstandingAmount").toLocaleString()}
+          </div>
+        ),
+      },
+      {
+        accessorFn: (row: any) => row.payment_status ?? "pending",
         id: "status",
         header: "Status",
         cell: ({ row }) => {
@@ -107,7 +161,7 @@ const ClientDetailsSection: React.FC = () => {
         },
       },
       {
-        accessorFn: (row: ApiClient) => row.remarks ?? "-",
+        accessorFn: (row: any) => row.remarks ?? "-",
         id: "remarks",
         header: "Remarks",
         cell: ({ row }) => (
@@ -120,7 +174,7 @@ const ClientDetailsSection: React.FC = () => {
         id: "actions",
         header: "Actions",
         cell: ({ row }) => {
-          const client = row.original as ApiClient;
+          const client = row.original as any;
           return (
             <div className="flex items-center justify-center gap-2">
               <button
@@ -138,7 +192,7 @@ const ClientDetailsSection: React.FC = () => {
                 <Image src={edit} alt="Edit" className="w-5 h-5" />
               </button>
               <button
-                onClick={() => handleDelete(client.id.toString())}
+                onClick={() => handleDelete(client.client_id?.toString() || client.id?.toString() || '')}
                 className="text-white flex items-center justify-center"
                 title="Delete"
               >

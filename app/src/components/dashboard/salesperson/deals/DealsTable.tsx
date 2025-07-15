@@ -341,10 +341,10 @@ const DealsTable: React.FC<DealsTableProps> = ({
         },
       },
       {
-        accessorKey: "payments",
+        accessorKey: "payments_read",
         header: "Payment",
         cell: ({ row }) => {
-          const payments = row.original.payments;
+          const payments = row.original.payments_read;
           if (!payments || payments.length === 0) return "No Payments";
 
           return (
@@ -525,9 +525,26 @@ const DealsTable: React.FC<DealsTableProps> = ({
         accessorKey: "verification_status",
         header: "Payment Status",
         cell: ({ row }) => {
+          const status = row.original.verification_status;
+          let statusClasses = "";
+          
+          switch (status) {
+            case "verified":
+              statusClasses = "bg-green-100 text-green-800";
+              break;
+            case "rejected":
+              statusClasses = "bg-red-100 text-red-800";
+              break;
+            case "pending":
+              statusClasses = "bg-orange-100 text-orange-800";
+              break;
+            default:
+              statusClasses = "bg-gray-100 text-gray-600";
+          }
+          
           return (
-            <span className="px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-600">
-              {row.original.verification_status}
+            <span className={`px-2 py-1 text-xs font-medium rounded ${statusClasses}`}>
+              {status}
             </span>
           );
         },
@@ -601,7 +618,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
   // Row styling based on payment verification status
   const getRowClassName = (row: Row<Deal>) => {
     const deal = row.original;
-    const payments = deal.payments || [];
+    const payments = deal.payments_read || [];
     
     // Check if any payment is rejected - make entire row red
     const hasRejectedPayment = payments.some(payment => payment.status === 'rejected');

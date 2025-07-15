@@ -267,24 +267,25 @@ const DealsTable: React.FC<DealsTableProps> = ({
         header: "Payment Status",
         cell: ({ row }) => {
           const status = row.original.verification_status;
-          let badgeClass = "px-2 py-1 text-xs font-medium rounded";
+          let statusClasses = "";
           
           switch (status) {
-            case 'verified':
-              badgeClass += " bg-green-100 text-green-800 border border-green-200";
+            case "verified":
+              statusClasses = "bg-green-100 text-green-800";
               break;
-            case 'rejected':
-              badgeClass += " bg-red-100 text-red-800 border border-red-200";
+            case "rejected":
+              statusClasses = "bg-red-100 text-red-800";
               break;
-            case 'pending':
+            case "pending":
+              statusClasses = "bg-orange-100 text-orange-800";
+              break;
             default:
-              badgeClass += " bg-yellow-100 text-yellow-800 border border-yellow-200";
-              break;
+              statusClasses = "bg-gray-100 text-gray-600";
           }
           
           return (
-            <span className={badgeClass}>
-              {status?.charAt(0).toUpperCase() + status?.slice(1) || 'Pending'}
+            <span className={`px-2 py-1 text-xs font-medium rounded ${statusClasses}`}>
+              {status}
             </span>
           );
         },
@@ -408,7 +409,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
         accessorKey: "pay_status",
         cell: ({ row }) => {
           const deal = row.original;
-          const payments = deal.payments || [];
+          const payments = deal.payments_read || [];
           
           // Determine status based on payment verification
           let statusLabel = "Pending";
@@ -472,7 +473,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
         id: "payment",
         header: "Payment",
         cell: ({ row }) => {
-          const payments = row.original.payments || [];
+          const payments = row.original.payments_read || [];
           if (!payments || payments.length === 0) return "No Payments";
 
           return (
@@ -519,7 +520,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
         id: "pay_method",
         header: "Pay Method",
         cell: ({ row }) => {
-          const payments = row.original.payments || [];
+          const payments = row.original.payments_read || [];
           
           // If no payments exist, show deal's payment method
           if (payments.length === 0) {
@@ -568,14 +569,14 @@ const DealsTable: React.FC<DealsTableProps> = ({
               {roleConfig.allowedActions.includes('verify') && (
                 <>
                   <button
-                    onClick={() => onVerifyPayment?.(row.original.id, row.original.payments?.[0]?.id || '', 'verified')}
+                    onClick={() => onVerifyPayment?.(row.original.id, row.original.payments_read?.[0]?.id || '', 'verified')}
                     className="w-5 h-5 rounded-full text-[#009959] flex items-center justify-center transition-colors hover:bg-gray-100"
                     title="Verify Payment"
                   >
                     <Check className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => onVerifyPayment?.(row.original.id, row.original.payments?.[0]?.id || '', 'rejected')}
+                    onClick={() => onVerifyPayment?.(row.original.id, row.original.payments_read?.[0]?.id || '', 'rejected')}
                     className="w-5 h-5 rounded-full text-[#F61818] flex items-center justify-center transition-colors hover:bg-gray-100"
                     title="Reject Payment"
                   >
@@ -584,7 +585,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
                 </>
               )}
             </div>
-          ), [row.original.id, row.original.payments, roleConfig.allowedActions, onVerifyPayment]);
+          ), [row.original.id, row.original.payments_read, roleConfig.allowedActions, onVerifyPayment]);
 
           // Render expand button separately to prevent it from affecting other buttons
           return (
@@ -605,7 +606,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
   // Row styling based on payment verification status
   const getRowClassName = (row: Row<Deal>) => {
     const deal = row.original;
-    const payments = deal.payments || [];
+    const payments = deal.payments_read || [];
     
     // Check if any payment is rejected - make entire row red
     const hasRejectedPayment = payments.some(payment => payment.status === 'rejected');

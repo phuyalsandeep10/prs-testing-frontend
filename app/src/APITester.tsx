@@ -1,74 +1,56 @@
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-import { useRef, type FormEvent } from "react";
+import React, { useState } from 'react';
+import { apiClient } from './lib/api-client';
 
-export function APITester() {
-  const responseInputRef = useRef<HTMLTextAreaElement>(null);
+const APITester = () => {
+  const [commissionData, setCommissionData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const testEndpoint = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
+  const testCommissionAPI = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const form = e.currentTarget;
-      const formData = new FormData(form);
-      const endpoint = formData.get("endpoint") as string;
-      const url = new URL(endpoint, location.href);
-      const method = formData.get("method") as string;
-      const res = await fetch(url, { method });
-
-      const data = await res.json();
-      responseInputRef.current!.value = JSON.stringify(data, null, 2);
-    } catch (error) {
-      responseInputRef.current!.value = String(error);
+      const response = await apiClient.get('/dashboard/commission/?period=monthly&include_details=true');
+      console.log('Commission API Response:', response);
+      setCommissionData(response);
+    } catch (err: any) {
+      console.error('Commission API Error:', err);
+      setError(err.message || 'Unknown error');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="mt-8 mx-auto w-full max-w-2xl text-left flex flex-col gap-4">
-      <form
-        onSubmit={testEndpoint}
-        className="flex items-center gap-2 bg-card p-3 rounded-xl font-mono border border-input w-full"
-      >
-        <Select name="method" defaultValue="GET">
-          <SelectTrigger className="w-[100px]">
-            <SelectValue placeholder="Method" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="GET">GET</SelectItem>
-            <SelectItem value="PUT">PUT</SelectItem>
-          </SelectContent>
-        </Select>
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">API Tester</h1>
+      
+      <div className="space-y-4">
+        <button
+          onClick={testCommissionAPI}
+          disabled={loading}
+          className="px-4 py-2 bg-blue-500 text-white rounded disabled:bg-gray-400"
+        >
+          {loading ? 'Testing...' : 'Test Commission API'}
+        </button>
 
-        <Input
-          type="text"
-          name="endpoint"
-          defaultValue="/api/hello"
-          className={cn(
-            "flex-1 font-mono",
-            "bg-transparent border-0 shadow-none",
-            "focus-visible:ring-0 focus-visible:ring-offset-0",
-          )}
-          placeholder="/api/hello"
-        />
-
-        <Button type="submit" variant="secondary">
-          Send
-        </Button>
-      </form>
-
-      <textarea
-        ref={responseInputRef}
-        readOnly
-        placeholder="Response will appear here..."
-        className={cn(
-          "w-full min-h-[140px] bg-card",
-          "border border-input rounded-xl p-3",
-          "font-mono resize-y",
-          "placeholder:text-muted-foreground",
+        {error && (
+          <div className="p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+            <strong>Error:</strong> {error}
+          </div>
         )}
-      />
+
+        {commissionData && (
+          <div className="p-4 bg-green-100 border border-green-400 rounded">
+            <h3 className="font-bold mb-2">Commission API Response:</h3>
+            <pre className="text-sm overflow-auto max-h-96">
+              {JSON.stringify(commissionData, null, 2)}
+            </pre>
+          </div>
+        )}
+      </div>
     </div>
   );
-}
+};
+
+export default APITester;

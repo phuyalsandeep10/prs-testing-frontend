@@ -39,17 +39,48 @@ interface DashboardResponse {
 }
 
 interface CommissionData {
-  total_commission: number;
-  commission_period: string;
-  top_clients_this_period?: Array<{
+  organization_goal: number;
+  goal_progress: number;
+  user_commissions: number;
+  total_commissions: number;
+  company_goal_chart: {
+    company_goal: number;
+    achieved_percentage: number;
+    sales_growth_percentage: number;
+    current_sales: number;
+    previous_period_sales: number;
+    summary_message: string;
+    subtitle: string;
+  };
+  top_clients_this_period: Array<{
+    client_id: number;
     client_name: string;
+    total_deals: number;
+    total_value: number;
+    deals?: Array<{
+      id: number;
+      deal_value: number;
+      deal_date: string;
+      status: string;
+    }>;
+  }>;
+  commission_trends: Array<{
+    date: string;
+    total_commission: number;
+  }>;
+  period_summary: {
+    period: string;
+    start_date: string;
+    end_date: string;
+    organization_sales: string;
+  };
+  regular_clients_all_time: Array<{
+    client_id: number;
+    client_name?: string;
+    client__client_name?: string;
+    total_deals: number;
     total_value: number;
   }>;
-  regular_clients_all_time?: Array<{
-    client_name: string;
-    total_value: number;
-  }>;
-  commission_breakdown?: any[];
 }
 
 interface StandingsData {

@@ -16,14 +16,14 @@ export default function RegularClientSection() {
     data: commissionData,
     isLoading,
     error: isError,
-  } = useCommissionData('all_time'); // Get all-time commission data
+  } = useCommissionData('monthly'); // Get monthly commission data which includes all-time clients
 
   // Transform commission data to client items format
   const clients: ClientItem[] = useMemo(() => {
     if (!commissionData?.regular_clients_all_time) return [];
     
     return commissionData.regular_clients_all_time.map((client: any) => ({
-      name: client.client_name || client.name,
+      name: client.client_name || client.client__client_name || client.name,
       investedPrice: `$ ${Number(client.total_value || client.value || 0).toLocaleString()}`,
     }));
   }, [commissionData]);

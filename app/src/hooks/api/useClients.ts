@@ -90,6 +90,10 @@ export const useClient = (clientId: string) => {
 export const useDashboardClients = () => {
   const { user } = useAuth();
   const organizationId = (user as any)?.organization;
+  
+  console.log('🔍 [USE_DASHBOARD_CLIENTS] User:', user);
+  console.log('🔍 [USE_DASHBOARD_CLIENTS] Organization ID:', organizationId);
+  
   return useQuery({
     queryKey: [...clientKeys.all, 'dashboard'],
     queryFn: async (): Promise<Client[]> => {
@@ -97,17 +101,27 @@ export const useDashboardClients = () => {
       if (organizationId) {
         params.append('organization', organizationId.toString());
       }
+      params.append('limit', '10');
+      params.append('status_filter', 'all');
+      
+      console.log('🔍 [USE_DASHBOARD_CLIENTS] Making API call with params:', params.toString());
+      
       const response = await apiClient.get<{
         clients?: Client[];
         results?: Client[];
       } | Client[]>(`/dashboard/clients/?${params.toString()}`);
+      
+      console.log('🔍 [USE_DASHBOARD_CLIENTS] API Response:', response);
       
       // Handle different response formats
       if (Array.isArray(response)) {
         return response;
       }
       
-      return (response as any).clients || (response as any).results || [];
+      const clients = (response as any).clients || (response as any).results || [];
+      console.log('🔍 [USE_DASHBOARD_CLIENTS] Extracted clients:', clients);
+      
+      return clients;
     },
     staleTime: 2 * 60 * 1000, // 2 minutes for dashboard data
     enabled: !!organizationId,
