@@ -61,10 +61,7 @@ const useLoginMutation = () => {
   const router = useRouter();
 
   return useMutation({
-    mutationFn: async (credentials: {
-      email: string;
-      password: string;
-    }): Promise<LoginResponse> => {
+    mutationFn: async (credentials: { email: string; password: string }): Promise<LoginResponse> => {
       const response = await apiClient.post<LoginResponse>(
         "/auth/login/direct/",
         credentials
@@ -81,86 +78,31 @@ const useLoginMutation = () => {
   });
 };
 
-const useOTPRequestMutation = () => {
-  const { addNotification } = useUI();
-
-  return useMutation({
-    mutationFn: async ({
-      email,
-      password,
-      userType,
-    }: {
-      email: string;
-      password: string;
-      userType: "super_admin" | "org_admin";
-    }): Promise<OTPResponse> => {
-      const endpoint =
-        userType === "super_admin" ? "login/super-admin" : "login/org-admin";
-      const response = await apiClient.post<OTPResponse>(`/auth/${endpoint}/`, {
-        email,
-        password,
-      });
-      return response.data!;
-    },
-    onSuccess: () => {
-      addNotification({
-        type: "success",
-        title: "OTP Sent",
-        message: "Please check your email for the verification code.",
-      });
-    },
-    onError: (error: any) => {
-      addNotification({
-        type: "error",
-        title: "OTP Request Failed",
-        message: error.message || "Failed to send OTP. Please try again.",
-      });
-    },
-  });
-};
-
 const useOTPVerifyMutation = () => {
   const { login } = useAuth();
   const { addNotification } = useUI();
   const router = useRouter();
 
   return useMutation({
-    mutationFn: async ({
-      email,
-      otp,
-      userType,
-    }: {
-      email: string;
-      otp: string;
-      userType: "super_admin" | "org_admin";
-    }): Promise<OTPVerifyResponse> => {
-      const endpoint =
-        userType === "super_admin"
-          ? "login/super-admin/verify"
-          : "login/org-admin/verify";
+    mutationFn: async ({ email, otp }: { email: string; otp: string }): Promise<OTPVerifyResponse> => {
       const response = await apiClient.post<OTPVerifyResponse>(
-        `/auth/${endpoint}/`,
+        "/auth/login/verify/",
         { email, otp }
       );
       return response.data!;
     },
     onSuccess: (data, variables) => {
       if (data.requires_password_change && data.temporary_token) {
-        // Store temporary credentials for password change
         localStorage.setItem("tempToken", data.temporary_token);
         localStorage.setItem("tempEmail", variables.email);
         router.push("/change-password");
       } else if (data.token && data.user) {
-        // Complete login
         login(data.token, data.user);
-
         addNotification({
           type: "success",
           title: "Login Successful",
           message: `Welcome back, ${data.user.first_name || data.user.email}!`,
         });
-
-        // Redirect based on role using the centralized function
         redirectUserByRole(data.user, router, addNotification);
       }
     },
@@ -178,9 +120,6 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [step, setStep] = React.useState<"login" | "otp">("login");
   const [userEmail, setUserEmail] = React.useState<string>("");
-  const [userType, setUserType] = React.useState<"super_admin" | "org_admin">(
-    "org_admin"
-  );
   const router = useRouter();
   const { login } = useAuth();
   const { addNotification } = useUI();
@@ -188,7 +127,6 @@ export default function LoginForm() {
   // Mutations
   const loginMutation = useLoginMutation();
   const otpVerifyMutation = useOTPVerifyMutation();
-  const otpRequestMutation = useOTPRequestMutation();
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -215,54 +153,30 @@ export default function LoginForm() {
 
   // Handle regular login submission
   const onLoginSubmit = async (values: z.infer<typeof loginSchema>) => {
-    // Determine the user type based on email or a UI toggle.
-    // For this fix, we'll assume a simple heuristic or a toggle sets this.
-    // We'll default to 'org_admin' for demonstration if email contains 'admin'.
-    const isSuperAdmin = values.email.toLowerCase().includes('super');
-    const isAdmin = isSuperAdmin || values.email.toLowerCase().includes('admin');
-    
-    const determinedUserType = isSuperAdmin ? 'super_admin' : 'org_admin';
-
-    if (isAdmin) {
-      // Admin users should go through the OTP flow
-      try {
-        await otpRequestMutation.mutateAsync({
-          email: values.email,
-          password: values.password,
-          userType: determinedUserType,
-        });
-        // On success, transition to the OTP step
+    try {
+      const result = await loginMutation.mutateAsync({
+        email: values.email,
+        password: values.password,
+      });
+      if (result.requires_otp) {
         setUserEmail(values.email);
-        setUserType(determinedUserType);
-        setStep('otp');
-      } catch (error) {
-        // Error is handled by the mutation's onError callback
-        console.error('OTP Request error:', error);
-      }
-    } else {
-      // Non-admin users use the direct login flow
-      try {
-        const result = await loginMutation.mutateAsync({
-          email: values.email,
-          password: values.password,
+        setStep("otp");
+      } else if (result.token && result.user) {
+        login(result.token, result.user);
+        addNotification({
+          type: "success",
+          title: "Login Successful",
+          message: `Welcome back, ${result.user.first_name || result.user.email}!`,
         });
-
-        if (result.token && result.user) {
-          login(result.token, result.user);
-          addNotification({
-            type: 'success',
-            title: 'Login Successful',
-            message: `Welcome back, ${result.user.first_name || result.user.email}!`,
-          });
-          handleSuccessfulLoginRedirect(result.user);
-        } else if (result.requires_password_change && result.temporary_token) {
-          localStorage.setItem('tempToken', result.temporary_token);
-          localStorage.setItem('tempEmail', values.email);
-          router.push('/change-password');
-        }
-      } catch (error) {
-        console.error('Login error:', error);
+        handleSuccessfulLoginRedirect(result.user);
+      } else if (result.requires_password_change && result.temporary_token) {
+        localStorage.setItem("tempToken", result.temporary_token);
+        localStorage.setItem("tempEmail", values.email);
+        router.push("/change-password");
       }
+    } catch (error) {
+      // Error is handled by the mutation's onError callback
+      console.error("Login error:", error);
     }
   };
 
@@ -272,7 +186,6 @@ export default function LoginForm() {
       await otpVerifyMutation.mutateAsync({
         email: values.email,
         otp: values.otp,
-        userType,
       });
     } catch (error) {
       // Error handling is done in the mutation
@@ -286,7 +199,6 @@ export default function LoginForm() {
 
   const isLoading =
     loginMutation.isPending ||
-    otpRequestMutation.isPending ||
     otpVerifyMutation.isPending;
 
   if (step === "otp") {
