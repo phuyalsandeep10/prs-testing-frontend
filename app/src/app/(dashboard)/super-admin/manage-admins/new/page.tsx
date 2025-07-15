@@ -67,12 +67,16 @@ export default function NewAdminPage() {
 
   const onSubmit = async (values: AdminFormData) => {
     try {
+      // Find the selected organization name from the organizations list
+      const selectedOrg = organizations.find(org => org.id.toString() === values.organization);
+      const organizationName = selectedOrg ? selectedOrg.name : values.organization;
+
       // Create the admin user - the backend will handle role creation automatically
       const adminData = {
         first_name: values.first_name,
         last_name: values.last_name,
         email: values.email,
-        organization: parseInt(values.organization), // Convert to integer
+        organization: organizationName, // Send name as string
         is_active: values.is_active === "true",
         // No need to specify org_role - backend will create/get Org Admin role automatically
       };
