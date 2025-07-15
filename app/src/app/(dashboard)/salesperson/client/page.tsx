@@ -374,7 +374,7 @@ const ClientsPage = React.memo(() => {
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         title="Add New Client"
-        width="lg"
+        width="md"
         showCloseButton={true}
       >
         <AddNewClientForm
@@ -389,8 +389,8 @@ const ClientsPage = React.memo(() => {
       <SlideModal
         isOpen={showEditModal && selectedClient !== null}
         onClose={() => setShowEditModal(false)}
-        title="Edit Client"
-        width="lg"
+        title="Edit Client Details"
+        width="md"
         showCloseButton={true}
       >
         {selectedClient && (
