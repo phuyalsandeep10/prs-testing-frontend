@@ -66,7 +66,7 @@ const useLoginMutation = () => {
       password: string;
     }): Promise<LoginResponse> => {
       const response = await apiClient.post<LoginResponse>(
-        "/auth/login/",
+        "/auth/login/direct/",
         credentials
       );
       return response.data!;

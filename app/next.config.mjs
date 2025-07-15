@@ -41,7 +41,7 @@ const nextConfig = {
           {
             source: "/api/:path*",
             destination:
-              "http://localhost:8000/api/:path*", // local backend
+              "https://backend-prs.onrender.com/api/:path*", // local backend
           },
         ]
       : [];
