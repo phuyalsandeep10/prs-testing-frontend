@@ -11,10 +11,14 @@ const nextConfig = {
   // :white_check_mark: Performance and security optimizations
   poweredByHeader: false,
   compress: true,
-  // :white_check_mark: Custom headers for all routes
-  // Image optimization settings
+  // Image optimization settings - enable with proper Sharp support
   images: {
-    unoptimized: true,
+    formats: ['image/webp', 'image/avif'],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 60,
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
   // Reduce resource hints that might cause preloading warnings
   async headers() {
