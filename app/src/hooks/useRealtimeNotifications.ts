@@ -6,120 +6,89 @@ import type { Notification } from '@/types';
 import { toast } from 'sonner';
 
 export const useRealtimeNotifications = () => {
-  const { user, isAuthInitialized } = useAuth();
+  const { session } = useAuth();
   const queryClient = useQueryClient();
   const listenerId = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!isAuthInitialized || !user) return;
+    if (!session?.user?.token) return;
 
-    const token = localStorage.getItem('authToken');
-    if (!token) return;
+    try {
+      // Connect to WebSocket
+      notificationWebSocket.connect(session.user.token);
 
-    // Connect to WebSocket
-    notificationWebSocket.connect(token);
+      // Subscribe to notifications
+      listenerId.current = notificationWebSocket.subscribe((notification: Notification) => {
+        try {
+          // Normalize backend fields to frontend fields consistently
+          const mappedNotification = {
+            ...notification,
+            notificationType: (notification as any).notification_type || notification.notificationType || 'system_alert',
+            isRead: (notification as any).is_read ?? notification.isRead ?? false,
+            createdAt: (notification as any).created_at || notification.createdAt || new Date().toISOString(),
+            relatedObjectType: (notification as any).related_object_type || notification.relatedObjectType,
+            relatedObjectId: (notification as any).related_object_id || notification.relatedObjectId,
+            actionUrl: (notification as any).action_url || notification.actionUrl,
+          };
 
-    // Subscribe to notifications
-    listenerId.current = notificationWebSocket.subscribe((notification: Notification) => {
-      // Map backend fields to frontend fields
-      const mappedNotification = {
-        ...notification,
-        notificationType: (notification as any).notification_type || notification.notificationType,
-        isRead: (notification as any).is_read ?? notification.isRead,
-        createdAt: (notification as any).created_at || notification.createdAt,
-      };
-      // Push into every notifications query cache (regardless of filters)
-      queryClient.setQueriesData({ queryKey: ['notifications'] }, (old: any) => {
-        const base = old ?? { data: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } };
-        // Respect possible structures (array, {data:[]}, paginated)
-        let dataArr: any[] = [];
-        if (Array.isArray(base)) {
-          dataArr = base;
-        } else if (base?.data) {
-          dataArr = base.data;
-        } else if (base?.results) {
-          dataArr = base.results;
+          // Invalidate notifications cache to trigger refetch
+          queryClient.invalidateQueries({ queryKey: ['notifications'] });
+          queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
+          
+          // Show toast notification with error handling
+          const priority = mappedNotification.priority || 'medium';
+          
+          try {
+            switch (priority) {
+              case 'urgent':
+                toast.error(mappedNotification.title || 'Urgent Notification', {
+                  description: mappedNotification.message || 'No message provided',
+                  duration: 10000,
+                });
+                break;
+                
+              case 'high':
+                toast.warning(mappedNotification.title || 'High Priority Notification', {
+                  description: mappedNotification.message || 'No message provided',
+                  duration: 7000,
+                });
+                break;
+                
+              case 'medium':
+                toast.info(mappedNotification.title || 'Notification', {
+                  description: mappedNotification.message || 'No message provided',
+                  duration: 5000,
+                });
+                break;
+                
+              default:
+                toast(mappedNotification.title || 'Notification', {
+                  description: mappedNotification.message || 'No message provided',
+                  duration: 3000,
+                });
+            }
+          } catch (toastError) {
+            console.error('Error showing toast notification:', toastError);
+          }
+        } catch (processingError) {
+          console.error('Error processing notification:', processingError, notification);
         }
-        // Remove any existing notification with same id before prepending
-        const newArr = [mappedNotification, ...dataArr.filter((n: any) => n.id !== mappedNotification.id)];
-        if (Array.isArray(base)) {
-          return newArr;
-        }
-        if (base?.data) {
-          return { ...base, data: newArr };
-        }
-        if (base?.results) {
-          return { ...base, results: newArr };
-        }
-        return newArr;
       });
-
-      // Update unread count
-      queryClient.setQueryData(['unread-count'], (old: number) => {
-        return (old || 0) + 1;
-      });
-
-      // Show toast notification based on priority
-      const toastConfig = getToastConfig(mappedNotification);
-      
-      switch (mappedNotification.priority) {
-        case 'urgent':
-          toast.error(mappedNotification.title, {
-            description: mappedNotification.message,
-            action: mappedNotification.actionUrl ? {
-              label: 'View',
-              onClick: () => {
-                if (mappedNotification.actionUrl) {
-                  window.location.href = mappedNotification.actionUrl;
-                }
-              }
-            } : undefined,
-            duration: 10000, // 10 seconds
-          });
-          break;
-          
-        case 'high':
-          toast.warning(mappedNotification.title, {
-            description: mappedNotification.message,
-            action: mappedNotification.actionUrl ? {
-              label: 'View',
-              onClick: () => {
-                if (mappedNotification.actionUrl) {
-                  window.location.href = mappedNotification.actionUrl;
-                }
-              }
-            } : undefined,
-            duration: 7000,
-          });
-          break;
-          
-        case 'medium':
-          toast.info(mappedNotification.title, {
-            description: mappedNotification.message,
-            duration: 5000,
-          });
-          break;
-          
-        default:
-          toast(mappedNotification.title, {
-            description: mappedNotification.message,
-            duration: 3000,
-          });
-      }
-    });
+    } catch (connectionError) {
+      console.error('Error setting up real-time notifications:', connectionError);
+    }
 
     return () => {
-      if (listenerId.current) {
-        notificationWebSocket.unsubscribe(listenerId.current);
+      try {
+        if (listenerId.current) {
+          notificationWebSocket.unsubscribe(listenerId.current);
+        }
+        notificationWebSocket.disconnect();
+      } catch (cleanupError) {
+        console.error('Error cleaning up notifications:', cleanupError);
       }
     };
-  }, [isAuthInitialized, user, queryClient]);
-
-  useEffect(() => {
-    return () => {
-      notificationWebSocket.disconnect();
-    };
-  }, []);
+  }, [session?.user?.token, queryClient]);
 
   return {
     isConnected: notificationWebSocket.isConnected(),

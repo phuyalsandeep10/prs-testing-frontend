@@ -13,36 +13,19 @@ import box35 from "@/assets/photo/box35.png";
 import box55 from "@/assets/photo/box55.png";
 import box75 from "@/assets/photo/box75.png";
 import box100 from "@/assets/photo/box100.png";
-import { useEffect, useMemo } from "react";
-import { useDashboardStore } from "@/store/apiCall/Achieve";
+import { useMemo } from "react";
+import { useDashboard } from "@/hooks/api";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 
 const Acheve = () => {
-  const { data, loading, error, sendRequest, cancel, retry } =
-    useDashboardStore();
-  const endpoint = `${process.env.NEXT_PUBLIC_API_URL}/dashboard/`; // Corrected duplicate path
-  console.log(endpoint);
-  useEffect(() => {
-    if (!process.env.NEXT_PUBLIC_API_URL) {
-      console.error(
-        "NEXT_PUBLIC_API_URL is not defined in environment variables"
-      );
-      return;
-    }
-
-    // Example query parameters
-    // const queryParams = {
-    //   period: "Q1",
-    //   userId: 123,
-    // };
-
-    sendRequest("GET", endpoint, undefined);
-    return () => cancel(endpoint); // Cancel request on unmount
-  }, [sendRequest, cancel, endpoint]);
+  const { data, isLoading, error, refetch } = useDashboard();
+  
+  console.log("Achievement Component Data:", { data, isLoading, error });
 
   // Memoize derived data to avoid recalculating on every render
   const { currentAmount, targetAmount, percentage } = useMemo(() => {
-    const current = parseFloat(data?.sales_progress?.current_sales || "0") || 0;
+    // Try both field names for compatibility
+    const current = parseFloat(data?.sales_progress?.current_sales || data?.sales_progress?.achieved || "0") || 0;
     const target = parseFloat(data?.sales_progress?.target || "1") || 1;
     const percent = (current / target) * 100;
     return {
@@ -108,27 +91,17 @@ const Acheve = () => {
     };
   }, [percentage]);
 
-  // Debug logging
-  useEffect(() => {
-    console.log("Acheve Component State:", {
-      data,
-      loading: loading[endpoint],
-      error,
-      percentage,
-    });
-  }, [data, loading, error, endpoint, percentage]);
-
   if (error) {
     return (
       <ErrorBoundary fallback={<div className="text-red-600">You do not have permission to view this dashboard section.</div>}>
         <Card className="w-full h-[212px] border rounded-lg p-8 flex flex-col items-center justify-center bg-white shadow-md">
           <p className="text-md font-outfit font-medium text-red-500 mb-4">
-            {error.displayMessage}
+            Failed to load achievement data
           </p>
           <Button
             variant="outline"
             className="text-sm font-medium font-outfit text-[#465FFF] hover:text-[#465FFF]"
-            onClick={() => retry()}
+            onClick={() => refetch()}
           >
             Try Again
           </Button>
@@ -137,7 +110,7 @@ const Acheve = () => {
     );
   }
 
-  if (loading[endpoint]) {
+  if (isLoading) {
     return (
       <Card className="w-full h-[212px] border rounded-lg p-8 flex justify-center items-center bg-white shadow-md">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#465FFF]"></div>

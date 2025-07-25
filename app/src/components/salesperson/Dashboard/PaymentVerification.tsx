@@ -1,37 +1,21 @@
 "use client";
-import React, { useEffect } from "react";
-import { User } from "lucide-react";
-import { useDashboardStore } from "@/store/apiCall/Achieve";
+import React from "react";
+import { User, Loader2, AlertTriangle } from "lucide-react";
+import { usePaymentVerificationStatus } from "@/hooks/api";
 
 const PaymentVerificationStatus = () => {
-  const { data, loading, error, sendRequest, cancel, retry } =
-    useDashboardStore();
-  const endpoint = `${process.env.NEXT_PUBLIC_API_URL}/dashboard/`;
-
-  useEffect(() => {
-    if (!process.env.NEXT_PUBLIC_API_URL) {
-      console.error(
-        "NEXT_PUBLIC_API_URL is not defined in environment variables"
-      );
-      return;
-    }
-
-    sendRequest("GET", endpoint);
-    return () => cancel(endpoint); // Cancel request on unmount
-  }, [sendRequest, cancel]);
+  const { data, isLoading, error, refetch } = usePaymentVerificationStatus();
 
   // Debug logging
-  useEffect(() => {
-    console.log("PaymentVerificationStatus Component State:", {
-      data,
-      loading: loading[endpoint],
-      error,
-    });
-  }, [data, loading, error, endpoint]);
+  console.log("PaymentVerificationStatus Component State:", {
+    data,
+    isLoading,
+    error,
+  });
 
-  const cleared = data?.verification_status?.verified?.total || 0;
-  const notVerified = data?.verification_status?.pending?.total || 0;
-  const rejected = data?.verification_status?.rejected?.total || 0;
+  const cleared = data?.verified?.total || 0;
+  const notVerified = data?.pending?.total || 0;
+  const rejected = data?.rejected?.total || 0;
   const total = cleared + notVerified + rejected;
 
   const clearedPercent = total > 0 ? (cleared / total) * 100 : 0;
@@ -41,12 +25,13 @@ const PaymentVerificationStatus = () => {
   if (error) {
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 w-full h-[295px] flex flex-col items-center justify-center">
+        <AlertTriangle className="h-8 w-8 text-red-500 mb-2" />
         <p className="text-md font-outfit font-medium text-red-500 mb-4">
-          {error.displayMessage}
+          Failed to load payment verification data
         </p>
         <button
           className="text-sm font-medium font-outfit text-[#465FFF] border border-[#465FFF] rounded-md px-4 py-2 hover:bg-[#465FFF] hover:text-white transition-colors duration-150"
-          onClick={() => retry()}
+          onClick={() => refetch()}
         >
           Try Again
         </button>
@@ -54,10 +39,10 @@ const PaymentVerificationStatus = () => {
     );
   }
 
-  if (loading[endpoint]) {
+  if (isLoading) {
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 w-full h-[295px] flex justify-center items-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#465FFF]"></div>
+        <Loader2 className="h-8 w-8 animate-spin text-[#465FFF]" />
       </div>
     );
   }

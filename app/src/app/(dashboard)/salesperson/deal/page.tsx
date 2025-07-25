@@ -47,8 +47,8 @@ const DealsPage = () => {
   };
 
   // Handler for adding payment (opens modal in payment mode)
-  const handleAddPayment = (dealId: string) => {
-    openModal("payment", dealId);
+  const handleAddPayment = (dealId: string, dealData?: any) => {
+    openModal("payment", dealId, dealData);
   };
 
   // Handler for when a deal is saved (modal handles cache update)

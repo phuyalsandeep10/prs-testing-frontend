@@ -292,8 +292,50 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
       resolver: zodResolver(DealSchema),
     });
 
-    // Watch form values to debug population
+    // Watch form values to debug population and for real-time validation
     const watchedValues = watch();
+    const [dealValue, payStatus, receivedAmount] = watch(['dealValue', 'payStatus', 'receivedAmount']);
+    
+    // Real-time validation feedback
+    const getPaymentValidationMessage = () => {
+      if (!dealValue || !receivedAmount || !payStatus) return null;
+      
+      const dealValueNum = parseFloat(dealValue);
+      const receivedAmountNum = parseFloat(receivedAmount);
+      
+      if (isNaN(dealValueNum) || isNaN(receivedAmountNum)) return null;
+      
+      if (payStatus === "Full Pay") {
+        if (Math.abs(dealValueNum - receivedAmountNum) > 0.01) {
+          return {
+            type: 'error',
+            message: `For Full Pay, received amount must equal deal value (${dealValue})`
+          };
+        } else {
+          return {
+            type: 'success',
+            message: 'Payment amount matches deal value ✓'
+          };
+        }
+      } else if (payStatus === "Partial Pay") {
+        if (receivedAmountNum >= dealValueNum) {
+          return {
+            type: 'error',
+            message: `For Partial Pay, received amount must be less than deal value (${dealValue})`
+          };
+        } else if (receivedAmountNum > 0) {
+          const percentage = ((receivedAmountNum / dealValueNum) * 100).toFixed(1);
+          return {
+            type: 'info',
+            message: `Partial payment: ${percentage}% of deal value`
+          };
+        }
+      }
+      
+      return null;
+    };
+    
+    const validationMessage = getPaymentValidationMessage();
 
     useImperativeHandle(ref, () => ({
       resetForm: () => reset(),
@@ -822,6 +864,15 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                     {errors.receivedAmount && (
                       <p className="mt-1 text-sm text-red-600">
                         {errors.receivedAmount.message}
+                      </p>
+                    )}
+                    {!errors.receivedAmount && validationMessage && (
+                      <p className={`mt-1 text-sm ${
+                        validationMessage.type === 'error' ? 'text-red-600' :
+                        validationMessage.type === 'success' ? 'text-green-600' :
+                        'text-blue-600'
+                      }`}>
+                        {validationMessage.message}
                       </p>
                     )}
                   </div>

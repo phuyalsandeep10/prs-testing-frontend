@@ -329,7 +329,7 @@ export default function ManageUsersPage() {
         id: team.id.toString(),
         teamName: team.name,
         teamLead: team.team_lead 
-          ? team.team_lead.username || "Unknown Lead"
+          ? team.team_lead.full_name || team.team_lead.username || "Unknown Lead"
           : "No Lead",
         contactNumber: team.contact_number || "N/A",
         teamMembers:

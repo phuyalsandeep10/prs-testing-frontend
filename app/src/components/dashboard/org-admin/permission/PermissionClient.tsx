@@ -50,9 +50,19 @@ export const PermissionClient = () => {
     }));
   }, [permissionsData]);
 
-  const roles = useMemo(() => rolesData || [], [rolesData]);
+  const roles = useMemo(() => {
+    if (!rolesData) return [];
+    // Filter out Super Admin roles
+    return rolesData.filter(role => 
+      role.name !== 'Super Admin' && 
+      role.name !== 'super admin' && 
+      role.name !== 'SUPER_ADMIN'
+    );
+  }, [rolesData]);
 
   const handlePermissionChange = (permissionId: number, roleId: number, checked: boolean) => {
+    console.log('Permission change:', { permissionId, roleId, checked });
+    
     setRolePermissions(prev => ({
       ...prev,
       [roleId]: {
@@ -64,18 +74,54 @@ export const PermissionClient = () => {
     // Update the role permissions in the backend
     const role = roles.find(r => r.id === roleId);
     if (role) {
-      const updatedPermissions = checked
-        ? [...role.permissions, permissionId]
-        : role.permissions.filter(id => id !== permissionId);
+      const currentPermissions = role.permissions || [];
+      let updatedPermissions;
+      
+      if (checked) {
+        // Add permission if not already present
+        updatedPermissions = currentPermissions.includes(permissionId) 
+          ? currentPermissions 
+          : [...currentPermissions, permissionId];
+      } else {
+        // Remove permission
+        updatedPermissions = currentPermissions.filter(id => id !== permissionId);
+      }
+      
+      console.log('Updating permissions:', { 
+        roleId, 
+        currentPermissions, 
+        updatedPermissions 
+      });
       
       updateRoleMutation.mutate({
         id: roleId,
         permissions: updatedPermissions,
+      }, {
+        onSuccess: (data) => {
+          console.log('Permission update successful:', data);
+        },
+        onError: (error) => {
+          console.error('Permission update failed:', error);
+          // Revert the local state on error
+          setRolePermissions(prev => ({
+            ...prev,
+            [roleId]: {
+              ...prev[roleId],
+              [permissionId]: !checked,
+            },
+          }));
+        }
       });
     }
   };
 
   const handleGroupPermissionChange = (groupPermissions: Permission[], roleId: number, checked: boolean) => {
+    console.log('Group permission change:', { 
+      groupPermissions: groupPermissions.map(p => p.name), 
+      roleId, 
+      checked 
+    });
+    
     setRolePermissions(prev => {
       const newState = { ...prev };
       groupPermissions.forEach(permission => {
@@ -91,7 +137,8 @@ export const PermissionClient = () => {
     const role = roles.find(r => r.id === roleId);
     if (role) {
       const groupPermissionIds = groupPermissions.map(p => p.id);
-      let updatedPermissions = [...role.permissions];
+      const currentPermissions = role.permissions || [];
+      let updatedPermissions = [...currentPermissions];
       
       if (checked) {
         // Add all group permissions
@@ -105,9 +152,34 @@ export const PermissionClient = () => {
         updatedPermissions = updatedPermissions.filter(id => !groupPermissionIds.includes(id));
       }
       
+      console.log('Updating group permissions:', { 
+        roleId, 
+        currentPermissions, 
+        updatedPermissions,
+        groupPermissionIds
+      });
+      
       updateRoleMutation.mutate({
         id: roleId,
         permissions: updatedPermissions,
+      }, {
+        onSuccess: (data) => {
+          console.log('Group permission update successful:', data);
+        },
+        onError: (error) => {
+          console.error('Group permission update failed:', error);
+          // Revert the local state on error
+          setRolePermissions(prev => {
+            const newState = { ...prev };
+            groupPermissions.forEach(permission => {
+              newState[roleId] = {
+                ...newState[roleId],
+                [permission.id]: !checked,
+              };
+            });
+            return newState;
+          });
+        }
       });
     }
   };

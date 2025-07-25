@@ -80,6 +80,50 @@ const DealsTable = ({ setTogglePaymentForm }: DealsTableProps) => {
       {
         accessorKey: "deal_value",
         header: "Deal Value",
+        cell: ({ row }) => {
+          const currency = row.original.currency || 'USD';
+          const value = row.original.deal_value;
+          return `${currency} ${parseFloat(value).toFixed(2)}`;
+        },
+      },
+      {
+        id: "payment_progress",
+        header: "Payment Progress",
+        cell: ({ row }) => {
+          const totalPaid = row.original.total_paid || 0;
+          const dealValue = row.original.deal_value || 0;
+          const progress = dealValue > 0 ? (totalPaid / dealValue) * 100 : 0;
+          
+          return (
+            <div className="flex items-center space-x-2">
+              <div className="w-16 bg-gray-200 rounded-full h-2">
+                <div 
+                  className={`h-2 rounded-full ${
+                    progress >= 100 ? 'bg-green-500' : 
+                    progress >= 50 ? 'bg-yellow-500' : 'bg-red-500'
+                  }`}
+                  style={{ width: `${Math.min(progress, 100)}%` }}
+                ></div>
+              </div>
+              <span className="text-xs font-medium">
+                {progress.toFixed(0)}%
+              </span>
+            </div>
+          );
+        },
+      },
+      {
+        id: "remaining_balance",
+        header: "Remaining",
+        cell: ({ row }) => {
+          const remaining = row.original.remaining_balance || 0;
+          const currency = row.original.currency || 'USD';
+          return (
+            <span className={`font-medium ${remaining > 0 ? 'text-red-600' : 'text-green-600'}`}>
+              {currency} {Math.abs(remaining).toFixed(2)}
+            </span>
+          );
+        },
       },
       {
         accessorKey: "deal_date",
@@ -110,21 +154,67 @@ const DealsTable = ({ setTogglePaymentForm }: DealsTableProps) => {
 
   const nestedColumns: ColumnDef<Payment>[] = useMemo(
     () => [
-      { accessorKey: "payment_date", header: "Payment Date" },
-      { accessorKey: "received_amount", header: "Amount" },
-      { accessorKey: "payment_method", header: "Method" },
+      { 
+        accessorKey: "payment_date", 
+        header: "Payment Date",
+        cell: ({ row }) => format(new Date(row.original.payment_date), "MMM d, yyyy"),
+      },
+      { 
+        accessorKey: "received_amount", 
+        header: "Amount",
+        cell: ({ row }) => {
+          const amount = row.original.received_amount;
+          return `${parseFloat(amount).toFixed(2)}`;
+        },
+      },
+      { 
+        accessorKey: "payment_method", 
+        header: "Method",
+        cell: ({ row }) => {
+          const method = row.original.payment_method;
+          const methodLabels: { [key: string]: string } = {
+            'wallet': 'Mobile Wallet',
+            'bank': 'Bank Transfer',
+            'cheque': 'Cheque',
+            'cash': 'Cash'
+          };
+          return methodLabels[method] || method;
+        },
+      },
       { accessorKey: "cheque_number", header: "Cheque No." },
+      {
+        id: "status",
+        header: "Status",
+        cell: ({ row }) => {
+          const status = row.original.status || 'pending';
+          const statusColors: { [key: string]: string } = {
+            'verified': 'bg-green-100 text-green-800',
+            'pending': 'bg-yellow-100 text-yellow-800',
+            'rejected': 'bg-red-100 text-red-800'
+          };
+          return (
+            <span className={`px-2 py-1 rounded-full text-xs ${statusColors[status] || statusColors.pending}`}>
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+            </span>
+          );
+        },
+      },
       { accessorKey: "payment_remarks", header: "Remarks" },
       {
         accessorKey: "receipt_file",
         header: "Receipt",
         cell: ({ row }) =>
           row.original.receipt_file ? (
-            <a href={row.original.receipt_file} target="_blank" rel="noopener noreferrer">
+            <a 
+              href={row.original.receipt_file} 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 underline"
+            >
               View
             </a>
           ) : (
-            "N/A"
+            <span className="text-gray-400">N/A</span>
           ),
       },
     ],

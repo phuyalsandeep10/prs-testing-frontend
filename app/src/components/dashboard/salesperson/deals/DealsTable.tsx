@@ -106,7 +106,7 @@ PaymentTooltip.displayName = "PaymentTooltip";
 
 interface DealsTableProps {
   onEditDeal?: (dealId: string) => void;
-  onAddPayment?: (dealId: string) => void;
+  onAddPayment?: (dealId: string, dealData?: any) => void;
   searchTerm?: string;
   togglePaymentForm?: boolean;
   setTogglePaymentForm?: (value: boolean) => void;
@@ -438,7 +438,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
                 <Image src={Edit} alt="edit" className="w-4 h-4" />
               </button>
               <button
-                onClick={() => onAddPayment?.(row.original.deal_id)}
+                onClick={() => onAddPayment?.(row.original.deal_id, row.original)}
                 className="w-5 h-5 rounded-full text-[#22C55E] flex items-center justify-center transition-colors hover:bg-gray-100"
                 title="Add Payment"
               >
@@ -574,16 +574,23 @@ const DealsTable: React.FC<DealsTableProps> = ({
         accessorKey: "verified_by",
         header: "Verified By",
         cell: ({ row }) => {
-          // This comes from the parent object, not the payment_history item
+          const verifiedBy = row.original.verified_by;
+          // Show verifier name for verified/rejected payments, N/A for pending
+          const displayText = verifiedBy?.full_name || verifiedBy || "N/A";
+          const isVerified = row.original.status === "verified";
+          const isRejected = row.original.status === "rejected";
+          
           return (
             <div
               className={`${
-                row.original.verified_by === "verified"
+                isVerified
                   ? "text-[#009959]"
-                  : "text-[#FA9898]"
+                  : isRejected
+                  ? "text-[#FA9898]"
+                  : "text-gray-500"
               }`}
             >
-              {row.original.verified_by}
+              {displayText}
             </div>
           );
         },

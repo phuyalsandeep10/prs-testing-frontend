@@ -177,9 +177,18 @@ export const useUpdateClient = () => {
         updatedClient
       );
       
-      // Invalidate lists to ensure consistency
+      // Invalidate all client-related caches
       queryClient.invalidateQueries({ queryKey: clientKeys.lists() });
       queryClient.invalidateQueries({ queryKey: [...clientKeys.all, 'dashboard'] });
+      
+      // Also invalidate main dashboard cache (for commission data)
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      
+      // Specifically invalidate commission data cache
+      queryClient.invalidateQueries({ queryKey: ['dashboard', 'commission'] });
+      
+      // Show success notification
+      toast.success('Client updated successfully!');
     },
     
     onError: (error) => {

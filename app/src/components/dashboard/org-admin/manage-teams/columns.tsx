@@ -34,8 +34,13 @@ export type Team = {
   extraProjectsCount?: number;
 };
 
-const TeamActions: React.FC<{ team: Team }> = ({ team }) => {
+const TeamActions: React.FC<{ team: Team; onDelete?: (team: Team) => void }> = ({ team, onDelete }) => {
   const [isAlertOpen, setIsAlertOpen] = React.useState(false);
+
+  const handleDelete = () => {
+    setIsAlertOpen(false);
+    onDelete?.(team);
+  };
 
   return (
     <div className="flex items-center space-x-1">
@@ -55,12 +60,12 @@ const TeamActions: React.FC<{ team: Team }> = ({ team }) => {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the team.
+              This action cannot be undone. This will permanently delete the team "{team.teamName}".
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => console.log('Delete', team.id)} className="bg-red-600 hover:bg-red-700">Continue</AlertDialogAction>
+            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">Continue</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -136,6 +141,6 @@ export const columns: ColumnDef<Team>[] = [
   {
     id: "actions",
     header: "Actions",
-    cell: ({ row }) => <TeamActions team={row.original} />,
+    cell: ({ row, table }) => <TeamActions team={row.original} onDelete={(table.options.meta as any)?.onDelete} />,
   },
 ];

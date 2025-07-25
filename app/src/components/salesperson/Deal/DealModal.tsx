@@ -216,6 +216,11 @@ const DealModal: React.FC<DealModalProps> = ({
         <div className="flex-1">
           <AddPayment
             dealId={dealId}
+            dealData={dealData ? {
+              deal_value: parseFloat(dealData.deal_value) || 0,
+              currency: dealData.currency || 'USD',
+              remaining_balance: dealData.remaining_balance
+            } : undefined}
             onSave={handlePaymentSave}
             onCancel={handleCancel}
           />

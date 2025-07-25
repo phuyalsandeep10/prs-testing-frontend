@@ -1,5 +1,11 @@
 import { z } from "zod";
 
+// Helper function to safely parse decimal values
+const parseDecimal = (value: string): number => {
+  const parsed = parseFloat(value);
+  return isNaN(parsed) ? 0 : parsed;
+};
+
 export const DealSchema = z.object({
   dealId: z.string().optional(), // Optional since it's auto-generated on backend
   clientName: z.string().min(1, { message: "Client Name is required" }),
@@ -7,7 +13,12 @@ export const DealSchema = z.object({
   payStatus: z.string().min(1, { message: "Payment Status is required" }),
   sourceType: z.string().min(1, { message: "Source Type is required" }),
   currency: z.string().min(1, { message: "Currency is required" }),
-  dealValue: z.string().min(1, { message: "Deal Value is required" }),
+  dealValue: z
+    .string()
+    .min(1, { message: "Deal Value is required" })
+    .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
+      message: "Deal Value must be a positive number",
+    }),
   dealDate: z.string().min(1, { message: "Deal Date is required" }),
   dueDate: z.string().min(1, { message: "Due Date is required" }),
   payMethod: z.string().min(1, { message: "Payment Method is required" }),
@@ -15,15 +26,62 @@ export const DealSchema = z.object({
 
   // First Payment Fields (required since they are marked as required in form)
   paymentDate: z.string().min(1, { message: "Payment Date is required" }),
-  receivedAmount: z.string().min(1, { message: "Received Amount is required" }),
+  receivedAmount: z
+    .string()
+    .min(1, { message: "Received Amount is required" })
+    .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
+      message: "Received Amount must be a positive number",
+    }),
   chequeNumber: z.string().min(1, { message: "Cheque Number is required" }),
   uploadReceipt: z
     .any()
     .refine((files) => files?.length > 0, {
       message: "Upload Receipt is required",
     })
-    .refine((files) => files?.[0]?.name?.toLowerCase().endsWith(".pdf"), {
-      message: "Only PDF files are allowed",
+    .refine((files) => {
+      if (files?.length > 0) {
+        const fileName = files[0]?.name?.toLowerCase();
+        return fileName?.endsWith(".pdf") || fileName?.endsWith(".png") || fileName?.endsWith(".jpg") || fileName?.endsWith(".jpeg");
+      }
+      return true;
+    }, {
+      message: "Only PDF, PNG, JPG, or JPEG files are allowed",
     }),
   paymentRemarks: z.string().min(1, { message: "Payment Remarks is required" }),
+}).refine((data) => {
+  // Cross-field validation: Payment amount vs Deal value based on Payment Status
+  const dealValue = parseDecimal(data.dealValue);
+  const receivedAmount = parseDecimal(data.receivedAmount);
+  
+  if (data.payStatus === "Full Pay") {
+    // For Full Pay, received amount must equal deal value (with small tolerance for floating point)
+    return Math.abs(dealValue - receivedAmount) < 0.01;
+  } else if (data.payStatus === "Partial Pay") {
+    // For Partial Pay, received amount must be less than deal value and greater than 0
+    return receivedAmount < dealValue && receivedAmount > 0;
+  }
+  
+  return true;
+}, {
+  message: "For Full Pay, received amount must equal deal value. For Partial Pay, received amount must be less than deal value.",
+  path: ["receivedAmount"], // Error will show on receivedAmount field
+}).refine((data) => {
+  // Validate payment date is not in the future
+  const paymentDate = new Date(data.paymentDate);
+  const today = new Date();
+  today.setHours(23, 59, 59, 999); // End of today
+  
+  return paymentDate <= today;
+}, {
+  message: "Payment date cannot be in the future",
+  path: ["paymentDate"],
+}).refine((data) => {
+  // Validate deal date is not after due date
+  const dealDate = new Date(data.dealDate);
+  const dueDate = new Date(data.dueDate);
+  
+  return dealDate <= dueDate;
+}, {
+  message: "Deal date cannot be after due date",
+  path: ["dueDate"],
 });

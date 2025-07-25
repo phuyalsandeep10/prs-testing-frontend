@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Enable standalone output for Docker
+  output: 'standalone',
   // :white_check_mark: Experimental features
   experimental: {
     optimizePackageImports: ["@radix-ui/react-icons"],
@@ -38,14 +40,14 @@ const nextConfig = {
       },
     ];
   },
-  // :white_check_mark: Local dev proxy to avoid CORS/NAT/ngrok warnings
+  // API proxy for backend communication
   async rewrites() {
     return process.env.NODE_ENV === "development"
       ? [
           {
             source: "/api/:path*",
             destination:
-              "https://backend-prs.onrender.com/api/:path*", // local backend
+              process.env.NEXT_PUBLIC_API_URL + "/api/:path*", // backend URL from env
           },
         ]
       : [];

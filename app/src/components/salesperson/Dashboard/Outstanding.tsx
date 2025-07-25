@@ -1,26 +1,14 @@
 "use client";
-import React, { useEffect, useMemo } from "react";
-import { User } from "lucide-react";
-import { useDashboardStore } from "@/store/apiCall/Achieve";
+import React, { useMemo } from "react";
+import { User, Loader2, AlertTriangle } from "lucide-react";
+import { useDashboard } from "@/hooks/api";
 import satisfied from "@/assets/photo/100.png";
 import neutral from "@/assets/photo/75.png";
 import unsatisfied from "@/assets/photo/35.png";
 import Image from "next/image";
 
 const Outstanding: React.FC = () => {
-  const { data, loading, error, sendRequest, cancel, retry } =
-    useDashboardStore();
-  const endpoint = `${process.env.NEXT_PUBLIC_API_URL}/dashboard/`;
-
-  useEffect(() => {
-    if (!process.env.NEXT_PUBLIC_API_URL) {
-      console.error("NEXT_PUBLIC_API_URL is not defined");
-      return;
-    }
-
-    sendRequest("GET", endpoint);
-    return () => cancel(endpoint);
-  }, [sendRequest, cancel]);
+  const { data, isLoading, error, refetch } = useDashboard();
 
   const deals = useMemo(() => {
     return data?.outstanding_deals
@@ -76,12 +64,13 @@ const Outstanding: React.FC = () => {
     return (
       <div className="w-full min-h-[295px]">
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 flex flex-col items-center justify-center">
+          <AlertTriangle className="h-8 w-8 text-red-500 mb-2" />
           <p className="text-md font-outfit font-medium text-red-500 mb-4">
-            {error.displayMessage}
+            Failed to load outstanding deals
           </p>
           <button
             className="text-sm font-medium font-outfit text-[#465FFF] border border-[#465FFF] rounded-md px-4 py-2 hover:bg-[#465FFF] hover:text-white transition-colors duration-150"
-            onClick={() => retry()}
+            onClick={() => refetch()}
           >
             Try Again
           </button>
@@ -99,9 +88,9 @@ const Outstanding: React.FC = () => {
           </h2>
         </div>
 
-        {loading[endpoint] && (
+        {isLoading && (
           <div className="p-6 flex justify-center items-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#465FFF]"></div>
+            <Loader2 className="h-8 w-8 animate-spin text-[#465FFF]" />
           </div>
         )}
 
@@ -140,7 +129,7 @@ const Outstanding: React.FC = () => {
           ))}
         </div>
 
-        {deals.length === 0 && !loading[endpoint] && (
+        {deals.length === 0 && !isLoading && (
           <div className="px-4 sm:px-6 py-8 text-center text-gray-500">
             <User className="w-8 h-8 mx-auto mb-2 text-gray-300" />
             <p className="text-sm">No outstanding payments found</p>

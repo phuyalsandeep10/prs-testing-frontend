@@ -19,12 +19,18 @@ type AddPaymentData = z.infer<typeof AddPaymentSchema>;
 
 interface AddPaymentProps {
   dealId?: string | null;
+  dealData?: {
+    deal_value: number;
+    currency: string;
+    remaining_balance?: number;
+  };
   onSave: (data: AddPaymentData) => void;
   onCancel: () => void;
 }
 
 const AddPayment: React.FC<AddPaymentProps> = ({
   dealId,
+  dealData,
   onSave,
   onCancel,
 }) => {
@@ -208,16 +214,33 @@ const AddPayment: React.FC<AddPaymentProps> = ({
             <div>
               <label className="block text-[14px] font-medium text-gray-900 mb-2">
                 Received Amount<span className="text-red-500">*</span>
+                {dealData && (
+                  <span className="text-sm text-gray-500 ml-2">
+                    (Remaining: {dealData.currency} {dealData.remaining_balance?.toFixed(2) || (dealData.deal_value - 0).toFixed(2)})
+                  </span>
+                )}
               </label>
-              <input
-                {...register("receivedAmount")}
-                type="text"
-                placeholder="0.00"
-                className="w-full h-[48px] px-4 border border-gray-300 rounded-lg text-[16px] focus:outline-none focus:border-gray-400 bg-white"
-              />
+              <div className="flex">
+                {dealData && (
+                  <div className="flex items-center bg-gray-50 border border-gray-300 border-r-0 rounded-l-lg text-sm font-medium text-gray-700 px-3">
+                    {dealData.currency}
+                  </div>
+                )}
+                <input
+                  {...register("receivedAmount")}
+                  type="text"
+                  placeholder="0.00"
+                  className={`h-[48px] px-4 border border-gray-300 ${dealData ? 'rounded-r-lg rounded-l-none' : 'rounded-lg'} text-[16px] focus:outline-none focus:border-gray-400 bg-white flex-1`}
+                />
+              </div>
               {errors.receivedAmount && (
                 <p className="text-red-500 text-sm mt-1">
                   {String(errors.receivedAmount.message)}
+                </p>
+              )}
+              {dealData && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Deal Value: {dealData.currency} {dealData.deal_value.toFixed(2)}
                 </p>
               )}
             </div>

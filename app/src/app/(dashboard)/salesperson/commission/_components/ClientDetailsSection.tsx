@@ -10,7 +10,8 @@ import Eye from "@/assets/icons/Eye.svg";
 import edit from "@/assets/icons/edit.svg";
 import cancel from "@/assets/icons/Cancel.svg";
 import Image from "next/image";
-import { useDashboardClients } from "@/hooks/api";
+import { RefreshCw } from "lucide-react";
+import { useClients, useDashboardClients } from "@/hooks/api";
 
 type DashboardClientsResponse = {
   clients: ApiClient[];
@@ -27,16 +28,23 @@ type DashboardClientsResponse = {
   total_clients: number;
 };
 
-const getStatusColor = (status: string) => {
+const getStatusColor = (status: string | null) => {
   switch (status) {
-    case "clear":
-      return "bg-[#E6F7FF] text-[#16A34A] px-3 py-1 text-[12px] font-medium rounded-full";
-    case "pending":
-      return "bg-[#FFF7ED] text-[#EA580C] px-3 py-1 text-[12px] font-medium rounded-full";
-    case "bad_debt":
-      return "bg-[#FEF2F2] text-[#DC2626] px-3 py-1 text-[12px] font-medium rounded-full";
+    case 'clear':
+      return 'bg-green-100 text-green-700 px-3 py-1 text-[12px] font-medium rounded-full';
+    case 'pending':
+      return 'bg-yellow-100 text-yellow-700 px-3 py-1 text-[12px] font-medium rounded-full';
+    case 'bad_debt':
+      return 'bg-red-100 text-red-700 px-3 py-1 text-[12px] font-medium rounded-full';
+    // Legacy status values
+    case 'active':
+      return 'bg-green-100 text-green-700 px-3 py-1 text-[12px] font-medium rounded-full';
+    case 'inactive':
+      return 'bg-gray-100 text-gray-600 px-3 py-1 text-[12px] font-medium rounded-full';
+    case 'prospect':
+      return 'bg-yellow-100 text-yellow-700 px-3 py-1 text-[12px] font-medium rounded-full';
     default:
-      return "bg-gray-100 text-gray-600 px-3 py-1 text-[12px] font-medium rounded-full";
+      return 'bg-gray-100 text-gray-600 px-3 py-1 text-[12px] font-medium rounded-full';
   }
 };
 
@@ -46,9 +54,35 @@ const ClientDetailsSection: React.FC = () => {
   const [selectedClient, setSelectedClient] = useState<ApiClient | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  const { data: clients = [], isLoading } = useDashboardClients();
+  // Fetch commission data (total_deals, total_value, outstanding_amount)
+  const { data: dashboardClients = [], isLoading: isDashboardLoading, refetch: refetchDashboard } = useDashboardClients();
+  
+  // Fetch current client status from clients table
+  const { data: regularClients = [], isLoading: isClientsLoading, refetch: refetchClients } = useClients();
 
-  console.log('🔍 [CLIENT_DETAILS_SECTION] Clients data:', clients);
+  // Merge data: commission fields from dashboard + current status from regular clients
+  const clients = useMemo(() => {
+    return dashboardClients.map((dashboardClient: any) => {
+      // Find matching client in regular clients to get current status
+      const regularClient = regularClients.find((client: any) => 
+        client.id?.toString() === dashboardClient.client_id?.toString() || 
+        client.id?.toString() === dashboardClient.id?.toString()
+      );
+      
+      return {
+        ...dashboardClient,
+        // Override status with current status from regular clients table
+        status: regularClient?.status || dashboardClient.status || dashboardClient.payment_status,
+        client_status: regularClient?.status || dashboardClient.status || dashboardClient.payment_status
+      };
+    });
+  }, [dashboardClients, regularClients]);
+
+  const isLoading = isDashboardLoading || isClientsLoading;
+
+  console.log('🔍 [CLIENT_DETAILS_SECTION] Dashboard clients:', dashboardClients);
+  console.log('🔍 [CLIENT_DETAILS_SECTION] Regular clients:', regularClients);
+  console.log('🔍 [CLIENT_DETAILS_SECTION] Merged clients:', clients);
   console.log('🔍 [CLIENT_DETAILS_SECTION] Loading:', isLoading);
 
   const handleView = useCallback((client: any) => {
@@ -63,7 +97,7 @@ const ClientDetailsSection: React.FC = () => {
       updated_at: '',
       remarks: client.remarks,
       satisfaction: null,
-      status: client.payment_status,
+      status: client.client_status || client.status, // Use client_status if available
       created_by: 0,
       organization: 0,
       total_value: client.total_value,
@@ -84,7 +118,7 @@ const ClientDetailsSection: React.FC = () => {
       updated_at: '',
       remarks: client.remarks,
       satisfaction: null,
-      status: client.payment_status,
+      status: client.client_status || client.status,
       created_by: 0,
       organization: 0,
       total_value: client.total_value,
@@ -96,6 +130,16 @@ const ClientDetailsSection: React.FC = () => {
   const handleDelete = useCallback((clientId: string) => {
     console.log("Delete client:", clientId);
   }, []);
+
+  const handleRefresh = useCallback(async () => {
+    try {
+      // Refetch both dashboard clients and regular clients
+      await Promise.all([refetchDashboard(), refetchClients()]);
+      console.log('✅ [CLIENT_DETAILS_SECTION] Refreshed both client data sources');
+    } catch (error) {
+      console.error('❌ [CLIENT_DETAILS_SECTION] Failed to refresh:', error);
+    }
+  }, [refetchDashboard, refetchClients]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -152,12 +196,16 @@ const ClientDetailsSection: React.FC = () => {
         ),
       },
       {
-        accessorFn: (row: any) => row.payment_status ?? "pending",
+        accessorFn: (row: any) => row.client_status ?? row.status ?? "pending",
         id: "status",
         header: "Status",
         cell: ({ row }) => {
           const status = row.getValue("status") as string;
-          return <span className={getStatusColor(status)}>{status}</span>;
+          return (
+            <span className={getStatusColor(status)}>
+              {status ? status.charAt(0).toUpperCase() + status.slice(1) : 'N/A'}
+            </span>
+          );
         },
       },
       {
@@ -209,6 +257,20 @@ const ClientDetailsSection: React.FC = () => {
   return (
     <>
       <div className="pr-6 py-4 ml-6">
+        {/* Header with refresh button */}
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium text-gray-900">Client Details</h3>
+          <button
+            onClick={handleRefresh}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            title="Refresh client data"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
+
         {isLoading ? (
           <p className="text-center text-sm text-gray-500">
             Loading clients...
