@@ -139,6 +139,7 @@ function getErrorMessage(error: any): string | null {
         clientName: deal?.client?.client_name || '',
         dealName: deal?.deal_name || '',
         payMethod: payment?.payment_method || '',
+        paymentReceiptLink: payment?.receipt_file || '',
         paymentValue: payment?.received_amount?.toString() || '',
         chequeNumber: payment?.cheque_number || '',
         paymentDate: payment?.payment_date ? new Date(payment.payment_date).toISOString().split('T')[0] : '',
@@ -409,19 +410,35 @@ function getErrorMessage(error: any): string | null {
               </div>
 
               <div className="w-full lg:w-[240px]">
-                <InputField
-                  id="paymentReceiptLink"
-                  label="Payment Receipt Link"
-                  required
-                  registration={register("paymentReceiptLink")}
-                  placeholder="Receipt.pdf"
-                  width="w-full"
-                  height="h-[48px]"
-                  labelClassName={verificationLabelClass}
-                  inputClassName={verificationInputClass}
-                  wrapperClassName={verificationWrapperClass}
-                  readOnly
-                />
+                <div className={verificationWrapperClass}>
+                  <label className={verificationLabelClass}>
+                    Payment Receipt Link<span className="text-red-500">*</span>
+                  </label>
+                  {watch("paymentReceiptLink") ? (
+                    <div className="mt-1">
+                      <a
+                        href={(() => {
+                          const receiptLink = watch("paymentReceiptLink");
+                          // Fix relative URLs by making them absolute with backend URL
+                          const backendUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000';
+                          return receiptLink?.startsWith('http') ? receiptLink : `${backendUrl}${receiptLink}`;
+                        })()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 underline text-sm block p-3 border border-[#C3C3CB] rounded bg-white w-full h-[48px] flex items-center"
+                        onClick={() => {
+                          console.log("📎 [VERIFICATION-FORM] Clicking receipt link:", watch("paymentReceiptLink"));
+                        }}
+                      >
+                        Receipt Link
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="mt-1 p-3 border border-[#C3C3CB] rounded bg-gray-50 w-full h-[48px] flex items-center text-gray-500 text-sm">
+                      No receipt available
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 

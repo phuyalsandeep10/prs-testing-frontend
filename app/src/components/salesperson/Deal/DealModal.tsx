@@ -175,14 +175,14 @@ const DealModal: React.FC<DealModalProps> = ({
 
   const getModalWidth = () => {
     if (mode === "payment") {
-      return "lg";
+      return "xl";
     }
     return "xl";
   };
 
   const getModalSize = () => {
     if (mode === "payment") {
-      return "max-w-lg";
+      return "max-w-4xl";
     }
     return "max-w-4xl";
   };
@@ -196,23 +196,6 @@ const DealModal: React.FC<DealModalProps> = ({
         width={getModalWidth()}
         showCloseButton={true}
       >
-        <div className="px-6 py-4 bg-white border-b border-gray-100">
-          <div className="flex items-center justify-between">
-            <h1 className="text-[24px] font-semibold text-[#4F46E5]">
-              ADD PAYMENT
-            </h1>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onOpenChange(false)}
-              className="h-8 w-8 p-0 hover:bg-gray-100 text-gray-400 rounded-full"
-              disabled={isSubmitting}
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-
         <div className="flex-1">
           <AddPayment
             dealId={dealId}
@@ -237,23 +220,6 @@ const DealModal: React.FC<DealModalProps> = ({
       width={getModalWidth()}
       showCloseButton={true}
     >
-      <div className="px-6 py-4 border-b border-gray-200 bg-white">
-        <div className="flex items-center justify-between">
-          <h1 className="text-[20px] font-semibold text-[#465FFF]">
-            {getTitle()}
-          </h1>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-            className="h-8 w-8 p-0 hover:bg-gray-100 text-gray-500"
-            disabled={isSubmitting}
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
-      </div>
-
       {/* Modal Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="flex-1 overflow-auto">

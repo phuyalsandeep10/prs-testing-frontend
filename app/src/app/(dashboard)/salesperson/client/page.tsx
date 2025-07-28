@@ -131,7 +131,7 @@ const ClientsPage = React.memo(() => {
   }, [deleteClientMutation]);
 
   const handleView = useCallback((client: Client) => {
-    router.push(`/dashboard/salesperson/client/${client.id}/deals`);
+    router.push(`/salesperson/client/${client.id}`);
   }, [router]);
 
   // Memoized columns definition

@@ -57,6 +57,7 @@ const submitDealData = async (data: DealFormData) => {
   console.log('Raw form data:', data);
   const transformedData = transformDataForApi(data);
   console.log('Transformed data for API:', transformedData);
+  console.log('Transformed data for API:', transformedData);
   const response = await apiClient.post('/deals/deals/', transformedData);
   return response.data;
 };
@@ -126,6 +127,7 @@ const DealForm = () => {
   });
 
   const onSubmit = async (data: DealFormData) => {
+    console.log('Raw form data in onSubmit:', data);
     mutation.mutate(data);
   };
 

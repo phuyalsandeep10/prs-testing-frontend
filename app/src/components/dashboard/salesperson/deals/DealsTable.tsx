@@ -555,13 +555,29 @@ const DealsTable: React.FC<DealsTableProps> = ({
         header: "Receipt Link",
         cell: ({ row }) => {
           const receiptLink = row.original.receipt_link;
+          console.log("🔍 [DASHBOARD] Receipt link value:", receiptLink);
+          console.log("🔍 [DASHBOARD] Full row data:", row.original);
+          
           if (receiptLink) {
+            // Fix relative URLs by making them absolute with backend URL
+            const backendUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000';
+            const fullUrl = receiptLink.startsWith('http') 
+              ? receiptLink 
+              : `${backendUrl}${receiptLink}`;
+            
+            console.log("📎 [DASHBOARD] Original link:", receiptLink);
+            console.log("📎 [DASHBOARD] Backend URL:", backendUrl);
+            console.log("📎 [DASHBOARD] Full URL:", fullUrl);
+            
             return (
               <a
-                href={receiptLink}
+                href={fullUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:text-blue-800 underline"
+                onClick={(e) => {
+                  console.log("📎 [DASHBOARD] Clicking receipt link:", fullUrl);
+                }}
               >
                 View Receipt
               </a>

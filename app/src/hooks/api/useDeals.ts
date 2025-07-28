@@ -194,9 +194,18 @@ export const useDealExpanded = (dealId: string | null) => {
       try {
         const response = await apiClient.get<any>(`/deals/deals/${dealId}/expand/`);
         
+        console.log('🔍 [EXPANDED_API] Full API response:', response);
+        
         // The response contains the DealExpandedViewSerializer data directly
         // which has a payment_history field with the payment array
         const paymentHistory = response?.payment_history;
+        
+        console.log('🔍 [EXPANDED_API] Payment history:', paymentHistory);
+        
+        // Log each payment's receipt_link
+        paymentHistory?.forEach((payment, index) => {
+          console.log(`🔍 [EXPANDED_API] Payment ${index} receipt_link:`, payment.receipt_link);
+        });
         
         // Return the payment history array directly
         return paymentHistory || [];

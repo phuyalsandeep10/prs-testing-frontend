@@ -80,62 +80,98 @@ const currencies = [
 //   return currencySymbols[currency] || currency;
 // };
 
-const transformDataForApi = (data: DealFormData) => {
+const transformDataForApi = (data: DealFormData, clients: Client[]) => {
+  console.log("🔍 Transforming form data for API...");
+  
   const formData = new FormData();
   const paymentData: { [key: string]: any } = {};
 
-  // Handle file upload separately
+  // Handle file upload separately with correct field name
   if (data.uploadReceipt && data.uploadReceipt.length > 0) {
-    formData.append("payments[0]receipt_file", data.uploadReceipt[0]);
+    formData.append("payments[0][receipt_file]", data.uploadReceipt[0]);
+    console.log("📎 Receipt file added:", data.uploadReceipt[0].name);
+  }
+
+  // Handle client_name to client_id conversion
+  if (data.clientName && clients) {
+    const selectedClient = clients.find(client => client.client_name === data.clientName);
+    if (selectedClient) {
+      formData.append("client_id", selectedClient.id.toString());
+      console.log("👤 Client ID mapped:", selectedClient.id);
+    } else {
+      console.error("❌ Client not found:", data.clientName);
+    }
   }
 
   const dealKeys = [
-    "clientName",
-    "dealName",
+    // "clientName", // ✅ Skip clientName since we manually add client_id
+    "dealName", 
     "payStatus",
     "sourceType",
     "dealValue",
     "dealDate",
     "dueDate",
     "dealRemarks",
+    "currency",
+    "payMethod", // ✅ Add payment method to deal fields since backend expects it
   ];
   const paymentKeys = [
     "paymentDate",
-    "receivedAmount",
+    "receivedAmount", 
     "chequeNumber",
-    "payMethod",
     "paymentRemarks",
   ];
 
+  // Add deal fields
   for (const key in data) {
     if (
       Object.prototype.hasOwnProperty.call(data, key) &&
       key !== "uploadReceipt"
     ) {
-      const value = (data as any)[key];
+      let value = (data as any)[key];
+      
+      // Handle array values - extract first element if it's an array
+      if (Array.isArray(value) && value.length > 0) {
+        value = value[0];
+        console.log(`⚠️  Fixed array value for ${key}:`, value);
+      }
+      
       if (value !== undefined && value !== null && value !== "") {
         if (dealKeys.includes(key)) {
-          const snakeKey = toSnakeCase(key);
-          const apiValue =
-            key === "payStatus"
-              ? value === "Full Pay"
-                ? "full_payment"
-                : "partial_payment"
-              : value;
+          let snakeKey = toSnakeCase(key);
+          let apiValue = value;
+          
+          // Handle special field mappings
+          if (key === "payStatus") {
+            snakeKey = "payment_status";
+            apiValue = value === "Full Pay" ? "full_payment" : "partial_payment";
+          } else if (key === "payMethod") {
+            snakeKey = "payment_method";
+          }
+          
           formData.append(snakeKey, apiValue);
         } else if (paymentKeys.includes(key)) {
           const snakeKey =
             key === "payMethod" ? "payment_method" : toSnakeCase(key);
           paymentData[snakeKey] = value;
         }
+      } else if (value === "" && dealKeys.includes(key)) {
+        // Log empty values for deal fields
+        console.log(`⚠️  Empty deal field: ${key}`);
+      } else if (value === "" && paymentKeys.includes(key)) {
+        // Log empty values for payment fields  
+        console.log(`⚠️  Empty payment field: ${key}`);
       }
     }
   }
 
-  // Append nested payment data
+  // Append nested payment data with correct format
   for (const key in paymentData) {
-    formData.append(`payments[0]${key}`, paymentData[key]);
+    formData.append(`payments[0][${key}]`, paymentData[key]);
   }
+
+  // Log FormData summary
+  console.log("🚀 FormData prepared with", [...formData.keys()].length, "fields");
 
   return formData;
 };
@@ -201,57 +237,27 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
 
     // console.log("dealData fetched to display", TestActivity);
 
-    const submitDealData = async (data: DealFormData) => {
+    const submitDealData = async (data: DealFormData): Promise<DealFormData> => {
       try {
-        // Validate dealId for edit mode
-        if (mode === "edit" && !dealId) {
-          throw new Error("Deal ID is required for editing");
+        console.log("Submitting deal data:", data);
+
+        const dealPayload = transformDataForApi(data, clients || []);
+
+        // Log what we're actually sending
+        console.log("Deal payload (FormData):");
+        for (let [key, value] of dealPayload.entries()) {
+          console.log(key, value);
         }
 
-        // Get client ID from client name
-        const selectedClient = clients?.find(
-          (client) => client.client_name === data.clientName
-        );
-        if (!selectedClient) {
-          throw new Error("Selected client not found");
+        const endpoint = mode === "edit" ? `/deals/deals/${dealId}/` : "/deals/deals/";
+
+        // 1. Create or update the deal using multipart methods for FormData
+        let dealResponse;
+        if (mode === "edit") {
+          dealResponse = await apiClient.putMultipart(endpoint, dealPayload);
+        } else {
+          dealResponse = await apiClient.postMultipart(endpoint, dealPayload);
         }
-
-        // Prepare deal data with payment fields included
-        const dealPayload = {
-          client_id: selectedClient.id,
-          client_name: data.clientName,
-          deal_name: data.dealName,
-          payment_status:
-            data.payStatus === "Full Pay" ? "full_payment" : "partial_payment",
-          source_type: data.sourceType,
-          currency: data.currency,
-          deal_value: data.dealValue,
-          deal_date: data.dealDate,
-          due_date: data.dueDate,
-          deal_remarks: data.dealRemarks || "",
-          payment_method: data.payMethod,
-          // Include payment data if present
-          ...(mode === "add" && (data.paymentDate || data.receivedAmount || data.chequeNumber || data.paymentRemarks) && {
-            payments: [{
-              payment_date: data.paymentDate,
-              received_amount: data.receivedAmount,
-              cheque_number: data.chequeNumber,
-              payment_method: data.payMethod,
-              payment_remarks: data.paymentRemarks,
-            }]
-          })
-        };
-
-        // Use PUT for edit mode, POST for add mode
-        const endpoint =
-          mode === "edit"
-            ? `/deals/deals/${dealData?.deal_id || dealId}/`
-            : "/deals/deals/";
-        const method = mode === "edit" ? "put" : "post";
-
-        // 1. Create or update the deal
-
-        const dealResponse = await apiClient[method](endpoint, dealPayload);
         const dealResult = dealResponse.data as import("@/types/deals").Deal;
 
         // Get the deal id for payment association
@@ -262,21 +268,70 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
 
         return dealResult;
       } catch (error: any) {
-        if (error.details) {
-        }
-        if (error.message?.includes("400")) {
-          throw new Error(
-            `Bad Request: ${
-              error.details?.message || error.message || "Invalid data format"
-            }`
-          );
+        console.error("❌ Deal submission failed:", error.message);
+        console.error("📋 Error details:", error.details || error.response?.data);
+        
+        // Parse detailed error information
+        let errorMessage = `Failed to ${mode} deal. Please try again.`;
+        
+        if (error.details || error.response?.data) {
+          const responseData = error.details || error.response?.data;
+          console.log("🔍 Parsing validation errors:", responseData);
+          
+          // Handle nested payment validation errors
+          if (responseData.payments) {
+            if (Array.isArray(responseData.payments)) {
+              // Handle array of payment errors
+              const paymentErrors = responseData.payments[0];
+              if (paymentErrors?.cheque_number) {
+                errorMessage = Array.isArray(paymentErrors.cheque_number) 
+                  ? paymentErrors.cheque_number[0] 
+                  : paymentErrors.cheque_number;
+              } else if (paymentErrors?.receipt_file) {
+                errorMessage = Array.isArray(paymentErrors.receipt_file) 
+                  ? paymentErrors.receipt_file[0] 
+                  : paymentErrors.receipt_file;
+              }
+            } else if (typeof responseData.payments === 'string') {
+              errorMessage = responseData.payments;
+            }
+          }
+          // Handle direct field validation errors
+          else if (responseData.cheque_number) {
+            errorMessage = Array.isArray(responseData.cheque_number) 
+              ? responseData.cheque_number[0] 
+              : responseData.cheque_number;
+          }
+          // Handle general validation errors
+          else if (responseData.non_field_errors) {
+            errorMessage = Array.isArray(responseData.non_field_errors) 
+              ? responseData.non_field_errors[0] 
+              : responseData.non_field_errors;
+          }
+          // Handle detail field
+          else if (responseData.detail) {
+            errorMessage = responseData.detail;
+          }
+          // Handle error field
+          else if (responseData.error) {
+            errorMessage = responseData.error;
+          }
+          // Handle first available error message
+          else if (typeof responseData === 'object') {
+            const firstError = Object.values(responseData)[0];
+            if (firstError) {
+              errorMessage = Array.isArray(firstError) ? firstError[0] : firstError;
+            }
+          }
+        } else if (error.message?.includes("400")) {
+          errorMessage = `Bad Request: ${error.message || "Invalid data format"}`;
         } else if (error.message?.includes("timeout")) {
-          throw new Error("Request timed out. Please try again.");
-        } else {
-          throw new Error(
-            error.message || `Failed to ${mode} deal. Please try again.`
-          );
+          errorMessage = "Request timed out. Please try again.";
+        } else if (error.message) {
+          errorMessage = error.message;
         }
+
+        throw new Error(errorMessage);
       }
     };
 
@@ -497,7 +552,7 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
         onSubmit={handleSubmit(onSubmit)}
         className="h-full w-full flex flex-col overflow-hidden"
       >
-        <div className="flex-1 p-6 pb-4 overflow-auto grid ">
+        <div className="flex-1 p-6 pb-4 overflow-auto">
           <div className="flex flex-col gap-6 lg:gap-1 lg:flex-row">
             {/* Left section */}
             <div className="div1  w-full flex-1">
@@ -911,13 +966,21 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                           : "cursor-pointer"
                       }`}
                     >
-                      <span className="underline">
-                        {watch("uploadReceipt")?.[0]?.name ||
-                          (mode === "edit" &&
-                          dealData?.payments?.[0]?.receipt_file
-                            ? dealData.payments[0].receipt_file.split("/").pop()
-                            : "Upload Receipt")}
-                      </span>
+                      {mode === "edit" && dealData?.payments?.[0]?.receipt_file ? (
+                        <a
+                          href={dealData.payments[0].receipt_file}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {dealData.payments[0].receipt_file.split("/").pop()}
+                        </a>
+                      ) : (
+                        <span className="underline">
+                          {watch("uploadReceipt")?.[0]?.name || "Upload Receipt"}
+                        </span>
+                      )}
 
                       <svg
                         width="13"
@@ -959,33 +1022,34 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
               </div>
             </div>
           </div>
+        </div>
 
-          <div className="mt-auto flex justify-end gap-4 bg-gradient-to-r from-[#0C29E3] via-[#929FF4] to-[#C6CDFA] p-4">
-            {mutation.isError && (
-              <p className="text-red-600 text-sm mr-auto">
-                Error submitting form. Please try again.
-              </p>
-            )}
-            <Button
-              type="button"
-              onClick={handleClear}
-              disabled={isLoading}
-              className="bg-[#F61818] text-white w-[83px] p-2 h-[40px] rounded-[6px] text-[14px] font-semibold disabled:opacity-50"
-            >
-              Clear
-            </Button>
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="bg-[#009959] text-white w-[119px] p-2 h-[40px] rounded-[6px] text-[14px] font-semibold disabled:opacity-50"
-            >
-              {isLoading
-                ? "Submitting..."
-                : mode === "edit"
-                ? "Update Deal"
-                : "Save Deal"}
-            </Button>
-          </div>
+        {/* Fixed Footer */}
+        <div className="flex justify-end gap-4 bg-gradient-to-r from-[#0C29E3] via-[#929FF4] to-[#C6CDFA] p-4 mt-auto">
+          {mutation.isError && (
+            <p className="text-red-600 text-sm mr-auto">
+              Error submitting form. Please try again.
+            </p>
+          )}
+          <Button
+            type="button"
+            onClick={handleClear}
+            disabled={isLoading}
+            className="bg-[#F61818] text-white w-[83px] p-2 h-[40px] rounded-[6px] text-[14px] font-semibold disabled:opacity-50"
+          >
+            Clear
+          </Button>
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="bg-[#009959] text-white w-[119px] p-2 h-[40px] rounded-[6px] text-[14px] font-semibold disabled:opacity-50"
+          >
+            {isLoading
+              ? "Submitting..."
+              : mode === "edit"
+              ? "Update Deal"
+              : "Save Deal"}
+          </Button>
         </div>
       </form>
     );

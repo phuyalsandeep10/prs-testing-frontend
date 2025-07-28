@@ -21,6 +21,7 @@ import { CommissionFilter } from "./CommissionFilter";
 import { useOrgAdminCommissionQuery, useBulkUpdateCommissionMutation } from "@/hooks/useIntegratedQuery";
 import { useUI } from "@/stores";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import { apiClient } from "@/lib/api-client";
 
 interface Currency {
   code: string;
@@ -232,22 +233,18 @@ export const CommissionClient = () => {
   useEffect(() => {
     const fetchCurrencies = async () => {
       try {
-        const token = localStorage.getItem('authToken');
-        const response = await fetch('http://localhost:8000/api/commission/currencies/', {
-          headers: {
-            'Authorization': `Token ${token}`,
-            'Cache-Control': 'no-cache',
-            'Pragma': 'no-cache',
-          },
-        });
-        if (!response.ok) {
-          throw new Error('Failed to fetch currencies');
-        }
-        const data: Currency[] = await response.json();
+        const data: Currency[] = await apiClient.get('/commission/currencies/');
         setCurrencies(data);
       } catch (error) {
         console.error('Error fetching currencies:', error);
-        toast.error('Failed to load currencies. Please try again.');
+        // Fallback to common currencies if API fails
+        setCurrencies([
+          { code: 'USD', name: 'US Dollar', numeric: '840', symbol: '$', country: { name: 'United States', alpha_2: 'US', alpha_3: 'USA', flag_emoji: '🇺🇸' } },
+          { code: 'EUR', name: 'Euro', numeric: '978', symbol: '€', country: { name: 'European Union', alpha_2: 'EU', alpha_3: 'EUR', flag_emoji: '🇪🇺' } },
+          { code: 'GBP', name: 'British Pound', numeric: '826', symbol: '£', country: { name: 'United Kingdom', alpha_2: 'GB', alpha_3: 'GBR', flag_emoji: '🇬🇧' } },
+          { code: 'NPR', name: 'Nepalese Rupee', numeric: '524', symbol: 'रू', country: { name: 'Nepal', alpha_2: 'NP', alpha_3: 'NPL', flag_emoji: '🇳🇵' } },
+        ]);
+        toast.error('Failed to load currencies from server. Using default currencies.');
       }
     };
     fetchCurrencies();

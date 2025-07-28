@@ -172,7 +172,6 @@ const NotificationComponent: React.FC<NotificationProps> = ({
     }
   }
   // notifications now always an array
-  console.log('Notifications to display:', notifications);
 
   const categories = notifications.reduce<Record<string, { label: string; count: number }>>((acc, n) => {
     if (!acc[n.category]) {

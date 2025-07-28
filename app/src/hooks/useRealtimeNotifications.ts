@@ -6,16 +6,16 @@ import type { Notification } from '@/types';
 import { toast } from 'sonner';
 
 export const useRealtimeNotifications = () => {
-  const { session } = useAuth();
+  const { user, token } = useAuth();
   const queryClient = useQueryClient();
   const listenerId = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!session?.user?.token) return;
+    if (!user || !token) return;
 
     try {
       // Connect to WebSocket
-      notificationWebSocket.connect(session.user.token);
+      notificationWebSocket.connect(token);
 
       // Subscribe to notifications
       listenerId.current = notificationWebSocket.subscribe((notification: Notification) => {
@@ -26,14 +26,18 @@ export const useRealtimeNotifications = () => {
             notificationType: (notification as any).notification_type || notification.notificationType || 'system_alert',
             isRead: (notification as any).is_read ?? notification.isRead ?? false,
             createdAt: (notification as any).created_at || notification.createdAt || new Date().toISOString(),
+            readAt: (notification as any).read_at || notification.readAt,
             relatedObjectType: (notification as any).related_object_type || notification.relatedObjectType,
             relatedObjectId: (notification as any).related_object_id || notification.relatedObjectId,
             actionUrl: (notification as any).action_url || notification.actionUrl,
+            recipientEmail: (notification as any).recipient_email || notification.recipientEmail,
+            organizationName: (notification as any).organization_name || notification.organizationName,
           };
 
           // Invalidate notifications cache to trigger refetch
           queryClient.invalidateQueries({ queryKey: ['notifications'] });
           queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
+          queryClient.invalidateQueries({ queryKey: ['unread-count'] });
           
           // Show toast notification with error handling
           const priority = mappedNotification.priority || 'medium';
@@ -88,7 +92,7 @@ export const useRealtimeNotifications = () => {
         console.error('Error cleaning up notifications:', cleanupError);
       }
     };
-  }, [session?.user?.token, queryClient]);
+  }, [user, token, queryClient]);
 
   return {
     isConnected: notificationWebSocket.isConnected(),

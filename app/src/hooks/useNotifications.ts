@@ -59,47 +59,62 @@ export const useNotifications = (params?: {
   page?: number;
   limit?: number;
 }) => {
-  const { user: authUser, isAuthInitialized } = useAuth();
+  const { user, isAuthInitialized, token } = useAuth();
 
   return useQuery({
     queryKey: [...NOTIFICATIONS_QUERY_KEY, params],
     queryFn: async () => {
       try {
         const response = await apiClient.getNotifications(params);
-        // Ensure we always return a valid structure
-        return response.data || { data: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 0 } };
+        
+        // Use response directly, not response.data
+        const data = response as any;
+        
+        if (!data) {
+          return { results: [], count: 0, next: null, previous: null };
+        }
+        
+        // Normalize backend fields to frontend fields for paginated response
+        if (data.results && Array.isArray(data.results)) {
+          const normalizedResults = data.results.map((notification: any) => ({
+            ...notification,
+            notificationType: notification.notification_type || notification.notificationType || 'system_alert',
+            isRead: notification.is_read ?? notification.isRead ?? false,
+            createdAt: notification.created_at || notification.createdAt || new Date().toISOString(),
+            readAt: notification.read_at || notification.readAt,
+            relatedObjectType: notification.related_object_type || notification.relatedObjectType,
+            relatedObjectId: notification.related_object_id || notification.relatedObjectId,
+            recipientEmail: notification.recipient_email || notification.recipientEmail,
+          }));
+          
+          return {
+            results: normalizedResults,
+            count: data.count || 0,
+            next: data.next || null,
+            previous: data.previous || null
+          };
+        }
+        
+        return { results: [], count: 0, next: null, previous: null };
+        
       } catch (error) {
-        console.log('Using mock notifications (backend not available)');
-        // Return mock data when backend is not available
-        let filteredNotifications = [...MOCK_NOTIFICATIONS];
-        
-        if (params?.unread_only) {
-          filteredNotifications = filteredNotifications.filter(n => !n.isRead);
-        }
-        
-        if (params?.type && params.type !== 'all') {
-          filteredNotifications = filteredNotifications.filter(n => n.notificationType === params.type);
-        }
-        
-        return {
-          data: filteredNotifications,
-          pagination: { 
-            page: 1, 
-            limit: 20, 
-            total: filteredNotifications.length, 
-            totalPages: 1 
-          }
+        // Return mock notifications when backend is not available
+        return { 
+          results: MOCK_NOTIFICATIONS, 
+          count: MOCK_NOTIFICATIONS.length,
+          next: null,
+          previous: null
         };
       }
     },
     staleTime: 30 * 1000, // 30 seconds
-    enabled: isAuthInitialized && !!authUser,
+    enabled: isAuthInitialized && !!user,
   });
 };
 
 // Notification Stats Query Hook
 export const useNotificationStats = () => {
-  const { user: authUser, isAuthInitialized } = useAuth();
+  const { user, isAuthInitialized } = useAuth();
 
   return useQuery({
     queryKey: NOTIFICATION_STATS_QUERY_KEY,
@@ -114,33 +129,25 @@ export const useNotificationStats = () => {
           recentNotifications: [] 
         };
       } catch (error) {
-        console.log('Using mock notification stats (backend not available)');
         // Return mock stats when backend is not available
         const unreadCount = MOCK_NOTIFICATIONS.filter(n => !n.isRead).length;
         return { 
           totalNotifications: MOCK_NOTIFICATIONS.length, 
-          unreadCount,
-          byType: {
-            'deal_created': 1,
-            'payment_received': 1,
-            'client_created': 1
-          },
-          byPriority: {
-            'medium': 2,
-            'high': 1
-          },
-          recentNotifications: MOCK_NOTIFICATIONS.slice(0, 3)
+          unreadCount, 
+          byType: { system_alert: unreadCount }, 
+          byPriority: { high: unreadCount },
+          recentNotifications: MOCK_NOTIFICATIONS.slice(0, 5)
         };
       }
     },
-    staleTime: 60 * 1000, // 1 minute
-    enabled: isAuthInitialized && !!authUser,
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    enabled: isAuthInitialized && !!user,
   });
 };
 
 // Unread Count Query Hook
 export const useUnreadCount = () => {
-  const { user: authUser, isAuthInitialized } = useAuth();
+  const { user, isAuthInitialized } = useAuth();
 
   return useQuery({
     queryKey: UNREAD_COUNT_QUERY_KEY,
@@ -149,13 +156,12 @@ export const useUnreadCount = () => {
         const response = await apiClient.getUnreadCount();
         return response.data.unread_count || 0;
       } catch (error) {
-        console.log('Using mock unread count (backend not available)');
         // Return mock unread count when backend is not available
         return MOCK_NOTIFICATIONS.filter(n => !n.isRead).length;
       }
     },
-    staleTime: 10 * 1000, // 10 seconds
-    enabled: isAuthInitialized && !!authUser,
+    staleTime: 30 * 1000, // 30 seconds
+    enabled: isAuthInitialized && !!user,
   });
 };
 
@@ -169,7 +175,6 @@ export const useMarkAsRead = () => {
         const response = await apiClient.markNotificationAsRead(id);
         return response.data;
       } catch (error) {
-        console.log('Using mock mark as read (backend not available)');
         // Mock the operation
         return { message: 'Notification marked as read (mock)' };
       }
@@ -197,7 +202,6 @@ export const useMarkAllAsRead = () => {
         const response = await apiClient.markNotificationsAsRead(notificationIds);
         return response.data;
       } catch (error) {
-        console.log('Using mock mark all as read (backend not available)');
         // Mock the operation
         return { message: 'All notifications marked as read (mock)', count: 2 };
       }

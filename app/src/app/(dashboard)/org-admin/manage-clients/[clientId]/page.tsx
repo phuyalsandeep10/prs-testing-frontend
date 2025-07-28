@@ -14,21 +14,30 @@ export default function ClientDetailPage() {
   const [client, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Debug logging
+  console.log('🔍 ORG-ADMIN CLIENT DETAIL PAGE LOADED');
+  console.log('📍 Current pathname:', window.location.pathname);
+  console.log('🆔 Client ID from params:', clientId);
+
   useEffect(() => {
     if (!clientId) return;
 
     const fetchClient = async () => {
       setLoading(true);
+      console.log('🚀 Fetching client data for ID:', clientId);
       try {
         const response = await apiClient.getClientById(clientId);
+        console.log('📊 API Response:', response);
         if (response.success && response.data) {
           setClient(response.data);
+          console.log('✅ Client data loaded successfully:', response.data);
         } else {
+          console.log('❌ Failed to fetch client data:', response);
           toast.error("Failed to fetch client data.");
           setClient(null);
         }
       } catch (error) {
-        console.error("Error fetching client:", error);
+        console.error("💥 Error fetching client:", error);
         toast.error("An error occurred while fetching client details.");
       } finally {
         setLoading(false);

@@ -81,7 +81,7 @@ function KanbanCard({ client }: { client: Client; onViewDetails?: (client: Clien
   const router = useRouter();
 
   const handleCardClick = () => {
-    router.push(`/dashboard/salesperson/client/${client.id}/deals`);
+    router.push(`/salesperson/client/${client.id}`);
   };
 
   return (

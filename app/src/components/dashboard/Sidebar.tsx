@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Logout from "../global-components/Logout";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSidebar, useAuth } from "@/stores";
 
 const superAdminNav = [
@@ -104,19 +104,36 @@ export default function Sidebar() {
   const router = useRouter();
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
   const { sidebarCollapsed, setSidebarCollapsed } = useSidebar();
-  const { user } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const isCollapsed = sidebarCollapsed;
+
+  // Handle authentication redirect in useEffect to avoid render-time side effects
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, router]);
 
   // Determine current role and navigation based on user role
   const getCurrentNavigation = () => {
-    const role = user?.role;
-    if (role === 'super-admin') return superAdminNav;
-    if (role === 'org-admin') return orgAdminNav;
-    if (role === 'verifier') return verifierNav;
-    if (role === 'salesperson') return salespersonNav;
-    if (role === 'supervisor') return supervisorNav;
-    if (role === 'team-member') return teamMemberNav;
+    // Only use user role if authenticated
+    if (user && isAuthenticated) {
+      const role = user?.role;
+      if (role === 'super-admin') return superAdminNav;
+      if (role === 'org-admin') return orgAdminNav;
+      if (role === 'verifier') return verifierNav;
+      if (role === 'senior-verifier') return seniorverifierNav;
+      if (role === 'salesperson') return salespersonNav;
+      if (role === 'supervisor') return supervisorNav;
+      if (role === 'team-member') return teamMemberNav;
+    }
     
+    // If not authenticated, return empty navigation (redirect handled in useEffect)
+    if (!isAuthenticated) {
+      return []; // Return empty navigation
+    }
+    
+    // Fallback logic (only if authenticated but role is unclear)
     if (pathname.startsWith("/super-admin")) return superAdminNav;
     if (pathname.startsWith("/org-admin")) return orgAdminNav;
     if (pathname.startsWith("/verifier")) return verifierNav;
@@ -130,6 +147,7 @@ export default function Sidebar() {
   const navigation = getCurrentNavigation();
 
   const handleLogout = () => {
+    logout();
     router.push("/login");
   };
 

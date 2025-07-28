@@ -1,6 +1,7 @@
 "use client";
 
 import { Bell, Gift } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -20,6 +21,7 @@ import { useUnreadCount } from "@/hooks/useNotifications";
 export default function Header() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const bellRef = useRef<HTMLButtonElement>(null!);
+  const router = useRouter();
 
   // ===== Auth =====
   const { user, logout } = useAuth();
@@ -105,7 +107,10 @@ export default function Header() {
             <DropdownMenuItem>Settings</DropdownMenuItem>
             <DropdownMenuItem>Support</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout}>Logout</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              logout();
+              router.push("/login");
+            }}>Logout</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

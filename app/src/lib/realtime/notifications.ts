@@ -36,11 +36,10 @@ class NotificationWebSocketService {
         this.socket = null;
       }
 
-      // Fix: Use correct WebSocket path
-      this.socket = new WebSocket(`${wsUrl}/notifications/?token=${token}`);
+      // Fix: Use correct WebSocket path that matches backend routing
+      this.socket = new WebSocket(`${wsUrl}/ws/notifications/?token=${token}`);
       
       this.socket.onopen = () => {
-        console.log('🔌 Connected to notification service');
         this.isConnecting = false;
         this.reconnectAttempts = 0;
         this.startHeartbeat();
@@ -49,7 +48,6 @@ class NotificationWebSocketService {
       this.socket.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log('WebSocket message received:', data);
           
           if (data.type === 'notification') {
             this.notifyListeners(data.notification);
@@ -57,7 +55,6 @@ class NotificationWebSocketService {
             data.notifications.forEach((n: Notification) => this.notifyListeners(n));
           } else if (data.type === 'pong') {
             // Handle heartbeat response
-            console.log('🔌 Heartbeat received');
           }
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error, 'Raw data:', event.data);
@@ -65,14 +62,12 @@ class NotificationWebSocketService {
       };
 
       this.socket.onclose = (event) => {
-        console.log('🔌 Disconnected from notification service:', event.code, event.reason);
         this.isConnecting = false;
         this.stopHeartbeat();
         
         // Only attempt to reconnect if not a clean close and within retry limits
         if (!event.wasClean && this.reconnectAttempts < this.maxReconnectAttempts && wsUrl) {
           const delay = Math.min(Math.pow(2, this.reconnectAttempts) * 1000, 30000);
-          console.log(`🔌 Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts + 1}/${this.maxReconnectAttempts})`);
           
           this.reconnectTimeout = setTimeout(() => {
             this.reconnectAttempts++;
@@ -82,8 +77,7 @@ class NotificationWebSocketService {
       };
 
       this.socket.onerror = (error) => {
-        console.error('🔌 WebSocket connection failed:', error);
-        this.isConnecting = false;
+        console.error('WebSocket connection failed:', error);
       };
 
     } catch (error) {

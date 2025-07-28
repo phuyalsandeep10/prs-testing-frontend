@@ -203,19 +203,33 @@ const DealsTable = ({ setTogglePaymentForm }: DealsTableProps) => {
       {
         accessorKey: "receipt_file",
         header: "Receipt",
-        cell: ({ row }) =>
-          row.original.receipt_file ? (
-            <a 
-              href={row.original.receipt_file} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-800 underline"
-            >
-              View
-            </a>
-          ) : (
-            <span className="text-gray-400">N/A</span>
-          ),
+        cell: ({ row }) => {
+          const receiptFile = row.original.receipt_file;
+          console.log("🔍 Receipt file value:", receiptFile);
+          
+          if (receiptFile) {
+            // Fix relative URLs by making them absolute with backend URL
+            const backendUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000';
+            const fullUrl = receiptFile.startsWith('http') 
+              ? receiptFile 
+              : `${backendUrl}${receiptFile}`;
+            
+            return (
+              <a 
+                href={fullUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline"
+                onClick={(e) => {
+                  console.log("📎 Clicking receipt link:", fullUrl);
+                }}
+              >
+                View
+              </a>
+            );
+          }
+          return <span className="text-gray-400">N/A</span>;
+        },
       },
     ],
     []

@@ -189,178 +189,193 @@ const AddPayment: React.FC<AddPaymentProps> = ({
   }, [showDropdown]);
 
   return (
-    <div className="w-full bg-white">
+    <div className="w-full bg-white h-full flex flex-col">
       <form
         onSubmit={handleSubmit(submitPayment)}
         className="h-full flex flex-col"
       >
-        <div className="px-8 py-6 flex-1">
-          <div className="grid grid-cols-3 gap-6">
-            <div>
-              <label className="block text-[14px] font-medium text-gray-900 mb-2">
-                Payment Date<span className="text-red-500">*</span>
-              </label>
-              <input
-                {...register("paymentDate")}
-                type="date"
-                className="w-full h-[48px] px-4 border-2 border-[#4F46E5] rounded-lg text-[16px] focus:outline-none focus:border-[#4338CA] bg-white"
-              />
-              {errors.paymentDate && (
-                <p className="text-red-500 text-sm mt-1">
-                  {String(errors.paymentDate.message)}
-                </p>
-              )}
-            </div>
-            <div>
-              <label className="block text-[14px] font-medium text-gray-900 mb-2">
-                Received Amount<span className="text-red-500">*</span>
-                {dealData && (
-                  <span className="text-sm text-gray-500 ml-2">
-                    (Remaining: {dealData.currency} {dealData.remaining_balance?.toFixed(2) || (dealData.deal_value - 0).toFixed(2)})
-                  </span>
-                )}
-              </label>
-              <div className="flex">
-                {dealData && (
-                  <div className="flex items-center bg-gray-50 border border-gray-300 border-r-0 rounded-l-lg text-sm font-medium text-gray-700 px-3">
-                    {dealData.currency}
-                  </div>
-                )}
+        <div className="px-8 py-6 flex-1 overflow-y-auto">
+          <div className="grid grid-cols-3 gap-8">
+            {/* Column 1: Payment Date and Receipt */}
+            <div className="space-y-6">
+              <div>
+                <label className="block text-[14px] font-medium text-gray-900 mb-2">
+                  Payment Date<span className="text-red-500">*</span>
+                </label>
                 <input
-                  {...register("receivedAmount")}
-                  type="text"
-                  placeholder="0.00"
-                  className={`h-[48px] px-4 border border-gray-300 ${dealData ? 'rounded-r-lg rounded-l-none' : 'rounded-lg'} text-[16px] focus:outline-none focus:border-gray-400 bg-white flex-1`}
+                  {...register("paymentDate")}
+                  type="date"
+                  className="w-full h-[48px] px-4 border-2 border-[#4F46E5] rounded-lg text-[16px] focus:outline-none focus:border-[#4338CA] bg-white"
                 />
+                {errors.paymentDate && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {String(errors.paymentDate.message)}
+                  </p>
+                )}
               </div>
-              {errors.receivedAmount && (
-                <p className="text-red-500 text-sm mt-1">
-                  {String(errors.receivedAmount.message)}
-                </p>
-              )}
-              {dealData && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Deal Value: {dealData.currency} {dealData.deal_value.toFixed(2)}
-                </p>
-              )}
+              
+              <div>
+                <label className="block text-[14px] font-medium text-gray-900 mb-2">
+                  Attach Receipt<span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept=".png,.jpg,.jpeg,.pdf"
+                    id="attachReceipt"
+                    onChange={handleFileChange}
+                  />
+                  <div
+                    className="w-full h-[48px] px-4 border border-gray-300 rounded-lg text-[16px] bg-white cursor-pointer flex items-center justify-between hover:border-gray-400 transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <span className="text-gray-900">{selectedFileName}</span>
+                    <Paperclip className="h-4 w-4 text-gray-400" />
+                  </div>
+                </div>
+                {fileError && (
+                  <p className="text-red-500 text-sm mt-1">{fileError}</p>
+                )}
+              </div>
             </div>
-            <div>
-              <label className="block text-[14px] font-medium text-gray-900 mb-2">
-                Cheque No.<span className="text-red-500">*</span>
-              </label>
-              <input
-                {...register("chequeNo")}
-                type="text"
-                placeholder="1234567"
-                className="w-full h-[48px] px-4 border border-gray-300 rounded-lg text-[16px] focus:outline-none focus:border-gray-400 bg-white"
-              />
-              {errors.chequeNo && (
-                <p className="text-red-500 text-sm mt-1">
-                  {String(errors.chequeNo.message)}
-                </p>
-              )}
-            </div>
-            <div>
-              <label className="block text-[14px] font-medium text-gray-900 mb-2">
-                Attach Receipt<span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  accept=".png,.jpg,.jpeg,.pdf"
-                  id="attachReceipt"
-                  onChange={handleFileChange}
-                />
+
+            {/* Column 2: Received Amount and Payment Type */}
+            <div className="space-y-6">
+              <div>
+                <label className="block text-[14px] font-medium text-gray-900 mb-2">
+                  Received Amount<span className="text-red-500">*</span>
+                  {dealData && (
+                    <span className="text-sm text-gray-500 ml-2 block">
+                      (Remaining: {dealData.currency} {dealData.remaining_balance?.toFixed(2) || (dealData.deal_value - 0).toFixed(2)})
+                    </span>
+                  )}
+                </label>
+                <div className="flex">
+                  {dealData && (
+                    <div className="flex items-center bg-gray-50 border border-gray-300 border-r-0 rounded-l-lg text-sm font-medium text-gray-700 px-3">
+                      {dealData.currency}
+                    </div>
+                  )}
+                  <input
+                    {...register("receivedAmount")}
+                    type="text"
+                    placeholder="0.00"
+                    className={`h-[48px] px-4 border border-gray-300 ${dealData ? 'rounded-r-lg rounded-l-none' : 'rounded-lg'} text-[16px] focus:outline-none focus:border-gray-400 bg-white flex-1`}
+                  />
+                </div>
+                {errors.receivedAmount && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {String(errors.receivedAmount.message)}
+                  </p>
+                )}
+                {dealData && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Deal Value: {dealData.currency} {dealData.deal_value.toFixed(2)}
+                  </p>
+                )}
+              </div>
+
+              <div className="relative payment-type-dropdown">
+                <label className="block text-[14px] font-medium text-gray-900 mb-2">
+                  Payment Type<span className="text-red-500">*</span>
+                </label>
                 <div
                   className="w-full h-[48px] px-4 border border-gray-300 rounded-lg text-[16px] bg-white cursor-pointer flex items-center justify-between hover:border-gray-400 transition-colors"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() => setShowDropdown(!showDropdown)}
                 >
-                  <span className="text-gray-900">{selectedFileName}</span>
-                  <Paperclip className="h-4 w-4 text-gray-400" />
+                  <span className="text-gray-900">{selectedPaymentType}</span>
+                  <ChevronDown
+                    className={`h-4 w-4 text-gray-400 transition-transform ${
+                      showDropdown ? "rotate-180" : ""
+                    }`}
+                  />
                 </div>
+                {showDropdown && (
+                  <div className="absolute top-full left-0 right-0 z-[9999] mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-y-auto max-h-[200px]">
+                    {paymentTypes.map((type) => (
+                      <div
+                        key={type.value}
+                        className={`px-4 py-3 cursor-pointer text-[16px] border-b border-gray-100 last:border-b-0 transition-colors ${
+                          type.label === selectedPaymentType
+                            ? "bg-gray-50 text-gray-900"
+                            : type.label === "Partial Payment"
+                            ? "text-[#4F46E5] hover:bg-blue-50"
+                            : "text-gray-900 hover:bg-gray-50"
+                        }`}
+                        onClick={() => handlePaymentTypeSelect(type)}
+                      >
+                        {type.label}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {errors.paymentType && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {String(errors.paymentType.message)}
+                  </p>
+                )}
               </div>
-              {fileError && (
-                <p className="text-red-500 text-sm mt-1">{fileError}</p>
-              )}
             </div>
-            <div className="relative payment-type-dropdown">
-              <label className="block text-[14px] font-medium text-gray-900 mb-2">
-                Payment Type<span className="text-red-500">*</span>
-              </label>
-              <div
-                className="w-full h-[48px] px-4 border border-gray-300 rounded-lg text-[16px] bg-white cursor-pointer flex items-center justify-between hover:border-gray-400 transition-colors"
-                onClick={() => setShowDropdown(!showDropdown)}
-              >
-                <span className="text-gray-900">{selectedPaymentType}</span>
-                <ChevronDown
-                  className={`h-4 w-4 text-gray-400 transition-transform ${
-                    showDropdown ? "rotate-180" : ""
-                  }`}
+
+            {/* Column 3: Cheque No and Remarks */}
+            <div className="space-y-6">
+              <div>
+                <label className="block text-[14px] font-medium text-gray-900 mb-2">
+                  Cheque No.<span className="text-red-500">*</span>
+                </label>
+                <input
+                  {...register("chequeNo")}
+                  type="text"
+                  placeholder="1234567"
+                  className="w-full h-[48px] px-4 border border-gray-300 rounded-lg text-[16px] focus:outline-none focus:border-gray-400 bg-white"
                 />
+                {errors.chequeNo && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {String(errors.chequeNo.message)}
+                  </p>
+                )}
               </div>
-              {showDropdown && (
-                <div className="absolute top-full left-0 right-0 z-20 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg overflow-y-auto max-h-[200px] h-[100%]">
-                  {paymentTypes.map((type) => (
-                    <div
-                      key={type.value}
-                      className={`px-4 py-3 cursor-pointer text-[16px] border-b border-gray-100 last:border-b-0 transition-colors ${
-                        type.label === selectedPaymentType
-                          ? "bg-gray-50 text-gray-900"
-                          : type.label === "Partial Payment"
-                          ? "text-[#4F46E5] hover:bg-blue-50"
-                          : "text-gray-900 hover:bg-gray-50"
-                      }`}
-                      onClick={() => handlePaymentTypeSelect(type)}
-                    >
-                      {type.label}
-                    </div>
-                  ))}
-                </div>
-              )}
-              {errors.paymentType && (
-                <p className="text-red-500 text-sm mt-1">
-                  {String(errors.paymentType.message)}
-                </p>
-              )}
-            </div>
-            <div>
-              <label className="block text-[14px] font-medium text-gray-900 mb-2">
-                Remarks<span className="text-red-500">*</span>
-              </label>
-              <textarea
-                {...register("remarks")}
-                className="w-full h-[48px] px-4 py-3 border border-gray-300 rounded-lg text-[16px] focus:outline-none focus:border-gray-400 resize-none bg-white"
-                placeholder="Payment remarks..."
-              />
-              {errors.remarks && (
-                <p className="text-red-500 text-sm mt-1">
-                  {String(errors.remarks.message)}
-                </p>
-              )}
+
+              <div>
+                <label className="block text-[14px] font-medium text-gray-900 mb-2">
+                  Remarks<span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  {...register("remarks")}
+                  rows={3}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg text-[16px] focus:outline-none focus:border-gray-400 resize-none bg-white"
+                  placeholder="Payment remarks..."
+                />
+                {errors.remarks && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {String(errors.remarks.message)}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         </div>
-        <div className="px-0 py-0 bg-gradient-to-r from-[#4F46E5] via-[#7C8FE8] to-[#A8B5EB]">
-          <div className="px-8 py-6">
-            <div className="flex justify-end gap-4">
-              <button
-                type="button"
-                onClick={handleClear}
-                disabled={isSubmitting}
-                className="bg-[#EF4444] hover:bg-[#DC2626] text-white py-3 px-8 rounded-lg font-medium text-[16px] transition-colors min-w-[100px] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Clear
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="bg-[#22C55E] hover:bg-[#16A34A] text-white py-3 px-8 rounded-lg font-medium text-[16px] transition-colors min-w-[140px] disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? "Saving..." : "Save Payment"}
-              </button>
-            </div>
+        
+        {/* Footer with blue-white gradient */}
+        <div className="bg-gradient-to-r from-[#4F46E5] via-[#6366F1] to-[#8B5CF6] px-8 py-6 mt-auto">
+          <div className="flex justify-end gap-4">
+            <button
+              type="button"
+              onClick={handleClear}
+              disabled={isSubmitting}
+              className="bg-[#EF4444] hover:bg-[#DC2626] text-white py-3 px-8 rounded-lg font-medium text-[16px] transition-colors min-w-[100px] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Clear
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-[#22C55E] hover:bg-[#16A34A] text-white py-3 px-8 rounded-lg font-medium text-[16px] transition-colors min-w-[140px] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? "Saving..." : "Save Payment"}
+            </button>
           </div>
         </div>
       </form>
