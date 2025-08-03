@@ -36,6 +36,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import {
   Select,
   SelectContent,
@@ -59,9 +60,7 @@ const formSchema = z
       .max(254, "Email must be less than 254 characters"),
     contactNumber: z
       .string()
-      .min(10, "Contact number must be at least 10 digits")
-      .max(15, "Contact number must be less than 15 digits")
-      .regex(/^\d+$/, "Contact number can only contain digits"),
+      .min(10, "Contact number must be at least 10 digits"),
     password: z
       .string()
       .min(8, "Password must be at least 8 characters")
@@ -306,31 +305,16 @@ export function AddNewUserFormWrapper({
                   <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
                     Contact Number<span className="text-red-500 ml-1">*</span>
                   </FormLabel>
-                  <div className="flex items-center gap-0 h-[100%]">
-                    <Select defaultValue="+977" disabled={isLoading}>
-                      <SelectTrigger
-                        className="w-[100px] border-gray-300 focus:outline-[#4F46E5] focus:ring-1 focus:ring-[#4F46E5] focus:outline-offset-1
-  data-[state=open]:outline data-[state=open]:outline-[#4F46E5] 
-  data-[state=open]:ring-1 data-[state=open]:ring-[#4F46E5] 
-  data-[state=open]:outline-offset-1 rounded-r-none rounded-l-lg h-full"
-                        style={{ height: "100%" }}
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="+977">+977</SelectItem>
-                        <SelectItem value="+1">+1</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormControl>
-                      <Input
-                        placeholder="9807057526"
-                        {...field}
-                        className="h-[48px] shadow-[0px_0px_4px_0px_#8393FC] focus-visible:border-[#6B7FFF] focus-visible:outline-[#6B7FFF] focus:ring-[#6B7FFF] text-[16px] rounded-[6px]"
-                        disabled={isLoading}
-                      />
-                    </FormControl>
-                  </div>
+                  <FormControl>
+                    <PhoneInput
+                      value={field.value || ""}
+                      onChange={field.onChange}
+                      placeholder="Enter phone number"
+                      disabled={isLoading}
+                      className="w-full"
+                      inputClassName="h-[48px] shadow-[0px_0px_4px_0px_#8393FC] focus-visible:border-[#6B7FFF] focus-visible:outline-[#6B7FFF] focus:ring-[#6B7FFF] text-[16px]"
+                    />
+                  </FormControl>
                   <FormMessage className="text-[12px] text-red-500 mt-1" />
                 </FormItem>
               )}

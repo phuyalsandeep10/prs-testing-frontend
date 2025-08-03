@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { apiClient } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatCurrency } from "@/lib/currency";
 import {
   Table,
   TableBody,
@@ -248,7 +249,9 @@ const DealsTable: React.FC<DealsTableProps> = ({
         accessorKey: "payment_value",
         header: "Payment Value",
         cell: ({ row }) => {
-          return <div>${row.original.payment_value}</div>;
+          const paymentValue = row.original.payment_value;
+          const currency = row.original.deal?.currency || 'USD';
+          return <div>{formatCurrency(paymentValue, currency)}</div>;
         },
       },
       {
@@ -301,9 +304,14 @@ const DealsTable: React.FC<DealsTableProps> = ({
           if (receiptLink) {
             // Fix relative URLs by making them absolute with backend URL
             const backendUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000';
-            const fullUrl = receiptLink.startsWith('http') 
-              ? receiptLink 
-              : `${backendUrl}${receiptLink}`;
+            let fullUrl;
+            if (receiptLink.startsWith('http')) {
+              fullUrl = receiptLink;
+            } else if (receiptLink.startsWith('/media/')) {
+              fullUrl = `${backendUrl}${receiptLink}`;
+            } else {
+              fullUrl = `${backendUrl}/media/${receiptLink}`;
+            }
             
             return (
               <a
@@ -464,10 +472,11 @@ const DealsTable: React.FC<DealsTableProps> = ({
         accessorKey: "deal_value",
         cell: ({ row }) => {
           const value = row.original.deal_value;
-          const numericValue = typeof value === 'number' ? value : parseFloat(String(value || '0'));
-          const formattedValue = `रू ${numericValue.toLocaleString()}`;
+          const currency = row.original.currency || 'USD';
           return (
-            <span className="text-sm text-gray-900 font-medium">{formattedValue}</span>
+            <span className="text-sm text-gray-900 font-medium">
+              {formatCurrency(value, currency)}
+            </span>
           );
         },
       },
@@ -507,10 +516,8 @@ const DealsTable: React.FC<DealsTableProps> = ({
 
                 // Format the payment amount - use verified amount if available, otherwise use received amount
                 const amountToShow = p.verified_amount || p.received_amount;
-                const amount = parseFloat(amountToShow || '0').toLocaleString('en-US', { 
-                  style: 'currency', 
-                  currency: 'USD' 
-                });
+                const currency = row.original.currency || 'USD';
+                const amount = formatCurrency(amountToShow, currency);
 
                 return (
                   <PaymentTooltip key={p.id} amount={amount}>
@@ -636,6 +643,38 @@ const DealsTable: React.FC<DealsTableProps> = ({
     return "hover:bg-gray-50 transition-colors";
   };
 
+  // Export function for deals
+  const handleExport = useCallback((data: Deal[]) => {
+    const csvContent = [
+      // CSV Header
+      ['Deal ID', 'Deal Name', 'Client Name', 'Deal Value', 'Currency', 'Deal Date', 'Due Date', 'Payment Status', 'Verification Status', 'Sales Person', 'Remarks'].join(','),
+      // CSV Data
+      ...data.map(deal => [
+        deal.deal_id,
+        `"${deal.deal_name}"`,
+        `"${deal.client_name}"`,
+        deal.deal_value,
+        deal.currency,
+        deal.deal_date,
+        deal.due_date || '',
+        deal.pay_status,
+        deal.verification_status,
+        `"${deal.created_by?.full_name || ''}"`,
+        `"${deal.deal_remarks || ''}"`
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `verifier_deals_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, []);
+
   return (
     <UnifiedTable
       key={`verifier-deals-${deals.length}`}
@@ -646,6 +685,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
       expandedContent={renderExpandedContent}
       expandedRows={expandedRows}
       onExpandedRowsChange={setExpandedRows}
+      onExport={handleExport}
       getRowProps={(row) => ({
         className: getRowClassName(row as Row<Deal>),
       })}
@@ -655,7 +695,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
           pagination: true,
           sorting: true,
           selection: false,
-          export: false,
+          export: true,
           refresh: false,
           columnVisibility: false,
           globalSearch: false,

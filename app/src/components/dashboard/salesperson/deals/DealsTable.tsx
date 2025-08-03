@@ -15,6 +15,7 @@ import Edit from "@/assets/icons/edit.svg";
 import Add from "@/assets/icons/add.svg";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRouter } from "next/navigation";
+import { formatCurrency } from "@/lib/currency";
 import {
   Table,
   TableBody,
@@ -309,7 +310,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
         header: "Deal Value",
         cell: ({ row }) => (
           <div className="text-[12px] font-medium text-gray-900">
-            {row.original.deal_value}
+            {formatCurrency(row.original.deal_value, row.original.currency || 'USD')}
           </div>
         ),
       },
@@ -366,10 +367,8 @@ const DealsTable: React.FC<DealsTableProps> = ({
 
                 // Format the payment amount - use verified amount if available, otherwise use received amount
                 const amountToShow = p.verified_amount || p.received_amount;
-                const amount = parseFloat(amountToShow || '0').toLocaleString('en-US', { 
-                  style: 'currency', 
-                  currency: 'USD' 
-                });
+                const currency = row.original.currency || 'USD';
+                const amount = formatCurrency(amountToShow, currency);
 
                 return (
                   <PaymentTooltip key={index} amount={amount}>
@@ -508,7 +507,9 @@ const DealsTable: React.FC<DealsTableProps> = ({
         accessorKey: "payment_value",
         header: "Payment Value",
         cell: ({ row }) => {
-          return <div>${row.original.payment_value}</div>;
+          const paymentValue = row.original.payment_value;
+          const currency = row.original.deal?.currency || 'USD';
+          return <div>{formatCurrency(paymentValue, currency)}</div>;
         },
       },
       {
@@ -561,9 +562,14 @@ const DealsTable: React.FC<DealsTableProps> = ({
           if (receiptLink) {
             // Fix relative URLs by making them absolute with backend URL
             const backendUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000';
-            const fullUrl = receiptLink.startsWith('http') 
-              ? receiptLink 
-              : `${backendUrl}${receiptLink}`;
+            let fullUrl;
+            if (receiptLink.startsWith('http')) {
+              fullUrl = receiptLink;
+            } else if (receiptLink.startsWith('/media/')) {
+              fullUrl = `${backendUrl}${receiptLink}`;
+            } else {
+              fullUrl = `${backendUrl}/media/${receiptLink}`;
+            }
             
             console.log("📎 [DASHBOARD] Original link:", receiptLink);
             console.log("📎 [DASHBOARD] Backend URL:", backendUrl);
@@ -660,6 +666,37 @@ const DealsTable: React.FC<DealsTableProps> = ({
     return "hover:bg-gray-50 transition-colors";
   };
 
+  // Export function for deals
+  const handleExport = useCallback((data: Deal[]) => {
+    const csvContent = [
+      // CSV Header
+      ['Deal ID', 'Deal Name', 'Client Name', 'Deal Value', 'Currency', 'Deal Date', 'Due Date', 'Payment Status', 'Verification Status', 'Remarks'].join(','),
+      // CSV Data
+      ...data.map(deal => [
+        deal.deal_id,
+        `"${deal.deal_name}"`,
+        `"${deal.client_name}"`,
+        deal.deal_value,
+        deal.currency,
+        deal.deal_date,
+        deal.due_date || '',
+        deal.pay_status,
+        deal.verification_status,
+        `"${deal.deal_remarks || ''}"`
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `salesperson_deals_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, []);
+
   // Use controlled expansion state if provided, otherwise use internal state
   const currentExpandedRows = expandedRows;
 
@@ -729,6 +766,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
             setExpandedRows(newExpandedRows);
             // React Query will automatically fetch data when ExpandedRowContent is rendered
           }}
+          onExport={handleExport}
           getRowProps={(row: Row<unknown>) => ({
             className: getRowClassName(row as Row<Deal>),
           })}
@@ -738,6 +776,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
               pagination: true,
               globalSearch: false,
               columnVisibility: false,
+              export: true,
             },
             styling: {
               variant: "figma",

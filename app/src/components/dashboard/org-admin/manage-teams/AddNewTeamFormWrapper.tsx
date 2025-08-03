@@ -26,6 +26,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import {
   Select,
   SelectContent,
@@ -43,13 +44,17 @@ interface UserOption {
 }
 
 const formSchema = z.object({
-  teamName: z.string().min(1, "Team name is required"),
+  teamName: z.string()
+    .min(1, "Team name is required")
+    .regex(/^[a-zA-Z\s]+$/, "Team name can only contain letters and spaces"),
   teamLead: z.string().min(1, "Team lead is required"),
   teamMembers: z
     .array(z.string())
     .min(1, "At least one team member is required"),
   assignedProject: z.string().optional(),
-  contactNumber: z.string().optional(),
+  contactNumber: z.string()
+    .min(10, "Contact number must be at least 10 digits")
+    .optional(),
 });
 
 interface AddNewTeamFormWrapperProps {
@@ -464,11 +469,13 @@ export function AddNewTeamFormWrapper({
                     Contact Number<span className="text-red-500 ml-1">*</span>
                   </FormLabel>
                   <FormControl>
-                    <Input
-                      className="h-12 focus:!outline-[#4F46E5] focus:ring-1 focus:!ring-[#4F46E5] text-[16px] rounded-[6px] px-3 bg-white shadow-[0px_0px_4px_0px_#8393FC]"
-                      placeholder="Enter team contact number (e.g., +977 - 9807057526)"
-                      {...field}
+                    <PhoneInput
+                      value={field.value || ""}
+                      onChange={field.onChange}
+                      placeholder="Enter team contact number"
                       disabled={isLoading}
+                      className="w-full"
+                      inputClassName="h-12 focus:!outline-[#4F46E5] focus:ring-1 focus:!ring-[#4F46E5] text-[16px] shadow-[0px_0px_4px_0px_#8393FC]"
                     />
                   </FormControl>
                   <FormMessage />

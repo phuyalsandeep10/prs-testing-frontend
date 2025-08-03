@@ -60,22 +60,53 @@ const ClientDetailsSection: React.FC = () => {
   // Fetch current client status from clients table
   const { data: regularClients = [], isLoading: isClientsLoading, refetch: refetchClients } = useClients();
 
-  // Merge data: commission fields from dashboard + current status from regular clients
+  // Merge data: Include ALL clients (with and without deals)
   const clients = useMemo(() => {
-    return dashboardClients.map((dashboardClient: any) => {
-      // Find matching client in regular clients to get current status
-      const regularClient = regularClients.find((client: any) => 
-        client.id?.toString() === dashboardClient.client_id?.toString() || 
-        client.id?.toString() === dashboardClient.id?.toString()
-      );
-      
-      return {
-        ...dashboardClient,
-        // Override status with current status from regular clients table
-        status: regularClient?.status || dashboardClient.status || dashboardClient.payment_status,
-        client_status: regularClient?.status || dashboardClient.status || dashboardClient.payment_status
-      };
+    const allClientsMap = new Map();
+    
+    // First, add all regular clients with default commission values
+    regularClients.forEach((client: any) => {
+      allClientsMap.set(client.id.toString(), {
+        id: client.id,
+        client_id: client.id,
+        client_name: client.client_name,
+        email: client.email,
+        phone_number: client.phone_number,
+        nationality: client.nationality,
+        remarks: client.remarks,
+        status: client.status,
+        client_status: client.status,
+        // Default commission values for clients without deals
+        total_deals: 0,
+        total_value: 0,
+        outstanding_amount: 0,
+        payment_status: client.status
+      });
     });
+    
+    // Then, override with actual commission data for clients with deals
+    dashboardClients.forEach((dashboardClient: any) => {
+      const clientId = (dashboardClient.client_id || dashboardClient.id)?.toString();
+      if (clientId && allClientsMap.has(clientId)) {
+        const existingClient = allClientsMap.get(clientId);
+        allClientsMap.set(clientId, {
+          ...existingClient,
+          ...dashboardClient,
+          // Keep the current status from regular clients
+          status: existingClient.status,
+          client_status: existingClient.status
+        });
+      } else if (clientId) {
+        // Add dashboard client even if not in regular clients (shouldn't happen normally)
+        allClientsMap.set(clientId, {
+          ...dashboardClient,
+          status: dashboardClient.status || dashboardClient.payment_status,
+          client_status: dashboardClient.status || dashboardClient.payment_status
+        });
+      }
+    });
+    
+    return Array.from(allClientsMap.values());
   }, [dashboardClients, regularClients]);
 
   const isLoading = isDashboardLoading || isClientsLoading;

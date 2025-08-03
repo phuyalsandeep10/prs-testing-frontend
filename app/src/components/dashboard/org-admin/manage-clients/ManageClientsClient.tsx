@@ -331,8 +331,8 @@ export function ManageClientsClient() {
                 filtering: false,
                 globalSearch: false,
                 columnVisibility: false,
-                export: false,
-                refresh: false,
+                export: true,
+                refresh: true,
               },
               styling: {
                 variant: 'figma',

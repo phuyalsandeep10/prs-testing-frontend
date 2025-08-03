@@ -14,7 +14,14 @@ export const useProfile = () => {
     queryKey: PROFILE_QUERY_KEY,
     queryFn: async () => {
       const response = await apiClient.getProfile();
-      return response.data;
+      const userData = response.data;
+      
+      // Ensure avatar field is properly mapped from nested profile structure
+      if (!userData.avatar && (userData as any)?.profile?.profile_picture) {
+        userData.avatar = (userData as any).profile.profile_picture;
+      }
+      
+      return userData;
     },
     initialData: authUser || undefined,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -37,6 +44,11 @@ export const useUpdateProfile = () => {
     },
     onSuccess: (updatedUser) => {
       console.log('Profile update successful:', updatedUser); // Debug log
+      
+      // Ensure avatar field is properly mapped from nested profile structure
+      if (!updatedUser.avatar && (updatedUser as any)?.profile?.profile_picture) {
+        updatedUser.avatar = (updatedUser as any).profile.profile_picture;
+      }
       
       // Update the profile cache immediately
       queryClient.setQueryData(PROFILE_QUERY_KEY, updatedUser);

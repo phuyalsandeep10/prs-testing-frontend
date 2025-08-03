@@ -421,7 +421,7 @@ function getErrorMessage(error: any): string | null {
                           const receiptLink = watch("paymentReceiptLink");
                           // Fix relative URLs by making them absolute with backend URL
                           const backendUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000';
-                          return receiptLink?.startsWith('http') ? receiptLink : `${backendUrl}${receiptLink}`;
+                          return receiptLink?.startsWith('http') ? receiptLink : `${backendUrl}/media/${receiptLink}`;
                         })()}
                         target="_blank"
                         rel="noopener noreferrer"

@@ -17,10 +17,12 @@ import { useOrganizations, useCreateAdmin, useCreateRole } from "@/hooks/api";
 const adminSchema = z.object({
   first_name: z.string()
     .min(2, "First name must be at least 2 characters")
-    .max(50, "First name must not exceed 50 characters"),
+    .max(50, "First name must not exceed 50 characters")
+    .regex(/^[a-zA-Z\s]+$/, "First name can only contain letters and spaces"),
   last_name: z.string()
     .min(2, "Last name must be at least 2 characters")
-    .max(50, "Last name must not exceed 50 characters"),
+    .max(50, "Last name must not exceed 50 characters")
+    .regex(/^[a-zA-Z\s]+$/, "Last name can only contain letters and spaces"),
   email: z.string()
     .email("Invalid email address")
     .min(1, "Email is required"),
@@ -137,9 +139,9 @@ export default function NewAdminPage() {
       width="md"
       showCloseButton={true}
     >
-      <div className="px-6 py-6">
+      <div className="px-6 py-6 flex-1 overflow-y-auto">
         <Form {...form}>
-          <form id="admin-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form id="admin-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 min-h-full">
             {/* Admin Information Section */}
             <div>
               <h3 className="text-[16px] font-medium text-gray-900 mb-4">Admin Information</h3>

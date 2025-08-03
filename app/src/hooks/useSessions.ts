@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api';
+import { apiClient } from '@/lib/api-client';
 import { UserSession } from '@/types';
 import { useAuth } from '@/stores';
 
@@ -13,7 +13,7 @@ export const useSessions = () => {
   return useQuery({
     queryKey: SESSIONS_QUERY_KEY,
     queryFn: async (): Promise<UserSession[]> => {
-      const response = await apiClient.get<any>('/auth/sessions/');
+      const response = await apiClient.getSessions();
 
       // The backend returns a paginated response, so we need to extract the 'results' array.
       // If the response is already an array, use it directly for backward compatibility.

@@ -3,7 +3,8 @@ import { z } from 'zod';
 export const ClientSchema = z.object({
   clientName: z
     .string()
-    .min(1, { message: 'Client name is required' }),
+    .min(1, { message: 'Client name is required' })
+    .regex(/^[A-Za-z\s]+$/, { message: 'Client name can only contain letters and spaces' }),
 
   email: z
     .string()

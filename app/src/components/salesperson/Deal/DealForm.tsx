@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useRouter, usePathname } from "next/navigation";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { DealSchema } from "./DealSchema";
+import { DealSchema, createDealSchema } from "./DealSchema";
 import InputField from "@/components/ui/clientForm/InputField";
 import SelectField from "@/components/ui/clientForm/SelectField";
 import TextAreaField from "@/components/ui/clientForm/TextAreaField";
@@ -80,7 +80,7 @@ const currencies = [
 //   return currencySymbols[currency] || currency;
 // };
 
-const transformDataForApi = (data: DealFormData, clients: Client[]) => {
+const transformDataForApi = (data: DealFormData, clients: Client[], mode?: "add" | "edit") => {
   console.log("🔍 Transforming form data for API...");
   
   const formData = new FormData();
@@ -170,6 +170,12 @@ const transformDataForApi = (data: DealFormData, clients: Client[]) => {
     formData.append(`payments[0][${key}]`, paymentData[key]);
   }
 
+  // Add version field for edit mode
+  if (mode === "edit") {
+    formData.append("version", "edited");
+    console.log("🔄 Version set to 'edited' for edit mode");
+  }
+
   // Log FormData summary
   console.log("🚀 FormData prepared with", [...formData.keys()].length, "fields");
 
@@ -241,7 +247,7 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
       try {
         console.log("Submitting deal data:", data);
 
-        const dealPayload = transformDataForApi(data, clients || []);
+        const dealPayload = transformDataForApi(data, clients || [], mode);
 
         // Log what we're actually sending
         console.log("Deal payload (FormData):");
@@ -344,7 +350,7 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
       watch,
       control,
     } = useForm<DealFormData>({
-      resolver: zodResolver(DealSchema),
+      resolver: zodResolver(createDealSchema(mode === "edit")),
     });
 
     // Watch form values to debug population and for real-time validation
@@ -953,7 +959,7 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                     <input
                       id="uploadReceipt"
                       type="file"
-                      accept=".pdf"
+                      accept=".pdf,.png,.jpg,.jpeg"
                       {...register("uploadReceipt")}
                       className="hidden"
                       disabled={isLoading || mode === "edit"}
@@ -968,7 +974,9 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
                     >
                       {mode === "edit" && dealData?.payments?.[0]?.receipt_file ? (
                         <a
-                          href={dealData.payments[0].receipt_file}
+                          href={dealData.payments[0].receipt_file.startsWith('http') 
+                            ? dealData.payments[0].receipt_file 
+                            : dealData.payments[0].receipt_file.replace(/\/media\/media\//, '/media/')}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-blue-600 hover:text-blue-800 underline"

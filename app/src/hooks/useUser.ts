@@ -49,11 +49,17 @@ export function useUser(): UseUserReturn {
 
       try {
         if (session?.user) {
-          // If we have a session, fetch full user data
+          // If we have a session, try to fetch full user data
           const userId = (session.user as any).id;
           if (userId) {
-            const response = await userApi.getById(userId);
-            setUser(response.data);
+            try {
+              const response = await userApi.getById(userId);
+              setUser(response.data);
+            } catch (apiError) {
+              console.warn('Failed to fetch user data from API, using session data:', apiError);
+              // Fallback to session data if API call fails
+              setUser(session.user as User);
+            }
           } else {
             // Fallback to session data if no ID
             setUser(session.user as User);

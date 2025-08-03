@@ -53,13 +53,25 @@ class ApiClient {
       '/auth/super-admin/verify',
       '/auth/org-admin/login',
       '/auth/org-admin/verify',
-      '/auth/change-password',
       '/auth/forgot-password',
       '/auth/reset-password',
     ];
 
     try {
-      const authToken = localStorage.getItem('authToken');
+      // Try to get token from localStorage first (for direct API calls)
+      let authToken = localStorage.getItem('authToken');
+      
+      // If no token in localStorage, try to get from NextAuth session
+      if (!authToken && typeof window !== 'undefined') {
+        try {
+          // Import getSession dynamically to avoid SSR issues
+          const { getSession } = await import('next-auth/react');
+          const session = await getSession();
+          authToken = (session as any)?.user?.accessToken;
+        } catch (sessionError) {
+          console.warn('Could not get NextAuth session:', sessionError);
+        }
+      }
       
       // Check if the current request endpoint path starts with any of the public paths.
       const isPublicEndpoint = PUBLIC_ENDPOINTS.some(publicEp => endpoint.startsWith(publicEp));
@@ -85,8 +97,32 @@ class ApiClient {
         }
 
         const errorData = await response.json().catch(() => ({}));
+        
+        // Extract error message from various possible formats
+        let errorMessage = errorData.message;
+        
+        // Check for Django-style non_field_errors array
+        if (!errorMessage && errorData.non_field_errors && Array.isArray(errorData.non_field_errors)) {
+          errorMessage = errorData.non_field_errors[0];
+        }
+        
+        // Check for field-specific errors
+        if (!errorMessage && errorData.errors) {
+          const firstError = Object.values(errorData.errors)[0];
+          if (Array.isArray(firstError)) {
+            errorMessage = firstError[0];
+          } else {
+            errorMessage = firstError;
+          }
+        }
+        
+        // Fallback to generic message
+        if (!errorMessage) {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        
         throw new ApiError(
-          errorData.message || `HTTP ${response.status}: ${response.statusText}`,
+          errorMessage,
           response.status.toString(),
           errorData
         );
@@ -140,12 +176,26 @@ class ApiClient {
   }
 
   async postMultipart<T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
-    const url = `${this.baseURL}${endpoint}`;
+    const url = `${this.baseURL.replace(/\/+$/, '')}/${endpoint.replace(/^\/+/, '')}`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
     try {
-      const authToken = localStorage.getItem('authToken');
+      // Try to get token from localStorage first (for direct API calls)
+      let authToken = localStorage.getItem('authToken');
+      
+      // If no token in localStorage, try to get from NextAuth session
+      if (!authToken && typeof window !== 'undefined') {
+        try {
+          // Import getSession dynamically to avoid SSR issues
+          const { getSession } = await import('next-auth/react');
+          const session = await getSession();
+          authToken = (session as any)?.user?.accessToken;
+        } catch (sessionError) {
+          console.warn('Could not get NextAuth session:', sessionError);
+        }
+      }
+      
       const headers: HeadersInit = {
         ...(authToken && { 'Authorization': `Token ${authToken}` }),
       };
@@ -161,8 +211,32 @@ class ApiClient {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        
+        // Extract error message from various possible formats
+        let errorMessage = errorData.message;
+        
+        // Check for Django-style non_field_errors array
+        if (!errorMessage && errorData.non_field_errors && Array.isArray(errorData.non_field_errors)) {
+          errorMessage = errorData.non_field_errors[0];
+        }
+        
+        // Check for field-specific errors
+        if (!errorMessage && errorData.errors) {
+          const firstError = Object.values(errorData.errors)[0];
+          if (Array.isArray(firstError)) {
+            errorMessage = firstError[0];
+          } else {
+            errorMessage = firstError;
+          }
+        }
+        
+        // Fallback to generic message
+        if (!errorMessage) {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        
         throw new ApiError(
-          errorData.message || `HTTP ${response.status}: ${response.statusText}`,
+          errorMessage,
           response.status.toString(),
           errorData
         );
@@ -190,12 +264,26 @@ class ApiClient {
   }
 
   async putMultipart<T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
-    const url = `${this.baseURL}${endpoint}`;
+    const url = `${this.baseURL.replace(/\/+$/, '')}/${endpoint.replace(/^\/+/, '')}`;
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
     try {
-      const authToken = localStorage.getItem('authToken');
+      // Try to get token from localStorage first (for direct API calls)
+      let authToken = localStorage.getItem('authToken');
+      
+      // If no token in localStorage, try to get from NextAuth session
+      if (!authToken && typeof window !== 'undefined') {
+        try {
+          // Import getSession dynamically to avoid SSR issues
+          const { getSession } = await import('next-auth/react');
+          const session = await getSession();
+          authToken = (session as any)?.user?.accessToken;
+        } catch (sessionError) {
+          console.warn('Could not get NextAuth session:', sessionError);
+        }
+      }
+      
       const headers: HeadersInit = {
         ...(authToken && { 'Authorization': `Token ${authToken}` }),
       };
@@ -211,8 +299,32 @@ class ApiClient {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        
+        // Extract error message from various possible formats
+        let errorMessage = errorData.message;
+        
+        // Check for Django-style non_field_errors array
+        if (!errorMessage && errorData.non_field_errors && Array.isArray(errorData.non_field_errors)) {
+          errorMessage = errorData.non_field_errors[0];
+        }
+        
+        // Check for field-specific errors
+        if (!errorMessage && errorData.errors) {
+          const firstError = Object.values(errorData.errors)[0];
+          if (Array.isArray(firstError)) {
+            errorMessage = firstError[0];
+          } else {
+            errorMessage = firstError;
+          }
+        }
+        
+        // Fallback to generic message
+        if (!errorMessage) {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        
         throw new ApiError(
-          errorData.message || `HTTP ${response.status}: ${response.statusText}`,
+          errorMessage,
           response.status.toString(),
           errorData
         );
@@ -251,6 +363,94 @@ class ApiClient {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
+  }
+
+  async patchMultipart<T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
+    const url = `${this.baseURL.replace(/\/+$/, '')}/${endpoint.replace(/^\/+/, '')}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+    try {
+      // Try to get token from localStorage first (for direct API calls)
+      let authToken = localStorage.getItem('authToken');
+      
+      // If no token in localStorage, try to get from NextAuth session
+      if (!authToken && typeof window !== 'undefined') {
+        try {
+          // Import getSession dynamically to avoid SSR issues
+          const { getSession } = await import('next-auth/react');
+          const session = await getSession();
+          authToken = (session as any)?.user?.accessToken;
+        } catch (sessionError) {
+          console.warn('Could not get NextAuth session:', sessionError);
+        }
+      }
+      
+      const headers: HeadersInit = {
+        ...(authToken && { 'Authorization': `Token ${authToken}` }),
+      };
+
+      const response = await fetch(url, {
+        method: 'PATCH',
+        body: formData,
+        signal: controller.signal,
+        headers,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        
+        // Extract error message from various possible formats
+        let errorMessage = errorData.message;
+        
+        // Check for Django-style non_field_errors array
+        if (!errorMessage && errorData.non_field_errors && Array.isArray(errorData.non_field_errors)) {
+          errorMessage = errorData.non_field_errors[0];
+        }
+        
+        // Check for field-specific errors
+        if (!errorMessage && errorData.errors) {
+          const firstError = Object.values(errorData.errors)[0];
+          if (Array.isArray(firstError)) {
+            errorMessage = firstError[0];
+          } else {
+            errorMessage = firstError;
+          }
+        }
+        
+        // Fallback to generic message
+        if (!errorMessage) {
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        
+        throw new ApiError(
+          errorMessage,
+          response.status.toString(),
+          errorData
+        );
+      }
+
+      const data = await response.json();
+      return {
+        data,
+        success: true,
+        message: data.message,
+      };
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      if (error?.name === 'AbortError') {
+        throw new ApiError('Request timeout', 'TIMEOUT');
+      }
+      throw new ApiError(
+        error?.message || 'An unexpected error occurred',
+        'UNKNOWN_ERROR'
+      );
+    }
   }
 
   async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
@@ -308,8 +508,41 @@ class ApiClient {
     return this.get<User>('/auth/profile/');
   }
 
-  async updateProfile(data: Partial<User>): Promise<ApiResponse<User>> {
-    return this.patch<User>('/auth/profile/', data);
+  async updateProfile(data: Partial<User> & { avatar?: File }): Promise<ApiResponse<User>> {
+    if (data.avatar) {
+      console.log('Creating FormData with file:', data.avatar.name);
+      const formData = new FormData();
+      
+      // Add all text fields
+      Object.keys(data).forEach(key => {
+        if (key !== 'avatar' && data[key as keyof typeof data] !== undefined) {
+          formData.append(key, String(data[key as keyof typeof data]));
+          console.log(`Added field ${key}:`, String(data[key as keyof typeof data]));
+        }
+      });
+      
+      // Add the file under the correct nested structure
+      formData.append('profile.profile_picture', data.avatar);
+      console.log('Added profile picture file to FormData');
+      
+      // Log formData contents
+      console.log('FormData contents:');
+      for (const [key, value] of formData.entries()) {
+        console.log(`${key}:`, value);
+      }
+      
+      // Try PATCH multipart first, fallback to PUT if needed
+      try {
+        console.log('Attempting PATCH multipart request');
+        return await this.patchMultipart<User>('/auth/profile/', formData);
+      } catch (error) {
+        console.log('PATCH failed, trying PUT multipart:', error);
+        return this.putMultipart<User>('/auth/profile/', formData);
+      }
+    } else {
+      console.log('No avatar file, using regular PATCH request');
+      return this.patch<User>('/auth/profile/', data);
+    }
   }
 
   // Password Management

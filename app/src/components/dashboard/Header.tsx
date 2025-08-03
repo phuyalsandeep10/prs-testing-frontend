@@ -92,7 +92,7 @@ export default function Header() {
               className="flex items-center gap-3 relative rounded-full p-2 h-auto"
             >
               <Avatar className="h-10 w-10">
-                <AvatarImage src={undefined} alt={fullName} />
+                <AvatarImage src={(user as any)?.avatar} alt={fullName} />
                 <AvatarFallback>{avatarInitials}</AvatarFallback>
               </Avatar>
               <div className="text-left">
@@ -104,8 +104,9 @@ export default function Header() {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Settings</DropdownMenuItem>
-            <DropdownMenuItem>Support</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push("/settings")}>
+              Settings
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => {
               logout();

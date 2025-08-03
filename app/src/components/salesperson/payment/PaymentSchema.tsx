@@ -20,9 +20,15 @@ export const DealSchema = z.object({
     message: "Upload Receipt is required",
   })
   .refine(
-    (files) => files?.[0]?.name?.toLowerCase().endsWith(".pdf"),
+    (files) => {
+      if (files?.length > 0) {
+        const fileName = files[0]?.name?.toLowerCase();
+        return fileName?.endsWith(".pdf") || fileName?.endsWith(".png") || fileName?.endsWith(".jpg") || fileName?.endsWith(".jpeg");
+      }
+      return true;
+    },
     {
-      message: "Only PDF files are allowed",
+      message: "Only PDF, PNG, JPG, or JPEG files are allowed",
     }
   ),
 

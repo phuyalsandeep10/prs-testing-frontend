@@ -21,6 +21,14 @@ const nextConfig = {
     minimumCacheTTL: 60,
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '8000',
+        pathname: '/media/**',
+      },
+    ],
   },
   // Reduce resource hints that might cause preloading warnings
   async headers() {
@@ -40,14 +48,14 @@ const nextConfig = {
       },
     ];
   },
-  // API proxy for backend communication
+  // API proxy for backend communication - exclude NextAuth routes
   async rewrites() {
     return process.env.NODE_ENV === "development"
       ? [
           {
-            source: "/api/:path*",
+            source: "/api/((?!auth).*)",
             destination:
-              process.env.NEXT_PUBLIC_API_URL + "/api/:path*", // backend URL from env
+              process.env.NEXT_PUBLIC_API_URL + "/:match*", // backend URL from env
           },
         ]
       : [];

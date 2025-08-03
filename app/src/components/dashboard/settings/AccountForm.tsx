@@ -2,6 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { PhoneInput } from "@/components/ui/phone-input";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -17,7 +18,7 @@ const formSchema = z.object({
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email"),
-  phoneNumber: z.string().optional(),
+  phoneNumber: z.string().min(10, "Phone number must be at least 10 digits").optional(),
   address: z.string().min(1, "Address is required"),
 });
 
@@ -39,6 +40,7 @@ export default function AccountForm() {
   } = useProfileManagement();
   const [fileName, setFileName] = useState("Profile.Pic.jpg");
   const [photoURL, setPhotoURL] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [formData, setFormData] = useState<FormData | null>(null);
 
@@ -48,9 +50,17 @@ export default function AccountForm() {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      first_name: "",
+      last_name: "",
+      email: "",
+      phoneNumber: "",
+      address: "",
+    },
   });
 
   // Load profile data when available and reset form
@@ -63,12 +73,14 @@ export default function AccountForm() {
       setValue("phoneNumber", profile.phoneNumber || "");
       setValue("address", profile.address || "");
       
-      // Set avatar if available
-      if (profile.avatar) {
-        setPhotoURL(profile.avatar);
+      // Set avatar if available and no local file is selected
+      const avatarUrl = profile.avatar || (profile as any)?.profile?.profile_picture;
+      if (avatarUrl && !selectedFile) {
+        console.log('Setting avatar from profile:', avatarUrl);
+        setPhotoURL(avatarUrl);
       }
     }
-  }, [profile, setValue]);
+  }, [profile, setValue, selectedFile]);
 
   // Force form reload when profile is successfully updated
   useEffect(() => {
@@ -79,6 +91,14 @@ export default function AccountForm() {
       setValue("email", profile.email || "");
       setValue("phoneNumber", profile.phoneNumber || "");
       setValue("address", profile.address || "");
+      
+      // Update avatar after successful update
+      const avatarUrl = profile.avatar || (profile as any)?.profile?.profile_picture;
+      if (avatarUrl) {
+        console.log('Setting avatar URL from profile:', avatarUrl);
+        setPhotoURL(avatarUrl);
+        setFileName("Profile.Pic.jpg"); // Reset filename
+      }
     }
   }, [isUpdateSuccess, profile, setValue]);
 
@@ -93,6 +113,15 @@ export default function AccountForm() {
     }
   }, [isUpdateSuccess, resetUpdate]);
 
+  // Cleanup URL objects on unmount
+  useEffect(() => {
+    return () => {
+      if (photoURL && photoURL.startsWith('blob:')) {
+        URL.revokeObjectURL(photoURL);
+      }
+    };
+  }, [photoURL]);
+
   const handleImageClick = () => {
     fileInputRef.current?.click();
   };
@@ -100,8 +129,14 @@ export default function AccountForm() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Clean up previous URL object to prevent memory leaks
+      if (photoURL && photoURL.startsWith('blob:')) {
+        URL.revokeObjectURL(photoURL);
+      }
+      
       setFileName(file.name);
       setPhotoURL(URL.createObjectURL(file));
+      setSelectedFile(file);
     }
   };
 
@@ -112,9 +147,16 @@ export default function AccountForm() {
 
   const handleConfirmUpdate = () => {
     if (formData) {
-      updateProfile(formData as Partial<User>);
+      const updateData = { ...formData } as Partial<User> & { avatar?: File };
+      if (selectedFile) {
+        console.log('Adding selected file to update:', selectedFile.name, selectedFile.size);
+        updateData.avatar = selectedFile;
+      }
+      console.log('Updating profile with data:', updateData);
+      updateProfile(updateData);
       setIsUpdateModalOpen(false);
       setFormData(null);
+      setSelectedFile(null);
     }
   };
 
@@ -258,11 +300,12 @@ export default function AccountForm() {
               <label className="block text-sm font-medium text-[#4F46E5] mb-2">
                 Phone Number
               </label>
-              <Input
-                {...register("phoneNumber")}
-                type="tel"
+              <PhoneInput
+                value={watch("phoneNumber") ?? ""}
+                onChange={(value) => setValue("phoneNumber", value)}
                 placeholder="Enter your phone number"
-                className="h-[48px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5]"
+                className="w-full"
+                inputClassName="h-[48px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5]"
               />
               {errors.phoneNumber && (
                 <p className="text-sm text-red-500 mt-1">{errors.phoneNumber.message}</p>

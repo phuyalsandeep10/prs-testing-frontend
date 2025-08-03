@@ -8,26 +8,28 @@ import { toast } from "sonner";
 import { Loader2, X } from "lucide-react";
 import type { Client } from "@/lib/types/roles";
 import { useCreateClient, useUpdateClient } from "@/hooks/api";
+import { clientApi } from "@/lib/api";
 
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { NationalitySelector } from "@/components/ui/nationality-selector";
 
 // Form schemas for different variants
 const addClientSchema = z.object({
-  client_name: z.string().min(1, "Client name is required"),
+  client_name: z.string().min(1, "Client name is required").regex(/^[A-Za-z\s]+$/, "Client name can only contain letters and spaces"),
   email: z.string().email("Invalid email address"),
-  phone_number: z.string().min(10, "Contact number must be at least 10 digits"),
+  phone_number: z.string().min(1, "Phone number is required"),
   nationality: z.string().min(1, "Nationality is required"),
   remarks: z.string().optional(),
 });
 
 const editClientSchema = z.object({
-  client_name: z.string().min(1, "Client name is required"),
+  client_name: z.string().min(1, "Client name is required").regex(/^[A-Za-z\s]+$/, "Client name can only contain letters and spaces"),
   email: z.string().email("Invalid email address"),
-  phone_number: z.string().min(10, "Contact number must be at least 10 digits"),
+  phone_number: z.string().min(1, "Phone number is required"),
   nationality: z.string().min(1, "Nationality is required"),
   status: z.enum(["clear", "pending", "bad_debt"]).optional(),
   satisfaction: z.enum(["excellent", "good", "average", "poor"]).optional(),
@@ -35,9 +37,9 @@ const editClientSchema = z.object({
 });
 
 const salespersonClientSchema = z.object({
-  clientName: z.string().min(1, "Client name is required"),
+  clientName: z.string().min(1, "Client name is required").regex(/^[A-Za-z\s]+$/, "Client name can only contain letters and spaces"),
   email: z.string().email("Invalid email address"),
-  contactNumber: z.string().min(10, "Contact number must be at least 10 digits"),
+  contactNumber: z.string().min(1, "Contact number is required"),
   nationality: z.string().min(1, "Nationality is required"),
   remarks: z.string().optional(),
 });
@@ -65,6 +67,7 @@ export function ClientFormWrapper({
   onSuccess 
 }: ClientFormWrapperProps) {
   const [isVisible, setIsVisible] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
   const createClientMutation = useCreateClient();
   const updateClientMutation = useUpdateClient();
 
@@ -158,7 +161,7 @@ export function ClientFormWrapper({
         email: values.email,
         nationality: values.nationality,
         remarks: values.remarks || '',
-        phone_number: phoneRaw.trim().startsWith('+') ? phoneRaw.trim() : `+977${phoneRaw.trim()}`,
+        phone_number: phoneRaw.trim(),
       };
 
       if (variant === 'edit' && values.status) {
@@ -323,39 +326,89 @@ export function ClientFormWrapper({
         <FormField
           control={form.control}
           name={variant === 'salesperson' ? "contactNumber" : "phone_number"}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className={`text-[14px] font-medium ${styles.labelColor} mb-2 block`}>
-                Contact Number<span className="text-red-500 ml-1">*</span>
-              </FormLabel>
-              {variant !== 'salesperson' ? (
-                <div className="flex items-center gap-0">
-                  <div className="w-[48px] h-[48px] border-2 border-[#4F46E5] rounded-l-lg flex items-center justify-center bg-white border-r-0">
-                    <span className="text-lg">🇳🇵</span>
-                  </div>
-                  <FormControl>
-                    <Input
-                      className="h-[48px] border-2 border-[#4F46E5] border-l-0 focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-l-none rounded-r-lg"
-                      placeholder="9800000000"
-                      {...field}
-                      disabled={isLoading}
-                    />
-                  </FormControl>
-                </div>
-              ) : (
+          render={({ field }) => {
+            const [countryCode, setCountryCode] = React.useState('+977');
+            const [phoneNumber, setPhoneNumber] = React.useState('');
+            const [initialized, setInitialized] = React.useState(false);
+
+            // Initialize from field value only once
+            React.useEffect(() => {
+              if (!initialized && field.value) {
+                const match = field.value.match(/^(\+\d+)(.*)$/);
+                if (match) {
+                  setCountryCode(match[1]);
+                  setPhoneNumber(match[2] || '');
+                }
+                setInitialized(true);
+              } else if (!initialized) {
+                // Initialize with default values
+                setInitialized(true);
+              }
+            }, [field.value, initialized]);
+
+            const updateFormValue = (newCountryCode: string, newPhoneNumber: string) => {
+              const fullValue = newPhoneNumber ? `${newCountryCode}${newPhoneNumber}` : '';
+              field.onChange(fullValue);
+            };
+
+            const handleCountryChange = (newCountryCode: string) => {
+              setCountryCode(newCountryCode);
+              updateFormValue(newCountryCode, phoneNumber);
+            };
+
+            const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+              const newPhoneNumber = e.target.value.replace(/\D/g, '').slice(0, 15);
+              setPhoneNumber(newPhoneNumber);
+              updateFormValue(countryCode, newPhoneNumber);
+            };
+
+            return (
+              <FormItem>
+                <FormLabel className={`text-[14px] font-medium ${styles.labelColor} mb-2 block`}>
+                  Contact Number<span className="text-red-500 ml-1">*</span>
+                </FormLabel>
                 <FormControl>
-                  <Input
-                    type="tel"
-                    className={`h-[48px] ${styles.inputBorder} ${styles.inputFocus} text-[16px] rounded-lg w-[186px]`}
-                    placeholder="9800000000"
-                    {...field}
-                    disabled={isLoading}
-                  />
+                  <div className="flex">
+                    <Select 
+                      value={countryCode}
+                      disabled={isLoading}
+                      onValueChange={handleCountryChange}
+                    >
+                      <SelectTrigger className="w-[120px] h-[48px] rounded-r-none border-r-0 border-2 border-[#4F46E5]">
+                        <SelectValue placeholder="Country" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="+977">🇳🇵 +977</SelectItem>
+                        <SelectItem value="+91">🇮🇳 +91</SelectItem>
+                        <SelectItem value="+1">🇺🇸 +1</SelectItem>
+                        <SelectItem value="+44">🇬🇧 +44</SelectItem>
+                        <SelectItem value="+86">🇨🇳 +86</SelectItem>
+                        <SelectItem value="+61">🇦🇺 +61</SelectItem>
+                        <SelectItem value="+33">🇫🇷 +33</SelectItem>
+                        <SelectItem value="+49">🇩🇪 +49</SelectItem>
+                        <SelectItem value="+81">🇯🇵 +81</SelectItem>
+                        <SelectItem value="+82">🇰🇷 +82</SelectItem>
+                        <SelectItem value="+65">🇸🇬 +65</SelectItem>
+                        <SelectItem value="+971">🇦🇪 +971</SelectItem>
+                        <SelectItem value="+966">🇸🇦 +966</SelectItem>
+                        <SelectItem value="+60">🇲🇾 +60</SelectItem>
+                        <SelectItem value="+66">🇹🇭 +66</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="tel"
+                      className={`h-[48px] ${styles.inputBorder} ${styles.inputFocus} text-[16px] rounded-l-none border-l-0`}
+                      placeholder="9807057526"
+                      value={phoneNumber}
+                      disabled={isLoading}
+                      onChange={handlePhoneChange}
+                    />
+                  </div>
                 </FormControl>
-              )}
-              <FormMessage className="text-[12px] text-red-500 mt-1" />
-            </FormItem>
-          )}
+                <FormMessage className="text-[12px] text-red-500 mt-1" />
+              </FormItem>
+            );
+          }}
         />
 
         <FormField
@@ -366,30 +419,15 @@ export function ClientFormWrapper({
               <FormLabel className={`text-[14px] font-medium ${styles.labelColor} mb-2 block`}>
                 Nationality<span className="text-red-500 ml-1">*</span>
               </FormLabel>
-              {variant !== 'salesperson' ? (
-                <div className="flex items-center gap-0">
-                  <div className="w-[48px] h-[48px] border-2 border-[#4F46E5] rounded-l-lg flex items-center justify-center bg-white border-r-0">
-                    <span className="text-lg">🇳🇵</span>
-                  </div>
-                  <FormControl>
-                    <Input
-                      className="h-[48px] border-2 border-[#4F46E5] border-l-0 focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-l-none rounded-r-lg"
-                      placeholder="Nepalese"
-                      {...field}
-                      disabled={isLoading}
-                    />
-                  </FormControl>
-                </div>
-              ) : (
-                <FormControl>
-                  <Input
-                    className={`h-[48px] ${styles.inputBorder} ${styles.inputFocus} text-[16px] rounded-lg w-[186px]`}
-                    placeholder="Nepalese"
-                    {...field}
-                    disabled={isLoading}
-                  />
-                </FormControl>
-              )}
+              <FormControl>
+                <NationalitySelector
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  placeholder="Select nationality"
+                  disabled={isLoading}
+                  className={variant === 'salesperson' ? "w-[186px]" : "w-full"}
+                />
+              </FormControl>
               <FormMessage className="text-[12px] text-red-500 mt-1" />
             </FormItem>
           )}

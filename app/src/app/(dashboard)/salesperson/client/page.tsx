@@ -101,7 +101,7 @@ const ClientsPage = React.memo(() => {
     ].filter(Boolean); // Filter out null/undefined values
 
     return searchableFields.some(field =>
-      field!.toLowerCase().includes(query.toLowerCase())
+      String(field).toLowerCase().includes(query.toLowerCase())
     );
   }, []);
 

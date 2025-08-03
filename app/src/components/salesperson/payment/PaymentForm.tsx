@@ -392,14 +392,19 @@ const DealForm = () => {
                   <input
                     id="uploadReceipt"
                     type="file"
-                    accept=".pdf"
+                    accept=".pdf,.png,.jpg,.jpeg"
                     {...register("uploadReceipt", {
                       validate: {
                         required: (fileList) =>
                           fileList?.length > 0 || "Upload Receipt is required",
-                        isPdf: (fileList) =>
-                          fileList?.[0]?.name?.toLowerCase().endsWith(".pdf") ||
-                          "Only PDF files are allowed",
+                        isValidFile: (fileList) => {
+                          const file = fileList?.[0];
+                          if (!file) return true;
+                          const validExtensions = ['.pdf', '.png', '.jpg', '.jpeg'];
+                          const fileName = file.name.toLowerCase();
+                          return validExtensions.some(ext => fileName.endsWith(ext)) ||
+                            "Only PDF, PNG, and JPG files are allowed";
+                        },
                       },
                     })}
                     className="hidden"

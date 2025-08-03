@@ -10,16 +10,47 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        // TODO: Add your authentication logic here
-        // This is a placeholder implementation
-        if (credentials?.email && credentials?.password) {
-          return {
-            id: "1",
-            email: credentials.email,
-            name: "User",
-          };
+        if (!credentials?.email || !credentials?.password) {
+          return null;
         }
-        return null;
+
+        try {
+          // Make request to your backend API
+          const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '') || 'http://localhost:8000/api';
+          
+          const response = await fetch(`${API_BASE_URL}/auth/login/`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              email: credentials.email,
+              password: credentials.password,
+            }),
+          });
+
+          if (!response.ok) {
+            console.error('Authentication failed:', response.status, response.statusText);
+            return null;
+          }
+
+          const data = await response.json();
+          
+          if (data.success && data.data) {
+            return {
+              id: data.data.user.id,
+              email: data.data.user.email,
+              name: data.data.user.full_name || data.data.user.name,
+              role: data.data.user.role,
+              token: data.data.token,
+            };
+          }
+          
+          return null;
+        } catch (error) {
+          console.error('Authentication error:', error);
+          return null;
+        }
       }
     })
   ],
@@ -33,14 +64,20 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.role = (user as any).role;
+        token.accessToken = (user as any).token;
       }
       return token;
     },
     async session({ session, token }) {
       if (token && session.user) {
         (session.user as any).id = token.id as string;
+        (session.user as any).role = token.role as string;
+        (session.user as any).accessToken = token.accessToken as string;
       }
       return session;
     },
   },
+  // Add secret for production
+  secret: process.env.NEXTAUTH_SECRET,
 };

@@ -29,6 +29,8 @@ class NotificationWebSocketService {
       this.isConnecting = false;
       return;
     }
+
+    console.log('🔌 Attempting WebSocket connection to:', `${wsUrl}/ws/notifications/`);
     
     try {
       if (this.socket) {

@@ -69,9 +69,9 @@ export class WebSocketConnectionManager {
       // Validate WebSocket URL before attempting connection
       console.log('DEBUG: process.env.NEXT_PUBLIC_WS_URL =', process.env.NEXT_PUBLIC_WS_URL);
       console.log('DEBUG: this.config.url =', this.config.url);
-      const defaultUrl = 'ws://localhost:8000/ws/';
-      if (!this.config.url || this.config.url === defaultUrl) {
-        console.warn('WebSocket URL not configured or using default. Real-time features will be disabled.');
+      const defaultUrls = ['ws://localhost:8000/ws/', 'ws://localhost:8001', 'ws://localhost:8001/'];
+      if (!this.config.url || defaultUrls.includes(this.config.url)) {
+        console.warn('WebSocket URL not configured or using development default. Real-time features will be disabled.');
         this.isConnecting = false;
         return;
       }
@@ -671,7 +671,8 @@ export const useRealtimeSync = (queryClient: QueryClient) => {
     // Initialize WebSocket if config is available and not using default
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
     
-    if (typeof window !== 'undefined' && wsUrl && wsUrl !== 'ws://localhost:8000/ws/') {
+    const defaultUrls = ['ws://localhost:8000/ws/', 'ws://localhost:8001', 'ws://localhost:8001/'];
+    if (typeof window !== 'undefined' && wsUrl && !defaultUrls.includes(wsUrl)) {
       const wsConfig = {
         url: wsUrl,
       };

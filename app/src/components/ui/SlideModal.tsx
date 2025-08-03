@@ -133,7 +133,7 @@ const SlideModal: React.FC<SlideModalProps> = ({
             )}
 
             {/* Content */}
-            <div className="flex-1 overflow-hidden flex flex-col">{children}</div>
+            <div className="flex-1 overflow-y-auto flex flex-col">{children}</div>
           </div>
         </div>
       </div>

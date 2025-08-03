@@ -281,6 +281,17 @@ export class StandardApiClient {
   getToken(): string | null {
     return this.getAuthToken();
   }
+
+  /**
+   * Session Management Methods
+   */
+  async getSessions(): Promise<any> {
+    return this.get('/auth/sessions/');
+  }
+
+  async revokeSession(sessionId: string): Promise<any> {
+    return this.delete(`/auth/sessions/${sessionId}/`);
+  }
 }
 
 // Export singleton instance

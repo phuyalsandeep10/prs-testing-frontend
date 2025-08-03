@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Update from "@/components/global-components/Update";
 import { usePasswordManagement } from "@/hooks/usePasswordChange";
+import { useAuth } from "@/stores";
+import { USER_ROLES } from "@/lib/constants";
 
 // Zod schema for password validation
 const passwordSchema = z
@@ -36,9 +38,18 @@ const PasswordUpdateForm = () => {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { changePassword, isChanging, isSuccess, isError, error, reset } = usePasswordManagement();
+  const { changePassword, isChanging, isSuccess, isError, error, reset, canChangePassword } = usePasswordManagement();
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [formData, setFormData] = useState<PasswordFormData | null>(null);
+  const { user, isAuthInitialized } = useAuth();
+
+  // Debug: Log component data
+  console.log('PasswordUpdate Debug:', {
+    user,
+    isAuthInitialized,
+    canChangePassword,
+    userRole: user?.role
+  });
 
   const {
     register,
@@ -144,6 +155,24 @@ const PasswordUpdateForm = () => {
     </div>
   );
 
+  // Show loading state while auth is being initialized
+  if (!isAuthInitialized) {
+    return (
+      <div className="space-y-6 font-outfit">
+        <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+          <div className="text-center">
+            <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <KeyRound className="w-6 h-6 text-[#4F46E5]" />
+            </div>
+            <p className="text-sm text-gray-600">Loading user information...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Note: Allow restricted users to see and fill the form, but block on submit
+
   return (
     <>
       <div className="space-y-6 font-outfit">
@@ -168,10 +197,15 @@ const PasswordUpdateForm = () => {
           )}
 
           {isError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-center">
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-sm text-red-700 font-medium">
-                {error?.message || "Failed to update password. Please check your current password and try again."}
+                {(error as any)?.message || "Failed to update password. Please check your current password and try again."}
               </p>
+              {(error as any)?.code === 'PERMISSION_DENIED' && (
+                <p className="text-xs text-red-600 mt-2">
+                  A security alert has been sent to your organization administrator.
+                </p>
+              )}
             </div>
           )}
 

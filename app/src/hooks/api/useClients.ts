@@ -152,6 +152,11 @@ export const useCreateClient = () => {
       queryClient.setQueryData(clientKeys.lists(), (oldData: Client[] | undefined) => {
         return oldData ? [newClient, ...oldData] : [newClient];
       });
+      
+      // Invalidate dashboard clients cache to include new clients in commission page
+      queryClient.invalidateQueries({ queryKey: [...clientKeys.all, 'dashboard'] });
+      
+      toast.success('Client created successfully');
     },
     
     onError: (error) => {
