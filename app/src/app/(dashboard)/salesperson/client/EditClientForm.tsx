@@ -53,6 +53,12 @@ export default function EditClientForm({
   const [isLoading, setIsLoading] = React.useState(false);
   const updateClientMutation = useUpdateClient();
 
+  // Debug logging for client data
+  React.useEffect(() => {
+    console.log("EditClientForm - Client data received:", client);
+    console.log("EditClientForm - Phone number from client:", client.phone_number);
+  }, [client]);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -211,18 +217,33 @@ export default function EditClientForm({
 
                   // Initialize from field value only once
                   React.useEffect(() => {
+                    console.log("EditClientForm - Phone field initialization:", {
+                      initialized,
+                      fieldValue: field.value,
+                      clientPhoneNumber: client.phone_number
+                    });
+                    
                     if (!initialized && field.value) {
                       const match = field.value.match(/^(\+\d+)(.*)$/);
                       if (match) {
+                        console.log("EditClientForm - Phone regex match found:", match);
                         setCountryCode(match[1]);
-                        setPhoneNumber(match[2] || '');
+                        setPhoneNumber(match[2].replace(/\D/g, '') || '');
+                      } else {
+                        // If no country code found, try to extract just the number
+                        const numberOnly = field.value.replace(/\D/g, '');
+                        console.log("EditClientForm - No country code, extracted number:", numberOnly);
+                        if (numberOnly) {
+                          setPhoneNumber(numberOnly);
+                        }
                       }
                       setInitialized(true);
                     } else if (!initialized) {
                       // Initialize with default values
+                      console.log("EditClientForm - Initializing with defaults");
                       setInitialized(true);
                     }
-                  }, [field.value, initialized]);
+                  }, [field.value, initialized, client.phone_number]);
 
                   const updateFormValue = (newCountryCode: string, newPhoneNumber: string) => {
                     const fullValue = newPhoneNumber ? `${newCountryCode}${newPhoneNumber}` : '';

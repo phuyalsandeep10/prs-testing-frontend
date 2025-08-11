@@ -365,34 +365,62 @@ export class CacheMemoryManager {
   constructor(private queryClient: QueryClient) {}
 
   /**
-   * Clean up stale cache entries
+   * Clean up stale cache entries with memory leak prevention
    */
   cleanupStaleEntries() {
-    // Remove queries that haven't been used in 30 minutes
-    this.queryClient.getQueryCache().getAll().forEach(query => {
+    const THIRTY_MINUTES = 30 * 60 * 1000;
+    const queries = this.queryClient.getQueryCache().getAll();
+    
+    // Use a batch approach to prevent excessive iterations
+    const staleQueries = queries.filter(query => {
       const timeSinceLastUsed = Date.now() - query.state.dataUpdatedAt;
-      if (timeSinceLastUsed > 30 * 60 * 1000) {
-        this.queryClient.removeQueries({ queryKey: query.queryKey });
-      }
+      return timeSinceLastUsed > THIRTY_MINUTES;
     });
+    
+    // Remove stale queries in batch to prevent memory fragmentation
+    if (staleQueries.length > 0) {
+      console.log(`🧹 Cleaning up ${staleQueries.length} stale cache entries`);
+      staleQueries.forEach(query => {
+        this.queryClient.removeQueries({ queryKey: query.queryKey });
+      });
+      
+      // Force garbage collection hint
+      if (typeof window !== 'undefined' && 'gc' in window) {
+        (window as any).gc();
+      }
+    }
   }
 
   /**
-   * Implement LRU eviction for cache size management
+   * Implement LRU eviction for cache size management with memory leak prevention
    */
   implementLRUEviction(maxCacheSize: number = 100) {
     const allQueries = this.queryClient.getQueryCache().getAll();
     
     if (allQueries.length > maxCacheSize) {
+      console.log(`🚨 Cache size exceeded: ${allQueries.length}/${maxCacheSize}. Starting LRU eviction...`);
+      
       // Sort by last accessed time and remove oldest
       const sortedQueries = allQueries.sort((a, b) => 
         a.state.dataUpdatedAt - b.state.dataUpdatedAt
       );
       
       const queriesToRemove = sortedQueries.slice(0, allQueries.length - maxCacheSize);
-      queriesToRemove.forEach(query => {
-        this.queryClient.removeQueries({ queryKey: query.queryKey });
-      });
+      
+      // Remove in batches to prevent UI blocking
+      const BATCH_SIZE = 10;
+      for (let i = 0; i < queriesToRemove.length; i += BATCH_SIZE) {
+        const batch = queriesToRemove.slice(i, i + BATCH_SIZE);
+        
+        // Use setTimeout to prevent UI blocking
+        setTimeout(() => {
+          batch.forEach(query => {
+            this.queryClient.removeQueries({ queryKey: query.queryKey });
+          });
+        }, 0);
+      }
+      
+      console.log(`✅ Removed ${queriesToRemove.length} cache entries via LRU eviction`);
     }
   }
 

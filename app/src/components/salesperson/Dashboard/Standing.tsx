@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback, memo } from "react";
 import FirstPlace from "@/components/svg/standing/FirstPlace";
 import SecondPlace from "@/components/svg/standing/SecondPlace";
 import ThirdPlace from "@/components/svg/standing/ThirdPlace";
@@ -45,6 +45,66 @@ interface TeamStanding {
 // Union type for standings item
 type StandingItem = IndividualStanding | TeamStanding;
 
+// Memoized components for better performance
+const StandingItem = memo(({ team, index, view, tab }: {
+  team: StandingItem;
+  index: number;
+  view: ViewType;
+  tab: TabType;
+}) => {
+  const image = useMemo(() => {
+    return view === "individual"
+      ? (team as IndividualStanding).profile_picture
+      : (team as TeamStanding).team_lead_profile_picture;
+  }, [team, view]);
+
+  const name = useMemo(() => {
+    return view === "individual"
+      ? (team as IndividualStanding).username
+      : (team as TeamStanding).team_name;
+  }, [team, view]);
+
+  const id = useMemo(() => {
+    return view === "individual"
+      ? (team as IndividualStanding).user_id
+      : (team as TeamStanding).team_id;
+  }, [team, view]);
+
+  return (
+    <div
+      key={`${id}-${team.rank}-${index}`}
+      className={`flex items-center bg-[#DADFFF] rounded pr-4 h-[25px] ${
+        index === 0
+          ? "w-full md:w-[85%]"
+          : index === 1
+          ? "w-full md:w-[70%]"
+          : "w-full md:w-[50%]"
+      }`}
+    >
+      <div className="flex items-center gap-2 text-[14px] font-normal font-outfit text-black">
+        <div
+          className={`w-[30px] h-[30px] transform rotate-45 flex items-center justify-center shadow-lg ${
+            tab === "bottom"
+              ? "bg-gradient-to-b from-[#FF6B6B] to-[#FF0000]"
+              : index === 0
+              ? "bg-gradient-to-b from-[#FFFB00] to-[#F9A914]"
+              : index === 1
+              ? "bg-gradient-to-b from-[#F8F8F8] to-[#929292]"
+              : "bg-gradient-to-b from-[#FF8E56] to-[#FFA424]"
+          }`}
+        >
+          <span className="text-black text-[13px] font-medium transform -rotate-45">
+            #{team.rank}
+          </span>
+        </div>
+        {name && <span>{name}</span>}
+      </div>
+    </div>
+  );
+});
+
+StandingItem.displayName = 'StandingItem';
+
 export default function Standing() {
   type ViewType = "team" | "individual";
   type TabType = "top" | "bottom";
@@ -56,45 +116,51 @@ export default function Standing() {
 
   const { data, loading, error, sendRequest } = useStandingsStore();
 
+  // Memoize the API URL to prevent unnecessary re-renders
+  const apiUrl = useMemo(() => `${process.env.NEXT_PUBLIC_API_URL}/dashboard/standings/`, []);
+
   useEffect(() => {
     sendRequest(
       "GET",
-      `${process.env.NEXT_PUBLIC_API_URL}/dashboard/standings/`,
+      apiUrl,
       undefined,
       {
         type: view,
         period: period,
       }
     );
-  }, [view, period, sendRequest]);
+  }, [view, period, sendRequest, apiUrl]);
 
   const standings: StandingItem[] = data?.standings || [];
 
-  // Sort all standings descending by sales_amount for actual rank
-  const sortedByIncomeDesc = [...standings].sort(
-    (a, b) => parseFloat(b.sales_amount) - parseFloat(a.sales_amount)
-  );
+  // Memoize expensive calculations to prevent re-computation on every render
+  const sortedByIncomeDesc = useMemo(() => {
+    return [...standings].sort(
+      (a, b) => parseFloat(b.sales_amount) - parseFloat(a.sales_amount)
+    );
+  }, [standings]);
 
-  // Map all standings with their actual rank
-  const standingsWithRank = standings.map((item) => {
-    const rank = sortedByIncomeDesc.findIndex((x) => {
-      if (view === "individual") {
-        return (
-          (x as IndividualStanding).username ===
-          (item as IndividualStanding).username
-        );
-      } else if (view === "team") {
-        return (
-          (x as TeamStanding).team_name === (item as TeamStanding).team_name
-        );
-      }
-      return false;
+  const standingsWithRank = useMemo(() => {
+    return standings.map((item) => {
+      const rank = sortedByIncomeDesc.findIndex((x) => {
+        if (view === "individual") {
+          return (
+            (x as IndividualStanding).username ===
+            (item as IndividualStanding).username
+          );
+        } else if (view === "team") {
+          return (
+            (x as TeamStanding).team_name === (item as TeamStanding).team_name
+          );
+        }
+        return false;
+      });
+      return { ...item, rank: rank + 1 };
     });
-    return { ...item, rank: rank + 1 };
-  });
+  }, [standings, sortedByIncomeDesc, view]);
 
-  // Placeholder for missing rank items, no name, but show rank
-  const placeholderItem = (rank: number): StandingItem => ({
+  // Memoize placeholder function to prevent recreation
+  const placeholderItem = useCallback((rank: number): StandingItem => ({
     rank,
     user_id: -rank, // dummy id for individual
     username: "",
@@ -104,40 +170,47 @@ export default function Standing() {
     streak: 0,
     performance_score: 0,
     is_current_user: false,
-  });
+  }), []);
 
-  // Top 3 actual ranks 1, 2, 3
-  const sortedTop = standingsWithRank
-    .filter((item) => item.rank <= 3)
-    .sort((a, b) => a.rank - b.rank);
+  // Memoize all expensive computations
+  const { completeTop, bottomStandingsDescending } = useMemo(() => {
+    // Top 3 actual ranks 1, 2, 3
+    const sortedTop = standingsWithRank
+      .filter((item) => item.rank <= 3)
+      .sort((a, b) => a.rank - b.rank);
 
-  // Ensure exactly 3 top standings with placeholders if missing
-  const completeTop = [1, 2, 3].map((rank) => {
-    const found = sortedTop.find((item) => item.rank === rank);
-    return found ? found : placeholderItem(rank);
-  });
+    // Ensure exactly 3 top standings with placeholders if missing
+    const completeTop = [1, 2, 3].map((rank) => {
+      const found = sortedTop.find((item) => item.rank === rank);
+      return found ? found : placeholderItem(rank);
+    });
 
-  // Find max rank (total number of standings)
-  const maxRank = standingsWithRank.reduce(
-    (max, item) => (item.rank > max ? item.rank : max),
-    0
+    // Find max rank (total number of standings)
+    const maxRank = standingsWithRank.reduce(
+      (max, item) => (item.rank > max ? item.rank : max),
+      0
+    );
+
+    // Bottom 3 ranks (maxRank, maxRank-1, maxRank-2), filter positive ranks only
+    const lastThreeRanks = [maxRank, maxRank - 1, maxRank - 2].filter(
+      (r) => r > 0
+    );
+
+    // Get standings for bottom ranks or placeholders
+    const bottomStandingsDescending = [0, 1, 2].map((i) => {
+      const rank = lastThreeRanks[i] ?? -1; // if less than 3 standings
+      if (rank === -1) return placeholderItem(i + 1);
+      const found = standingsWithRank.find((item) => item.rank === rank);
+      return found ? found : placeholderItem(rank);
+    });
+
+    return { completeTop, bottomStandingsDescending };
+  }, [standingsWithRank, placeholderItem]);
+
+  const activeStandings = useMemo(() =>
+    tab === "top" ? completeTop : bottomStandingsDescending,
+    [tab, completeTop, bottomStandingsDescending]
   );
-
-  // Bottom 3 ranks (maxRank, maxRank-1, maxRank-2), filter positive ranks only
-  const lastThreeRanks = [maxRank, maxRank - 1, maxRank - 2].filter(
-    (r) => r > 0
-  );
-
-  // Get standings for bottom ranks or placeholders
-  const bottomStandingsDescending = [0, 1, 2].map((i) => {
-    const rank = lastThreeRanks[i] ?? -1; // if less than 3 standings
-    if (rank === -1) return placeholderItem(i + 1);
-    const found = standingsWithRank.find((item) => item.rank === rank);
-    return found ? found : placeholderItem(rank);
-  });
-
-  const activeStandings =
-    tab === "top" ? completeTop : bottomStandingsDescending;
 
   return (
     <div className="w-full h-[527px] border rounded-xl shadow-sm px-5">
@@ -166,7 +239,7 @@ export default function Standing() {
             className={`px-3 py-1 rounded-md ${
               view === "individual" ? "bg-blue-500 text-white" : "bg-gray-200"
             }`}
-            onClick={() => setView("individual")}
+            onClick={useCallback(() => setView("individual"), [])}
           >
             Individual
           </button>
@@ -174,7 +247,7 @@ export default function Standing() {
             className={`px-4 py-1 rounded-md ${
               view === "team" ? "bg-blue-500 text-white" : "bg-gray-200"
             }`}
-            onClick={() => setView("team")}
+            onClick={useCallback(() => setView("team"), [])}
           >
             Team
           </button>
@@ -183,7 +256,7 @@ export default function Standing() {
 
       <div className="flex justify-between w-full h-[30px] border-b border-gray-200">
         <button
-          onClick={() => setTab("top")}
+          onClick={useCallback(() => setTab("top"), [])}
           className={`text-blue-500 font-outfit font-normal text-[13px] ${
             tab === "top"
               ? "font-semibold underline underline-offset-[8px] decoration-2"
@@ -193,7 +266,7 @@ export default function Standing() {
           Top Standings
         </button>
         <button
-          onClick={() => setTab("bottom")}
+          onClick={useCallback(() => setTab("bottom"), [])}
           className={`text-blue-500 font-outfit font-normal text-[13px] ${
             tab === "bottom"
               ? "font-semibold underline underline-offset-[8px] decoration-2"
@@ -205,55 +278,15 @@ export default function Standing() {
       </div>
 
       <div className="flex flex-col gap-[23px] pt-[16px]">
-        {activeStandings.map((team, index) => {
-          const image =
-            view === "individual"
-              ? (team as IndividualStanding).profile_picture
-              : (team as TeamStanding).team_lead_profile_picture;
-
-          const name =
-            view === "individual"
-              ? (team as IndividualStanding).username
-              : (team as TeamStanding).team_name;
-
-          const id =
-            view === "individual"
-              ? (team as IndividualStanding).user_id
-              : (team as TeamStanding).team_id;
-
-          return (
-            <div
-              key={`${id}-${team.rank}-${index}`}
-              className={`flex items-center bg-[#DADFFF] rounded pr-4 h-[25px] ${
-                index === 0
-                  ? "w-full md:w-[85%]"
-                  : index === 1
-                  ? "w-full md:w-[70%]"
-                  : "w-full md:w-[50%]"
-              }`}
-            >
-              <div className="flex items-center gap-2 text-[14px] font-normal font-outfit text-black">
-                <div
-                  className={`w-[30px] h-[30px] transform rotate-45 flex items-center justify-center shadow-lg ${
-                    tab === "bottom"
-                      ? "bg-gradient-to-b from-[#FF6B6B] to-[#FF0000]"
-                      : index === 0
-                      ? "bg-gradient-to-b from-[#FFFB00] to-[#F9A914]"
-                      : index === 1
-                      ? "bg-gradient-to-b from-[#F8F8F8] to-[#929292]"
-                      : "bg-gradient-to-b from-[#FF8E56] to-[#FFA424]"
-                  }`}
-                >
-                  <span className="text-black text-[13px] font-medium transform -rotate-45">
-                    #{team.rank}
-                  </span>
-                </div>
-                {/* Show name only if available */}
-                {name && <span>{name}</span>}
-              </div>
-            </div>
-          );
-        })}
+        {activeStandings.map((team, index) => (
+          <StandingItem
+            key={`${team.rank}-${index}`}
+            team={team}
+            index={index}
+            view={view}
+            tab={tab}
+          />
+        ))}
       </div>
 
       <div className="flex flex-col items-center">

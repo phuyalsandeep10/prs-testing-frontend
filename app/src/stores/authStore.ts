@@ -7,6 +7,7 @@ export interface AuthState {
   // State
   isAuthenticated: boolean;
   isAuthInitialized: boolean;
+  isHydrated: boolean; // Track hydration state to prevent SSR mismatches
   user: User | null;
   token: string | null;
   organization: number | null;
@@ -16,6 +17,7 @@ export interface AuthState {
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
   setAuthInitialized: (initialized: boolean) => void;
+  setHydrated: (hydrated: boolean) => void;
   
   // Getters
   getUserRole: () => UserRole | null;
@@ -30,6 +32,7 @@ export const useAuthStore = create<AuthState>()(
       // Initial state - WAIT for hydration
       isAuthenticated: false,
       isAuthInitialized: false, // Start as false until hydrated
+      isHydrated: false, // Track hydration to prevent SSR mismatches
       user: null,
       token: null,
       organization: null,
@@ -90,6 +93,10 @@ export const useAuthStore = create<AuthState>()(
         set({ isAuthInitialized: initialized });
       },
 
+      setHydrated: (hydrated: boolean) => {
+        set({ isHydrated: hydrated });
+      },
+
       // Getters
       getUserRole: () => {
         const user = get().user;
@@ -121,11 +128,35 @@ export const useAuthStore = create<AuthState>()(
         token: state.token,
         organization: state.organization,
       }),
-      // Add hydration handler to properly set initialized state
-      onRehydrateStorage: () => (state) => {
-        // Set initialized to true after hydration completes
+      // Enhanced hydration handler to prevent race conditions
+      onRehydrateStorage: () => (state, error) => {
+        if (error) {
+          console.warn('Auth store hydration failed:', error);
+          // Set safe defaults on hydration error
+          return {
+            isAuthenticated: false,
+            isAuthInitialized: true,
+            isHydrated: true,
+            user: null,
+            token: null,
+            organization: null,
+          };
+        }
+        
+        // Set hydrated and initialized state after successful hydration
         if (state) {
+          state.setHydrated(true);
           state.setAuthInitialized(true);
+          
+          // Validate token exists in localStorage if authenticated
+          if (state.isAuthenticated && state.token) {
+            const storedToken = localStorage.getItem('authToken');
+            if (!storedToken || storedToken !== state.token) {
+              // Token mismatch, force logout
+              console.warn('Token mismatch detected, forcing logout');
+              state.logout();
+            }
+          }
         }
       },
     }

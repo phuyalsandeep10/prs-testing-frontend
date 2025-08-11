@@ -56,15 +56,35 @@ export default function Providers({ children }: { children: ReactNode }) {
       // Setup memory management
       const memoryManager = new CacheMemoryManager(client);
       
-      // Cleanup stale entries every 15 minutes
+      // Cleanup stale entries every 10 minutes (more frequent to prevent accumulation)
       const cleanupInterval = setInterval(() => {
-        memoryManager.cleanupStaleEntries();
-        memoryManager.implementLRUEviction(150); // Max 150 cache entries
-      }, 15 * 60 * 1000);
+        try {
+          memoryManager.cleanupStaleEntries();
+          memoryManager.implementLRUEviction(100); // Reduced to 100 for better memory management
+          
+          // Log cache stats in development
+          if (process.env.NODE_ENV === 'development') {
+            console.log('🔄 Cache Stats:', memoryManager.getCacheStats());
+          }
+        } catch (error) {
+          console.error('❌ Cache cleanup error:', error);
+        }
+      }, 10 * 60 * 1000);
       
-      // Cleanup on unmount
-      window.addEventListener('beforeunload', () => {
+      // Enhanced cleanup on unmount and visibility change
+      const cleanup = () => {
         clearInterval(cleanupInterval);
+        memoryManager.cleanupStaleEntries();
+      };
+      
+      window.addEventListener('beforeunload', cleanup);
+      window.addEventListener('pagehide', cleanup);
+      
+      // Clean up when page becomes hidden (tab switching)
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          memoryManager.cleanupStaleEntries();
+        }
       });
       
       // Make cache utilities available globally for debugging

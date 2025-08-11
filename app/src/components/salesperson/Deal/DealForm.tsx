@@ -350,7 +350,12 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
       watch,
       control,
     } = useForm<DealFormData>({
-      resolver: zodResolver(createDealSchema(mode === "edit")),
+      resolver: zodResolver(
+        createDealSchema(
+          mode === "edit", 
+          mode === "edit" && dealData ? Number(dealData.deal_value) : undefined
+        )
+      ),
     });
 
     // Watch form values to debug population and for real-time validation
@@ -468,6 +473,24 @@ const DealForm = forwardRef<DealFormHandle, DealFormProps>(
     const mutation = useMutation({
       mutationFn: submitDealData,
       onSuccess: (data) => {
+        console.log("✅ DEBUG: Deal created successfully:", data);
+        console.log("✅ DEBUG: Deal ID:", data?.deal_id);
+        console.log("✅ DEBUG: Payments in response:", data?.payments_read);
+        console.log("✅ DEBUG: Number of payments:", data?.payments_read?.length || 0);
+        
+        if (data?.payments_read && data.payments_read.length > 0) {
+          data.payments_read.forEach((payment: any, index: number) => {
+            console.log(`✅ DEBUG: Payment ${index + 1}:`, {
+              id: payment.id,
+              amount: payment.received_amount,
+              status: payment.status,
+              transaction_id: payment.transaction_id
+            });
+          });
+        } else {
+          console.log("⚠️  DEBUG: No payments found in response!");
+        }
+        
         // Only invalidate queries if this is a standalone form (not in modal)
         // In modal, let DealModal handle cache updates for optimistic UI
         if (isStandalonePage) {

@@ -67,8 +67,11 @@ export const useClients = (filters: ClientFilters = {}) => {
       return Array.isArray(response) ? response : response.results || [];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+    gcTime: 8 * 60 * 1000, // Reduced from 10 to 8 minutes for better memory management
     enabled: !!organizationId,
+    // Add memory leak prevention
+    structuralSharing: true, // Prevent unnecessary re-renders
+    refetchOnWindowFocus: false, // Prevent excessive refetching
   });
 };
 
@@ -91,8 +94,11 @@ export const useDashboardClients = () => {
   const { user } = useAuth();
   const organizationId = (user as any)?.organization;
   
-  console.log('🔍 [USE_DASHBOARD_CLIENTS] User:', user);
-  console.log('🔍 [USE_DASHBOARD_CLIENTS] Organization ID:', organizationId);
+  // Only log in development to prevent console spam
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🔍 [USE_DASHBOARD_CLIENTS] User:', user);
+    console.log('🔍 [USE_DASHBOARD_CLIENTS] Organization ID:', organizationId);
+  }
   
   return useQuery({
     queryKey: [...clientKeys.all, 'dashboard'],
@@ -104,14 +110,18 @@ export const useDashboardClients = () => {
       params.append('limit', '10');
       params.append('status_filter', 'all');
       
-      console.log('🔍 [USE_DASHBOARD_CLIENTS] Making API call with params:', params.toString());
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 [USE_DASHBOARD_CLIENTS] Making API call with params:', params.toString());
+      }
       
       const response = await apiClient.get<{
         clients?: Client[];
         results?: Client[];
       } | Client[]>(`/dashboard/clients/?${params.toString()}`);
       
-      console.log('🔍 [USE_DASHBOARD_CLIENTS] API Response:', response);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 [USE_DASHBOARD_CLIENTS] API Response:', response);
+      }
       
       // Handle different response formats
       if (Array.isArray(response)) {
@@ -119,12 +129,18 @@ export const useDashboardClients = () => {
       }
       
       const clients = (response as any).clients || (response as any).results || [];
-      console.log('🔍 [USE_DASHBOARD_CLIENTS] Extracted clients:', clients);
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔍 [USE_DASHBOARD_CLIENTS] Extracted clients:', clients);
+      }
       
       return clients;
     },
     staleTime: 2 * 60 * 1000, // 2 minutes for dashboard data
+    gcTime: 5 * 60 * 1000, // Add shorter garbage collection time
     enabled: !!organizationId,
+    structuralSharing: true, // Prevent unnecessary re-renders
+    refetchOnWindowFocus: false, // Prevent excessive refetching
   });
 };
 

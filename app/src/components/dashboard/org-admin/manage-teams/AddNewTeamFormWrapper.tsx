@@ -7,6 +7,7 @@ import * as z from "zod";
 import { Loader2, X } from "lucide-react";
 import {
   useCreateTeamMutation,
+  useUpdateTeamMutation,
   useUsersQuery,
   useDealsQuery,
 } from "@/hooks/useIntegratedQuery";
@@ -129,6 +130,7 @@ export function AddNewTeamFormWrapper({
 
   // Create team mutation
   const createTeamMutation = useCreateTeamMutation();
+  const updateTeamMutation = useUpdateTeamMutation();
 
   // Filter users based on their roles
   const extractRoleName = (u: any) =>
@@ -189,12 +191,12 @@ export function AddNewTeamFormWrapper({
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      teamName: initialData?.teamName || "",
-      teamLead: initialData?.teamLead || "",
+      teamName: initialData?.name || "",
+      teamLead: initialData?.team_lead ? `${initialData.team_lead.id}-${initialData.team_lead.full_name || initialData.team_lead.username}` : "",
       teamMembers:
-        initialData?.teamMembers?.map((m: any) => `${m.id}-${m.name}`) || [],
-      assignedProject: initialData?.assignedProjects || "",
-      contactNumber: initialData?.contactNumber || "",
+        initialData?.members?.map((m: any) => `${m.id}-${m.full_name || m.name}`) || [],
+      assignedProject: initialData?.projects?.[0]?.id?.toString() || "",
+      contactNumber: initialData?.contact_number || "",
     },
   });
 
@@ -229,23 +231,28 @@ export function AddNewTeamFormWrapper({
         teamData.projects = [parseInt(values.assignedProject, 10)];
       }
 
-      // Use the create mutation (note: update mutation would need to be added to integrated hooks)
-      if (isEdit) {
-        toast.warning('Edit not implemented', { description: 'Team editing functionality needs to be implemented.' });
-        return;
-      }
-
       console.log("=== SUBMITTING TEAM DATA ===");
       console.log("Team data being sent:", teamData);
+      console.log("Is edit mode:", isEdit);
+      console.log("Initial data:", initialData);
 
-      await createTeamMutation.mutateAsync(teamData);
+      if (isEdit && initialData?.id) {
+        // Update existing team
+        await updateTeamMutation.mutateAsync({
+          id: initialData.id,
+          data: teamData
+        });
+        console.log("=== DISPATCHING TEAM UPDATED EVENT ===");
+        window.dispatchEvent(new CustomEvent("teamUpdated"));
+      } else {
+        // Create new team
+        await createTeamMutation.mutateAsync(teamData);
+        console.log("=== DISPATCHING TEAM CREATED EVENT ===");
+        window.dispatchEvent(new CustomEvent("teamCreated"));
+      }
 
       // Success handling is done in the mutation hook
       form.reset();
-
-      // Trigger custom event for parent component to refresh data
-      console.log("=== DISPATCHING TEAM CREATED EVENT ===");
-      window.dispatchEvent(new CustomEvent("teamCreated"));
 
       if (onFormSubmit) {
         onFormSubmit();
@@ -260,6 +267,7 @@ export function AddNewTeamFormWrapper({
   // Combined loading state from mutations
   const isLoading =
     createTeamMutation.isPending ||
+    updateTeamMutation.isPending ||
     usersLoading ||
     projectsLoading ||
     dealsLoading;
@@ -275,7 +283,7 @@ export function AddNewTeamFormWrapper({
       <div className="px-6 py-4 ">
         <div className="flex items-center justify-between">
           <h2 className="text-[16px] font-medium leading-6 text-[#31323A] mt-2">
-            Add Information
+            {isEdit ? "Edit Team Information" : "Add Information"}
           </h2>
         </div>
         {/* <p className="text-sm text-gray-500 mt-1">Add Information</p> */}
@@ -508,7 +516,7 @@ export function AddNewTeamFormWrapper({
               {isEdit ? "Updating..." : "Saving..."}
             </>
           ) : (
-            "Save Team"
+            isEdit ? "Update Team" : "Save Team"
           )}
         </Button>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState, memo, useCallback } from "react";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -58,7 +58,7 @@ type ChartDataPoint = {
   value: number;
 };
 
-export default function ChartDashboard() {
+function ChartDashboard() {
   const [selectedRange, setSelectedRange] = useState<
     "daily" | "weekly" | "monthly"
   >("daily");
@@ -127,7 +127,8 @@ export default function ChartDashboard() {
   //   }
   // }, [data, selectedRange]);
 
-  const chartData = {
+  // Memoize chart data to prevent re-creation on every render
+  const chartData = useMemo(() => ({
     labels,
     datasets: [
       {
@@ -141,7 +142,7 @@ export default function ChartDashboard() {
         pointHoverRadius: 6,
       },
     ],
-  };
+  }), [labels, values]);
 
   const chartOptions = {
     responsive: true,
@@ -184,9 +185,10 @@ export default function ChartDashboard() {
 
         <Select
           value={selectedRange}
-          onValueChange={(val) =>
-            setSelectedRange(val as "daily" | "weekly" | "monthly")
-          }
+          onValueChange={useCallback((val: string) =>
+            setSelectedRange(val as "daily" | "weekly" | "monthly"),
+            []
+          )}
         >
           <SelectTrigger className="w-full max-w-[120px] h-[35px] text-sm rounded-md mt-2 sm:mt-0">
             <SelectValue />
@@ -218,3 +220,6 @@ export default function ChartDashboard() {
     </Card>
   );
 }
+
+// Export memoized version to prevent unnecessary re-renders
+export default memo(ChartDashboard);

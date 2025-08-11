@@ -1,7 +1,9 @@
 /**
  * Standardized API Client for React Query Integration
- * Replaces multiple API clients with a single, consistent interface
+ * Enhanced with security features while maintaining compatibility
  */
+
+import { secureStorage } from './security/secureStorage';
 
 interface ApiResponse<T> {
   data: T;
@@ -42,14 +44,33 @@ export class StandardApiClient {
     // 2. Use normalized base as-is (do not enforce additional path segments)
     this.baseURL = normalized;
     this.timeout = 10000;
+    
+    // Setup periodic security cleanup
+    if (typeof window !== 'undefined') {
+      // Clean up expired storage entries every 30 minutes
+      setInterval(() => {
+        secureStorage.cleanupExpired();
+      }, 30 * 60 * 1000);
+    }
   }
 
   /**
-   * Get auth token with consistent format
+   * Get auth token with enhanced security validation
    */
   private getAuthToken(): string | null {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('authToken');
+    
+    // Use secure storage with integrity checking
+    const token = secureStorage.getItem('authToken');
+    
+    // Additional token validation
+    if (token && !this.isValidToken(token)) {
+      console.warn('🔒 Invalid token detected, clearing storage');
+      secureStorage.removeItem('authToken');
+      return null;
+    }
+    
+    return token;
   }
 
   /**
@@ -264,18 +285,53 @@ export class StandardApiClient {
   }
 
   /**
-   * Authentication methods
+   * Authentication methods with enhanced security
    */
   setToken(token: string): void {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('authToken', token);
+      // Validate token before storing
+      if (this.isValidToken(token)) {
+        secureStorage.setItem('authToken', token);
+      } else {
+        console.error('🔒 Invalid token format, not storing');
+      }
     }
   }
 
   clearToken(): void {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('authToken');
+      secureStorage.removeItem('authToken');
     }
+  }
+
+  /**
+   * Validate token format to prevent XSS injection
+   */
+  private isValidToken(token: string): boolean {
+    if (!token || typeof token !== 'string') return false;
+    
+    // Basic token format validation (adjust based on your token format)
+    // This prevents script injection while allowing valid tokens
+    const tokenRegex = /^[A-Za-z0-9_-]+$/;
+    
+    // Must be reasonable length (not too short, not suspiciously long)
+    if (token.length < 10 || token.length > 500) return false;
+    
+    // Must not contain dangerous strings
+    const dangerousPatterns = [
+      '<script',
+      'javascript:',
+      'data:text/html',
+      'onclick=',
+      'onerror='
+    ];
+    
+    const lowerToken = token.toLowerCase();
+    if (dangerousPatterns.some(pattern => lowerToken.includes(pattern))) {
+      return false;
+    }
+    
+    return true;
   }
 
   getToken(): string | null {

@@ -110,7 +110,9 @@ export const useDeals = (filters: DealFilters = {}) => {
       return Array.isArray(response) ? response : response.results || [];
     },
     staleTime: 3 * 60 * 1000, // 3 minutes
-    gcTime: 10 * 60 * 1000,
+    gcTime: 8 * 60 * 1000, // Reduced for better memory management
+    structuralSharing: true, // Prevent unnecessary re-renders
+    refetchOnWindowFocus: false, // Prevent excessive refetching
   });
 };
 
@@ -194,18 +196,23 @@ export const useDealExpanded = (dealId: string | null) => {
       try {
         const response = await apiClient.get<any>(`/deals/deals/${dealId}/expand/`);
         
-        console.log('🔍 [EXPANDED_API] Full API response:', response);
+        // Only log in development to prevent console spam
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔍 [EXPANDED_API] Full API response:', response);
+        }
         
         // The response contains the DealExpandedViewSerializer data directly
         // which has a payment_history field with the payment array
         const paymentHistory = response?.payment_history;
         
-        console.log('🔍 [EXPANDED_API] Payment history:', paymentHistory);
-        
-        // Log each payment's receipt_link
-        paymentHistory?.forEach((payment, index) => {
-          console.log(`🔍 [EXPANDED_API] Payment ${index} receipt_link:`, payment.receipt_link);
-        });
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔍 [EXPANDED_API] Payment history:', paymentHistory);
+          
+          // Log each payment's receipt_link
+          paymentHistory?.forEach((payment: any, index: number) => {
+            console.log(`🔍 [EXPANDED_API] Payment ${index} receipt_link:`, payment.receipt_link);
+          });
+        }
         
         // Return the payment history array directly
         return paymentHistory || [];
@@ -216,7 +223,9 @@ export const useDealExpanded = (dealId: string | null) => {
     },
     enabled: !!dealId,
     staleTime: 1 * 60 * 1000, // 1 minute
-    gcTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 4 * 60 * 1000, // Reduced from 5 to 4 minutes
+    structuralSharing: true, // Prevent unnecessary re-renders
+    refetchOnWindowFocus: false, // Prevent excessive refetching
   });
 };
 

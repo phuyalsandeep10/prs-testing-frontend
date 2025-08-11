@@ -63,13 +63,13 @@ const OptionalPaymentSchema = z.object({
 });
 
 // Schema factory function
-export const createDealSchema = (isEditMode: boolean = false) => {
+export const createDealSchema = (isEditMode: boolean = false, originalDealValue?: number) => {
   const paymentSchema = isEditMode ? OptionalPaymentSchema : RequiredPaymentSchema;
-  const schema = BaseDealSchema.merge(paymentSchema);
+  let schema = BaseDealSchema.merge(paymentSchema);
   
   // Add cross-field validations only for add mode or when payment data is provided in edit mode
   if (!isEditMode) {
-    return schema.refine((data) => {
+    schema = schema.refine((data) => {
       // Cross-field validation: Payment amount vs Deal value based on Payment Status
       const dealValue = parseDecimal(data.dealValue);
       const receivedAmount = parseDecimal(data.receivedAmount);
@@ -106,19 +106,32 @@ export const createDealSchema = (isEditMode: boolean = false) => {
       message: "Deal date cannot be after due date",
       path: ["dueDate"],
     });
+  } else {
+    // For edit mode, validate deal date vs due date
+    schema = schema.refine((data) => {
+      // Validate deal date is not after due date
+      const dealDate = new Date(data.dealDate);
+      const dueDate = new Date(data.dueDate);
+      
+      return dealDate <= dueDate;
+    }, {
+      message: "Deal date cannot be after due date",
+      path: ["dueDate"],
+    });
+
+    // Add deal value decrease validation for edit mode if original value is provided
+    if (originalDealValue !== undefined) {
+      schema = schema.refine((data) => {
+        const newDealValue = parseDecimal(data.dealValue);
+        return newDealValue >= originalDealValue;
+      }, {
+        message: `Deal value cannot be decreased below the original value of $${originalDealValue}`,
+        path: ["dealValue"],
+      });
+    }
   }
-  
-  // For edit mode, only validate deal date vs due date
-  return schema.refine((data) => {
-    // Validate deal date is not after due date
-    const dealDate = new Date(data.dealDate);
-    const dueDate = new Date(data.dueDate);
-    
-    return dealDate <= dueDate;
-  }, {
-    message: "Deal date cannot be after due date",
-    path: ["dueDate"],
-  });
+
+  return schema;
 };
 
 // Default schema for backward compatibility (add mode)

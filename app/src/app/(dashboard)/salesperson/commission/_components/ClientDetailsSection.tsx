@@ -11,7 +11,17 @@ import edit from "@/assets/icons/edit.svg";
 import cancel from "@/assets/icons/Cancel.svg";
 import Image from "next/image";
 import { RefreshCw } from "lucide-react";
-import { useClients, useDashboardClients } from "@/hooks/api";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useClients, useDashboardClients, useDeleteClient } from "@/hooks/api";
 
 type DashboardClientsResponse = {
   clients: ApiClient[];
@@ -53,12 +63,17 @@ const ClientDetailsSection: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ApiClient | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [clientToDelete, setClientToDelete] = useState<string | null>(null);
 
   // Fetch commission data (total_deals, total_value, outstanding_amount)
   const { data: dashboardClients = [], isLoading: isDashboardLoading, refetch: refetchDashboard } = useDashboardClients();
   
   // Fetch current client status from clients table
   const { data: regularClients = [], isLoading: isClientsLoading, refetch: refetchClients } = useClients();
+  
+  // Delete client mutation
+  const deleteClientMutation = useDeleteClient();
 
   // Merge data: Include ALL clients (with and without deals)
   const clients = useMemo(() => {
@@ -159,7 +174,28 @@ const ClientDetailsSection: React.FC = () => {
   }, []);
 
   const handleDelete = useCallback((clientId: string) => {
-    console.log("Delete client:", clientId);
+    setClientToDelete(clientId);
+    setShowDeleteConfirm(true);
+  }, []);
+
+  const confirmDelete = useCallback(async () => {
+    if (!clientToDelete) return;
+    
+    try {
+      await deleteClientMutation.mutateAsync(clientToDelete);
+      setShowDeleteConfirm(false);
+      setClientToDelete(null);
+      // Refresh data after successful deletion
+      await Promise.all([refetchDashboard(), refetchClients()]);
+    } catch (error) {
+      console.error('Failed to delete client:', error);
+      // Toast notification is handled by the mutation
+    }
+  }, [clientToDelete, deleteClientMutation, refetchDashboard, refetchClients]);
+
+  const cancelDelete = useCallback(() => {
+    setShowDeleteConfirm(false);
+    setClientToDelete(null);
   }, []);
 
   const handleRefresh = useCallback(async () => {
@@ -357,6 +393,30 @@ const ClientDetailsSection: React.FC = () => {
           />
         )}
       </SlideModal>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Client</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this client? This action cannot be undone and will permanently remove the client and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={cancelDelete} disabled={deleteClientMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleteClientMutation.isPending}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {deleteClientMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

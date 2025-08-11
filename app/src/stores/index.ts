@@ -3,6 +3,9 @@ export { useAuthStore } from './authStore';
 export { useUIStore } from './uiStore';
 export { useAppStore, useAppPreferences, useTableState, useRecentItems } from './appStore';
 
+// Export hydration hooks
+export { useStoreHydration, useAuthWithHydration, useUIWithHydration } from '../hooks/useStoreHydration';
+
 // Re-export types
 export type { AuthState } from './authStore';
 export type { UIState } from './uiStore';
@@ -13,11 +16,12 @@ import { useAuthStore } from './authStore';
 import { useUIStore } from './uiStore';
 import { useAppStore } from './appStore';
 
-// Authentication selectors
+// Authentication selectors (now with hydration safety)
 export const useAuth = () => {
   const {
     isAuthenticated,
     isAuthInitialized,
+    isHydrated,
     user,
     token,
     login,
@@ -32,6 +36,7 @@ export const useAuth = () => {
   return {
     isAuthenticated,
     isAuthInitialized,
+    isHydrated,
     user,
     token,
     login,
@@ -44,9 +49,10 @@ export const useAuth = () => {
   };
 };
 
-// UI selectors
+// UI selectors (now with hydration safety)
 export const useUI = () => {
   const {
+    isHydrated,
     sidebarCollapsed,
     sidebarMobileOpen,
     theme,
@@ -55,6 +61,7 @@ export const useUI = () => {
     notifications,
     modals,
     globalSearch,
+    setHydrated,
     toggleSidebar,
     setSidebarCollapsed,
     toggleMobileSidebar,
@@ -73,6 +80,7 @@ export const useUI = () => {
   } = useUIStore();
 
   return {
+    isHydrated,
     sidebarCollapsed,
     sidebarMobileOpen,
     theme,
@@ -81,6 +89,7 @@ export const useUI = () => {
     notifications,
     modals,
     globalSearch,
+    setHydrated,
     toggleSidebar,
     setSidebarCollapsed,
     toggleMobileSidebar,

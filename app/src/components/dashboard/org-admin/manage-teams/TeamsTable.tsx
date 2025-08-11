@@ -169,11 +169,12 @@ export function TeamsTable({ data, onView, onEdit, onDelete, pagination, deletin
                       {team.teamMembers.slice(0, 3).map((member, idx) => (
                         <div 
                           key={member.id}
-                          className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-[12px] font-medium border-2 border-white relative"
+                          className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-[12px] font-medium border-2 border-white relative cursor-help"
                           style={{ zIndex: 10 - idx }}
-                          title={member.name}
+                          title={`${member.name || 'Unknown Member'}`}
+                          aria-label={`Team member: ${member.name || 'Unknown Member'}`}
                         >
-                          {member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                          {member.name ? member.name.split(' ').map(n => n[0]).join('').toUpperCase() : '?'}
                         </div>
                       ))}
                     </div>
@@ -202,10 +203,11 @@ export function TeamsTable({ data, onView, onEdit, onDelete, pagination, deletin
                         {team.teamMembers.slice(3).map((member, idx) => (
                           <div 
                             key={member.id}
-                            className="h-6 w-6 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white text-[10px] font-medium"
-                            title={member.name}
+                            className="h-6 w-6 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white text-[10px] font-medium cursor-help"
+                            title={`${member.name || 'Unknown Member'}`}
+                            aria-label={`Team member: ${member.name || 'Unknown Member'}`}
                           >
-                            {member.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                            {member.name ? member.name.split(' ').map(n => n[0]).join('').toUpperCase() : '?'}
                           </div>
                         ))}
                       </div>

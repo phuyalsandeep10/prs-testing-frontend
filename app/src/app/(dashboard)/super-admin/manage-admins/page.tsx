@@ -98,17 +98,25 @@ export default function ManageAdminsPage() {
   useEffect(() => {
     loadAdmins();
 
-    // Listen for admin creation events
+    // Listen for admin creation and update events
     const handleAdminCreated = (event: any) => {
       console.log('Admin created event received:', event.detail);
       toast.success('Admin list updated');
       loadAdmins();
     };
 
+    const handleAdminUpdated = (event: any) => {
+      console.log('Admin updated event received:', event.detail);
+      toast.success('Admin list updated');
+      loadAdmins();
+    };
+
     window.addEventListener('adminCreated', handleAdminCreated);
+    window.addEventListener('adminUpdated', handleAdminUpdated);
 
     return () => {
       window.removeEventListener('adminCreated', handleAdminCreated);
+      window.removeEventListener('adminUpdated', handleAdminUpdated);
     };
   }, []);
 
@@ -240,13 +248,15 @@ export default function ManageAdminsPage() {
                     }`}>
                       {admin.is_active ? 'Active' : 'Inactive'}
                     </span>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                    >
-                      Edit
-                    </Button>
+                    <Link href={`/super-admin/manage-admins/${admin.id}/edit`}>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      >
+                        Edit
+                      </Button>
+                    </Link>
                     
                     {/* Delete Button with Confirmation */}
                     <AlertDialog>

@@ -25,6 +25,9 @@ interface Modal {
 }
 
 export interface UIState {
+  // Hydration state
+  isHydrated: boolean;
+  
   // Sidebar state
   sidebarCollapsed: boolean;
   sidebarMobileOpen: boolean;
@@ -46,6 +49,7 @@ export interface UIState {
   globalSearch: string;
   
   // Actions
+  setHydrated: (hydrated: boolean) => void;
   toggleSidebar: () => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleMobileSidebar: () => void;
@@ -71,7 +75,8 @@ export interface UIState {
 export const useUIStore = create<UIState>()(
   persist(
     (set, get) => ({
-      // Initial state
+      // Initial state - prevent hydration mismatches
+      isHydrated: false,
       sidebarCollapsed: false,
       sidebarMobileOpen: false,
       theme: 'system',
@@ -80,6 +85,11 @@ export const useUIStore = create<UIState>()(
       notifications: [],
       modals: [],
       globalSearch: '',
+
+      // Hydration action
+      setHydrated: (hydrated: boolean) => {
+        set({ isHydrated: hydrated });
+      },
 
       // Sidebar actions
       toggleSidebar: () => {
@@ -118,7 +128,7 @@ export const useUIStore = create<UIState>()(
 
       // Notification actions
       addNotification: (notification: Omit<Notification, 'id'>) => {
-        const id = Date.now().toString();
+        const id = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`; // More unique ID
         const newNotification: Notification = {
           id,
           duration: 5000,
@@ -129,8 +139,8 @@ export const useUIStore = create<UIState>()(
           notifications: [...state.notifications, newNotification],
         }));
 
-        // Auto-remove notification after duration
-        if (newNotification.duration) {
+        // Auto-remove notification after duration (only if hydrated to avoid SSR issues)
+        if (newNotification.duration && get().isHydrated) {
           setTimeout(() => {
             get().removeNotification(id);
           }, newNotification.duration);
@@ -149,7 +159,7 @@ export const useUIStore = create<UIState>()(
 
       // Modal actions
       openModal: (modal: Omit<Modal, 'id'>) => {
-        const id = Date.now().toString();
+        const id = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`; // More unique ID
         const newModal: Modal = { id, ...modal };
         
         set((state) => ({
@@ -183,6 +193,25 @@ export const useUIStore = create<UIState>()(
         sidebarCollapsed: state.sidebarCollapsed,
         theme: state.theme,
       }),
+      // Add hydration handler to prevent race conditions
+      onRehydrateStorage: () => (state, error) => {
+        if (error) {
+          console.warn('UI store hydration failed:', error);
+          // Return safe defaults on hydration error
+          return {
+            isHydrated: true,
+            sidebarCollapsed: false,
+            theme: 'system' as const,
+          };
+        }
+        
+        // Set hydrated state after successful hydration
+        if (state) {
+          state.setHydrated(true);
+        }
+      },
+      // Add skip hydration check to prevent SSR mismatches
+      skipHydration: false,
     }
   )
 ); 
