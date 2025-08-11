@@ -2,7 +2,7 @@
 
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactNode, useState, useEffect } from "react";
-import { SessionProvider } from "next-auth/react";
+// import { SessionProvider } from "next-auth/react"; // Removed - using custom auth
 import { 
   createAdvancedQueryClient, 
   setupCachePersistence, 
@@ -102,14 +102,12 @@ export default function Providers({ children }: { children: ReactNode }) {
   });
 
   return (
-    <SessionProvider>
-      <QueryClientProvider client={queryClient}>
-        <NotificationProvider>
-          <AdvancedFeaturesProvider queryClient={queryClient}>
-            {children}
-          </AdvancedFeaturesProvider>
-        </NotificationProvider>
-      </QueryClientProvider>
-    </SessionProvider>
+    <QueryClientProvider client={queryClient}>
+      <NotificationProvider>
+        <AdvancedFeaturesProvider queryClient={queryClient}>
+          {children}
+        </AdvancedFeaturesProvider>
+      </NotificationProvider>
+    </QueryClientProvider>
   );
 }
