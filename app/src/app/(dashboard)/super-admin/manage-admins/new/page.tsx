@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -35,6 +35,8 @@ type AdminFormData = z.infer<typeof adminSchema>;
 
 export default function NewAdminPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const orgParam = searchParams.get('org');
   
   // Use standardized hooks
   const { data: organizations = [], isLoading: loadingOrganizations } = useOrganizations();
@@ -116,6 +118,17 @@ export default function NewAdminPage() {
       }
     }
   };
+
+  // Pre-select organization if org parameter is provided
+  useEffect(() => {
+    if (orgParam && organizations.length > 0 && !form.getValues().organization) {
+      const orgExists = organizations.find(org => org.id.toString() === orgParam);
+      if (orgExists) {
+        form.setValue('organization', orgParam);
+        toast.info(`Pre-selected organization: ${orgExists.name}`);
+      }
+    }
+  }, [orgParam, organizations, form]);
 
   // Handle escape key
   useEffect(() => {

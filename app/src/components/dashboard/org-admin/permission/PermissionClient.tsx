@@ -24,6 +24,14 @@ export const PermissionClient = () => {
   const createRoleMutation = useCreateRoleMutation();
   const updateRoleMutation = useUpdateRoleMutation();
 
+  // Debug logging
+  console.log('🔍 PermissionClient - permissionsData:', permissionsData);
+  console.log('🔍 PermissionClient - rolesData:', rolesData);
+  console.log('🔍 PermissionClient - permissionsLoading:', permissionsLoading);
+  console.log('🔍 PermissionClient - rolesLoading:', rolesLoading);
+  console.log('🔍 PermissionClient - permissionsError:', permissionsError);
+  console.log('🔍 PermissionClient - rolesError:', rolesError);
+
   // Initialize role permissions state when data is loaded
   useEffect(() => {
     if (rolesData && permissionsData) {
@@ -42,22 +50,49 @@ export const PermissionClient = () => {
 
   // Transform permissions data for UI
   const permissionGroups = useMemo(() => {
-    if (!permissionsData) return [];
+    console.log('🔍 Processing permissionsData:', permissionsData);
+    console.log('🔍 permissionsData type:', typeof permissionsData);
+    console.log('🔍 permissionsData keys:', permissionsData ? Object.keys(permissionsData) : 'none');
+    console.log('🔍 permissionsData entries:', permissionsData ? Object.entries(permissionsData) : 'none');
     
-    return Object.entries(permissionsData).map(([category, permissions]) => ({
-      group: category,
-      permissions: permissions,
-    }));
+    if (!permissionsData || typeof permissionsData !== 'object') {
+      console.log('⚠️ No permissions data available');
+      return [];
+    }
+    
+    const entries = Object.entries(permissionsData);
+    console.log('🔍 Object.entries result:', entries);
+    
+    if (entries.length === 0) {
+      console.log('⚠️ Permissions object is empty');
+      return [];
+    }
+    
+    const groups = entries.map(([category, permissions]) => {
+      console.log(`🔍 Processing category "${category}":`, permissions);
+      return {
+        group: category,
+        permissions: Array.isArray(permissions) ? permissions : [],
+      };
+    });
+    console.log('✅ Processed permission groups:', groups);
+    return groups;
   }, [permissionsData]);
 
   const roles = useMemo(() => {
-    if (!rolesData) return [];
+    console.log('🔍 Processing rolesData:', rolesData);
+    if (!rolesData || !Array.isArray(rolesData)) {
+      console.log('⚠️ No roles data available');
+      return [];
+    }
     // Filter out Super Admin roles
-    return rolesData.filter(role => 
+    const filteredRoles = rolesData.filter(role => 
       role.name !== 'Super Admin' && 
       role.name !== 'super admin' && 
       role.name !== 'SUPER_ADMIN'
     );
+    console.log('✅ Processed roles:', filteredRoles);
+    return filteredRoles;
   }, [rolesData]);
 
   const handlePermissionChange = (permissionId: number, roleId: number, checked: boolean) => {

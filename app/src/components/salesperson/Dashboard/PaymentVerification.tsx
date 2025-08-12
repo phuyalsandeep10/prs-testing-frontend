@@ -2,6 +2,7 @@
 import React from "react";
 import { User, Loader2, AlertTriangle } from "lucide-react";
 import { usePaymentVerificationStatus } from "@/hooks/api";
+import styles from "./PaymentVerification.module.css";
 
 const PaymentVerificationStatus = () => {
   const { data, isLoading, error, refetch } = usePaymentVerificationStatus();
@@ -78,16 +79,16 @@ const PaymentVerificationStatus = () => {
       <div className="mt-8">
         <div className="flex rounded-lg overflow-hidden h-2 bg-gray-100">
           <div
-            className="bg-green-500 h-full"
-            style={{ width: `${clearedPercent}%` }}
+            className={`bg-green-500 h-full ${styles.progressBar}`}
+            style={{ '--progress-width': `${clearedPercent}%` } as React.CSSProperties}
           ></div>
           <div
-            className="bg-orange-400 h-full"
-            style={{ width: `${notVerifiedPercent}%` }}
+            className={`bg-orange-400 h-full ${styles.progressBar}`}
+            style={{ '--progress-width': `${notVerifiedPercent}%` } as React.CSSProperties}
           ></div>
           <div
-            className="bg-red-500 h-full"
-            style={{ width: `${rejectedPercent}%` }}
+            className={`bg-red-500 h-full ${styles.progressBar}`}
+            style={{ '--progress-width': `${rejectedPercent}%` } as React.CSSProperties}
           ></div>
         </div>
       </div>

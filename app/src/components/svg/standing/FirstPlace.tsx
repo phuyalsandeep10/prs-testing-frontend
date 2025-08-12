@@ -2,6 +2,7 @@
 import React, { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import Image from "next/image";
+import styles from "./FirstPlace.module.css";
 
 interface FirstPlaceProps {
   image: string;
@@ -44,13 +45,7 @@ const FirstPlace: React.FC<FirstPlaceProps> = ({ image, alt }) => {
   return (
     <div
       ref={containerRef}
-      style={{
-        height: "154px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "flex-end",
-      }}
+      className={styles.container}
     >
       <div ref={imgRef}>
         {image ? (
@@ -75,7 +70,7 @@ const FirstPlace: React.FC<FirstPlaceProps> = ({ image, alt }) => {
         viewBox="0 0 70 94"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        style={{ transformOrigin: "bottom center" }}
+        className={styles.svgElement}
       >
         <path
           d="M4.83984 13.2329L69.8398 0V126H4.83984V13.2329Z"

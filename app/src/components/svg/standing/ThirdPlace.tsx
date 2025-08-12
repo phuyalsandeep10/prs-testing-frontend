@@ -3,6 +3,7 @@ import React, { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import Image from "next/image";
 import Crown from "./Crown";
+import styles from "./ThirdPlace.module.css";
 
 type ThirdPlaceProps = {
   image: string;
@@ -60,19 +61,12 @@ const ThirdPlace: React.FC<ThirdPlaceProps> = ({ image, alt }) => {
   return (
     <div
       ref={containerRef}
-      className="relative"
-      style={{
-        height: "250px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "flex-end",
-      }}
+      className={styles.container}
     >
       {/* Crown rising from bottom (centered) */}
       <div
         ref={crownRef}
-        className="absolute -top-[50px] left-[62%] transform -translate-x-1/2 z-10"
+        className={styles.crown}
       >
         <Crown />
       </div>

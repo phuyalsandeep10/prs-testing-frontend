@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import StatsCard from '@/components/dashboard/StatsCard';
 import { toast } from "sonner";
-import { apiClient, ApiError } from '@/lib/api';
+import { apiClient, ApiError } from '@/lib/api-client';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 interface DashboardStats {
@@ -31,9 +31,9 @@ export default function SuperAdminDashboard() {
         apiClient.get<any>('/auth/users/'),
       ]);
 
-      const orgsData = orgsResponse.data;
-      const adminsData = adminsResponse.data;
-      const usersData = usersResponse.data;
+      const orgsData = orgsResponse;
+      const adminsData = adminsResponse;
+      const usersData = usersResponse;
       
       const organizations = Array.isArray(orgsData) ? orgsData : orgsData?.results || [];
       const admins = Array.isArray(adminsData) ? adminsData : adminsData?.results || [];

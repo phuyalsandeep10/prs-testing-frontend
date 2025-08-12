@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import styles from './Analytics.module.css';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { BarChart3, PieChart, TrendingUp, Calendar, DollarSign, Users } from 'lucide-react';
@@ -98,11 +99,10 @@ export default function Analytics({ analyticsData }: AnalyticsProps) {
               <div key={index} className="flex flex-col items-center flex-1">
                 <div className="relative w-full">
                   <div
-                    className={`${data.color} rounded-t transition-all duration-500 ease-out`}
+                    className={`${data.color} rounded-t transition-all duration-500 ease-out ${styles.chartBar}`}
                     style={{
-                      height: `${(data.value / maxValue) * 100}%`,
-                      minHeight: '8px'
-                    }}
+                      '--bar-height': `${(data.value / maxValue) * 100}%`,
+                    } as React.CSSProperties}
                   />
                 </div>
                 <span className="text-xs text-gray-600 mt-2">{data.label}</span>
@@ -136,8 +136,8 @@ export default function Analytics({ analyticsData }: AnalyticsProps) {
                 <div className="flex items-center space-x-2">
                   <div className="w-20 bg-gray-200 rounded-full h-2">
                     <div
-                      className={`h-2 rounded-full ${data.color.replace('bg-', 'bg-')}`}
-                      style={{ width: `${data.value}%` }}
+                      className={`h-2 rounded-full ${data.color.replace('bg-', 'bg-')} ${styles.progressBar}`}
+                      style={{ '--progress-width': `${data.value}%` } as React.CSSProperties}
                     />
                   </div>
                   <span className="text-sm font-semibold text-gray-900">{data.value}%</span>

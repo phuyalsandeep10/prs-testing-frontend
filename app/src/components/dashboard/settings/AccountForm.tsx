@@ -2,7 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { PhoneInput } from "@/components/ui/phone-input";
+import { SearchableCountrySelect } from "@/components/ui/searchable-country-select";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -43,6 +43,7 @@ export default function AccountForm() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [formData, setFormData] = useState<FormData | null>(null);
+  const [selectedCountryCode, setSelectedCountryCode] = useState("+977");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -147,7 +148,10 @@ export default function AccountForm() {
 
   const handleConfirmUpdate = () => {
     if (formData) {
-      const updateData = { ...formData } as Partial<User> & { avatar?: File };
+      const updateData = { 
+        ...formData,
+        phoneNumber: `${selectedCountryCode}-${formData.phoneNumber}`
+      } as Partial<User> & { avatar?: File };
       if (selectedFile) {
         console.log('Adding selected file to update:', selectedFile.name, selectedFile.size);
         updateData.avatar = selectedFile;
@@ -300,13 +304,22 @@ export default function AccountForm() {
               <label className="block text-sm font-medium text-[#4F46E5] mb-2">
                 Phone Number
               </label>
-              <PhoneInput
-                value={watch("phoneNumber") ?? ""}
-                onChange={(value) => setValue("phoneNumber", value)}
-                placeholder="Enter your phone number"
-                className="w-full"
-                inputClassName="h-[48px] border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5]"
-              />
+              <div className="flex">
+                <SearchableCountrySelect
+                  value={selectedCountryCode}
+                  onChange={setSelectedCountryCode}
+                  disabled={isUpdating}
+                  className="w-[150px]"
+                />
+                <Input
+                  type="tel"
+                  placeholder="Enter your phone number"
+                  className="h-[48px] rounded-l-none border-l-0 border-gray-300 focus:border-[#4F46E5] focus:ring-[#4F46E5] rounded-r-[6px]"
+                  value={watch("phoneNumber") ?? ""}
+                  onChange={(e) => setValue("phoneNumber", e.target.value)}
+                  disabled={isUpdating}
+                />
+              </div>
               {errors.phoneNumber && (
                 <p className="text-sm text-red-500 mt-1">{errors.phoneNumber.message}</p>
               )}

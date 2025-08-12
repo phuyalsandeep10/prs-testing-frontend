@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Loader2, X } from "lucide-react";
 import type { Client } from "@/lib/types/roles";
 import { useCreateClient, useUpdateClient } from "@/hooks/api";
-import { clientApi } from "@/lib/api";
+import { clientApi } from "@/lib/api-client";
 
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";

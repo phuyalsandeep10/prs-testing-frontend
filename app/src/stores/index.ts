@@ -16,36 +16,56 @@ import { useAuthStore } from './authStore';
 import { useUIStore } from './uiStore';
 import { useAppStore } from './appStore';
 
-// Authentication selectors (now with hydration safety)
+// Authentication selectors with backward compatibility
 export const useAuth = () => {
-  const {
-    isAuthenticated,
-    isAuthInitialized,
-    isHydrated,
-    user,
-    token,
-    login,
-    logout,
-    updateUser,
-    getUserRole,
-    getUserPermissions,
-    hasPermission,
-    isRole,
-  } = useAuthStore();
+  const store = useAuthStore();
+  
+  // Transform the Zustand user format to match old AuthContext format for backward compatibility
+  const transformedUser = store.user ? {
+    id: store.user.id,
+    email: store.user.email,
+    role: {
+      name: store.user.role,
+      permissions: store.user.permissions?.map(p => ({ codename: p })) || []
+    },
+    organization: store.organization?.toString() || '',
+    ...store.user
+  } : null;
 
   return {
-    isAuthenticated,
-    isAuthInitialized,
-    isHydrated,
-    user,
-    token,
-    login,
-    logout,
-    updateUser,
-    getUserRole,
-    getUserPermissions,
-    hasPermission,
-    isRole,
+    // Backward compatible interface
+    isAuthenticated: store.isAuthenticated,
+    isAuthInitialized: store.isAuthInitialized,
+    user: transformedUser,
+    login: (token: string, userData: any) => {
+      // Handle both old and new formats
+      if (userData.role?.name) {
+        // Old format from AuthContext
+        const normalizedUser = {
+          ...userData,
+          role: userData.role.name,
+          permissions: userData.role.permissions?.map((p: any) => p.codename) || []
+        };
+        store.login(token, normalizedUser as any);
+      } else {
+        // New format (already normalized)
+        store.login(token, userData);
+      }
+    },
+    logout: store.logout,
+    hasPermission: store.hasPermission,
+    hasAnyPermission: (permissions: any[]) => 
+      permissions.some(p => store.hasPermission(p)),
+    hasAllPermissions: (permissions: any[]) =>
+      permissions.every(p => store.hasPermission(p)),
+    
+    // Additional Zustand-specific properties for new code
+    isHydrated: store.isHydrated,
+    token: store.token,
+    updateUser: store.updateUser,
+    getUserRole: store.getUserRole,
+    getUserPermissions: store.getUserPermissions,
+    isRole: store.isRole,
   };
 };
 

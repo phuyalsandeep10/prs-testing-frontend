@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import styles from './TeamsTable.module.css';
 import { Eye, Edit, Trash2, ChevronUp, ChevronDown, ArrowUpDown } from "lucide-react";
 import { useState, useMemo } from "react";
 
@@ -169,8 +170,8 @@ export function TeamsTable({ data, onView, onEdit, onDelete, pagination, deletin
                       {team.teamMembers.slice(0, 3).map((member, idx) => (
                         <div 
                           key={member.id}
-                          className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-[12px] font-medium border-2 border-white relative cursor-help"
-                          style={{ zIndex: 10 - idx }}
+                          className={`h-8 w-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-[12px] font-medium border-2 border-white relative cursor-help ${styles.teamMemberAvatar}`}
+                          style={{ '--z-index': 10 - idx } as React.CSSProperties}
                           title={`${member.name || 'Unknown Member'}`}
                           aria-label={`Team member: ${member.name || 'Unknown Member'}`}
                         >

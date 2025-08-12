@@ -1,6 +1,7 @@
 import React from "react";
 import { FieldError, UseFormRegisterReturn } from "react-hook-form";
 import InputWrapper from "./InputWrapper";
+import styles from './SelectField.module.css';
 
 interface SelectFieldProps {
   label: string;
@@ -81,7 +82,8 @@ const SelectField: React.FC<SelectFieldProps> = ({
             <option
               key={`${opt.value}-${index}`}
               value={opt.value}
-              style={{ color: optionColor }}
+              className={styles.coloredOption}
+              style={{ '--option-color': optionColor } as React.CSSProperties}
             >
               {opt.label}
             </option>

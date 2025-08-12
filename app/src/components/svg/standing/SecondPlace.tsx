@@ -2,6 +2,7 @@
 import React, { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import Image from "next/image";
+import styles from "./SecondPlace.module.css";
 
 interface SecondPlaceProps {
   image: string;
@@ -67,12 +68,7 @@ const SecondPlace: React.FC<SecondPlaceProps> = ({ image, alt }) => {
   return (
     <div
       ref={containerRef}
-      style={{
-        height: "198px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-      }}
+      className={styles.container}
     >
       <div ref={imgRef}>
         {image ? (

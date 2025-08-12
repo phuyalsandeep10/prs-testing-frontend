@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { ArrowLeft, Calendar, User, DollarSign, Briefcase, Clock, FileText } from "lucide-react";
-import { apiClient } from "@/lib/api";
+import { apiClient } from "@/lib/api-client";
 // Detailed domain types are not strictly required for this view. Use a looser
 // shape to avoid compile-time mismatches with backend responses.
 import type { Client as ClientType } from "@/types/deals";

@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api';
+import { apiClient } from '@/lib/api-client';
 import type { Notification, NotificationStats } from '@/types';
 import { useAuth } from '@/stores';
 import { toast } from 'sonner';

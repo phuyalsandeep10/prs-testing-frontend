@@ -25,44 +25,60 @@ export function PhoneInput({
   className,
   inputClassName
 }: PhoneInputProps) {
-  const [countryCode, setCountryCode] = React.useState('+977');
-  const [phoneNumber, setPhoneNumber] = React.useState('');
-  const [initialized, setInitialized] = React.useState(false);
-  
   const { data: countries = [], isLoading } = useCountryCodes();
 
-  // Initialize from field value only once
-  React.useEffect(() => {
-    if (!initialized && value) {
-      const match = value.match(/^(\+\d+)(.*)$/);
-      if (match) {
-        setCountryCode(match[1]);
-        setPhoneNumber(match[2] || '');
-      }
-      setInitialized(true);
-    } else if (!initialized) {
-      // Initialize with default values
-      setInitialized(true);
+  // Parse current value to extract country code and phone number
+  const parseValue = React.useCallback((val: string) => {
+    console.log('📱 [PARSE_DEBUG] Parsing value:', val);
+    
+    if (!val || val.trim() === '') {
+      return { countryCode: '+977', phoneNumber: '' };
     }
-  }, [value, initialized]);
+    
+    // Try to match country code at the beginning
+    const match = val.match(/^(\+\d{1,4})(.*)$/);
+    if (match) {
+      const [, code, number] = match;
+      const result = { countryCode: code, phoneNumber: number || '' };
+      console.log('📱 [PARSE_DEBUG] Matched with country code:', result);
+      return result;
+    }
+    
+    // If no country code found, treat the whole value as phone number
+    const result = { countryCode: '+977', phoneNumber: val };
+    console.log('📱 [PARSE_DEBUG] No country code found, using default:', result);
+    return result;
+  }, []);
 
-  const updateFormValue = (newCountryCode: string, newPhoneNumber: string) => {
-    const fullValue = newPhoneNumber ? `${newCountryCode}${newPhoneNumber}` : '';
+  const { countryCode, phoneNumber } = React.useMemo(() => {
+    console.log('📱 [PHONE_INPUT_DEBUG] Current value prop:', value);
+    const result = parseValue(value);
+    console.log('📱 [PHONE_INPUT_DEBUG] Parsed result:', result);
+    return result;
+  }, [value, parseValue]);
+
+  const handleCountryChange = (newCountryCode: string) => {
+    const fullValue = phoneNumber ? `${newCountryCode}${phoneNumber}` : '';
     onChange?.(fullValue);
   };
 
-  const handleCountryChange = (newCountryCode: string) => {
-    setCountryCode(newCountryCode);
-    updateFormValue(newCountryCode, phoneNumber);
-  };
-
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newPhoneNumber = e.target.value.replace(/\D/g, '').slice(0, 15);
-    setPhoneNumber(newPhoneNumber);
-    updateFormValue(countryCode, newPhoneNumber);
+    const inputValue = e.target.value;
+    // Allow only digits and limit to 15 characters
+    const newPhoneNumber = inputValue.replace(/\D/g, '').slice(0, 15);
+    const fullValue = newPhoneNumber ? `${countryCode}${newPhoneNumber}` : '';
+    
+    console.log('📱 [PHONE_INPUT_DEBUG] Input value:', inputValue);
+    console.log('📱 [PHONE_INPUT_DEBUG] Cleaned phone number:', newPhoneNumber);
+    console.log('📱 [PHONE_INPUT_DEBUG] Country code:', countryCode);
+    console.log('📱 [PHONE_INPUT_DEBUG] Full value being sent:', fullValue);
+    console.log('📱 [PHONE_INPUT_DEBUG] Current phoneNumber from props:', phoneNumber);
+    
+    // Only call onChange if the value actually changed
+    if (fullValue !== value) {
+      onChange?.(fullValue);
+    }
   };
-
-
 
   if (isLoading) {
     return (
@@ -74,6 +90,7 @@ export function PhoneInput({
           className={cn("rounded-l-none border-l-0", inputClassName)}
           placeholder={placeholder}
           disabled={true}
+          value=""
         />
       </div>
     );
@@ -111,7 +128,14 @@ export function PhoneInput({
         placeholder={placeholder}
         value={phoneNumber}
         disabled={disabled}
-        onChange={handlePhoneChange}
+        onChange={(e) => {
+          console.log('📱 [PHONE_INPUT_DEBUG] Raw onChange triggered with:', e.target.value);
+          handlePhoneChange(e);
+        }}
+        onInput={(e) => console.log('📱 [PHONE_INPUT_DEBUG] onInput triggered with:', (e.target as HTMLInputElement).value)}
+        onKeyDown={(e) => console.log('📱 [PHONE_INPUT_DEBUG] Key pressed:', e.key)}
+        onFocus={() => console.log('📱 [PHONE_INPUT_DEBUG] Input focused')}
+        onBlur={() => console.log('📱 [PHONE_INPUT_DEBUG] Input blurred')}
       />
     </div>
   );

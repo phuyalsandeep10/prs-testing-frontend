@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { NationalitySelector } from "@/components/ui/nationality-selector";
+import { SearchableCountrySelect } from "@/components/ui/searchable-country-select";
 
 const formSchema = z.object({
   client_name: z.string().min(1, "Client name is required").regex(/^[A-Za-z\s]+$/, "Client name can only contain letters and spaces"),
@@ -47,6 +48,7 @@ export default function AddNewClientForm({
   onClientAdded,
 }: AddNewClientFormProps) {
   const [isLoading, setIsLoading] = React.useState(false);
+  const [selectedCountryCode, setSelectedCountryCode] = React.useState("+977");
   const createClientMutation = useCreateClient();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -68,7 +70,7 @@ export default function AddNewClientForm({
         email: values.email,
         nationality: values.nationality,
         remarks: values.remarks || "",
-        phone_number: values.phone_number.trim(),
+        phone_number: `${selectedCountryCode}-${values.phone_number.trim()}`,
       };
       const newClient = await createClientMutation.mutateAsync(payload);
       toast.success("Client created successfully!");
@@ -182,87 +184,32 @@ export default function AddNewClientForm({
               <FormField
                 control={form.control}
                 name="phone_number"
-                render={({ field }) => {
-                  const [countryCode, setCountryCode] = React.useState('+977');
-                  const [phoneNumber, setPhoneNumber] = React.useState('');
-                  const [initialized, setInitialized] = React.useState(false);
-
-                  // Initialize from field value only once
-                  React.useEffect(() => {
-                    if (!initialized && field.value) {
-                      const match = field.value.match(/^(\+\d+)(.*)$/);
-                      if (match) {
-                        setCountryCode(match[1]);
-                        setPhoneNumber(match[2] || '');
-                      }
-                      setInitialized(true);
-                    } else if (!initialized) {
-                      // Initialize with default values
-                      setInitialized(true);
-                    }
-                  }, [field.value, initialized]);
-
-                  const updateFormValue = (newCountryCode: string, newPhoneNumber: string) => {
-                    const fullValue = newPhoneNumber ? `${newCountryCode}${newPhoneNumber}` : '';
-                    field.onChange(fullValue);
-                  };
-
-                  const handleCountryChange = (newCountryCode: string) => {
-                    setCountryCode(newCountryCode);
-                    updateFormValue(newCountryCode, phoneNumber);
-                  };
-
-                  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-                    const newPhoneNumber = e.target.value.replace(/\D/g, '').slice(0, 15);
-                    setPhoneNumber(newPhoneNumber);
-                    updateFormValue(countryCode, newPhoneNumber);
-                  };
-
-                  return (
-                    <FormItem>
-                      <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
-                        Contact Number
-                        <span className="text-red-500 ml-1">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <div className="flex">
-                          <Select 
-                            value={countryCode}
-                            disabled={isLoading}
-                            onValueChange={handleCountryChange}
-                          >
-                            <SelectTrigger className="w-[120px] h-[48px] rounded-r-none border-r-0 border-2 border-[#4F46E5]">
-                              <SelectValue placeholder="Country" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="+977">🇳🇵 +977</SelectItem>
-                              <SelectItem value="+91">🇮🇳 +91</SelectItem>
-                              <SelectItem value="+1">🇺🇸 +1</SelectItem>
-                              <SelectItem value="+44">🇬🇧 +44</SelectItem>
-                              <SelectItem value="+86">🇨🇳 +86</SelectItem>
-                              <SelectItem value="+61">🇦🇺 +61</SelectItem>
-                              <SelectItem value="+33">🇫🇷 +33</SelectItem>
-                              <SelectItem value="+49">🇩🇪 +49</SelectItem>
-                              <SelectItem value="+81">🇯🇵 +81</SelectItem>
-                              <SelectItem value="+82">🇰🇷 +82</SelectItem>
-                              <SelectItem value="+65">🇸🇬 +65</SelectItem>
-                              <SelectItem value="+971">🇦🇪 +971</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <Input
-                            type="tel"
-                            className="h-[48px] border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-l-none border-l-0"
-                            placeholder="9807057526"
-                            value={phoneNumber}
-                            disabled={isLoading}
-                            onChange={handlePhoneChange}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage className="text-[12px] text-red-500 mt-1" />
-                    </FormItem>
-                  );
-                }}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
+                      Contact Number
+                      <span className="text-red-500 ml-1">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <div className="flex">
+                        <SearchableCountrySelect
+                          value={selectedCountryCode}
+                          onChange={setSelectedCountryCode}
+                          disabled={isLoading}
+                          className="w-[150px]"
+                        />
+                        <Input
+                          type="tel"
+                          className="h-[48px] border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-l-none border-l-0 rounded-r-[6px]"
+                          placeholder="9807057526"
+                          {...field}
+                          disabled={isLoading}
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage className="text-[12px] text-red-500 mt-1" />
+                  </FormItem>
+                )}
               />
               <FormField
                 control={form.control}

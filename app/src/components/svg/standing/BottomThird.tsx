@@ -2,6 +2,7 @@
 import React, { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import Image from "next/image";
+import styles from "./BottomThird.module.css";
 
 interface ThirdPlaceProps {
   image: string;
@@ -67,12 +68,7 @@ const BottomThird: React.FC<ThirdPlaceProps> = ({ image, alt }) => {
   return (
     <div
       ref={containerRef}
-      style={{
-        height: "250px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-      }}
+      className={styles.container}
     >
       <div ref={imgRef}>
         {image ? (

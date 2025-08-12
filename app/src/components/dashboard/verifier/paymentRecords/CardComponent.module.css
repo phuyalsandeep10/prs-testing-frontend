@@ -1,0 +1,28 @@
+.circleProgress {
+  position: relative;
+  --circle-size: 40px;
+  width: var(--circle-size);
+  height: var(--circle-size);
+}
+
+.progressText {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--progress-color);
+}
+
+.changeTag {
+  font-size: 9px;
+  border-radius: 5px;
+  border: 1px solid;
+  font-weight: 500;
+  padding: 2px 6px 2px 6px;
+  width: fit-content;
+  color: var(--tag-color);
+  border-color: var(--tag-border-color);
+}

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api';
+import { apiClient } from '@/lib/api-client';
 import { toast } from 'sonner';
 
 // Types
@@ -33,8 +33,30 @@ export const usePermissionsQuery = () => {
   return useQuery({
     queryKey: ['permissions'],
     queryFn: async (): Promise<GroupedPermissions> => {
-      const response = await apiClient.get<GroupedPermissions>('/permissions/all/');
-      return response.data;
+      console.log('🚀 Making permissions API call to /permissions/all/');
+      try {
+        const response = await apiClient.get<GroupedPermissions>('/permissions/all/');
+        
+        console.log('🔍 Permissions API response:', response);
+        console.log('🔍 Permissions response.data:', response.data);
+        console.log('🔍 Permissions response type:', typeof response);
+        console.log('🔍 Permissions response.data type:', typeof response.data);
+        
+        // The response itself might be the data (not wrapped in .data)
+        const actualData = response.data || response;
+        
+        // Handle undefined/null response
+        if (!actualData || typeof actualData !== 'object') {
+          console.log('⚠️ Permissions response is undefined/null, returning empty object');
+          return {};
+        }
+        
+        console.log('✅ Permissions data loaded:', actualData);
+        return actualData as GroupedPermissions;
+      } catch (error) {
+        console.error('❌ Permissions API error:', error);
+        throw error;
+      }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,
@@ -49,8 +71,31 @@ export const useRolesQuery = () => {
   return useQuery({
     queryKey: ['roles'],
     queryFn: async (): Promise<Role[]> => {
-      const response = await apiClient.get<Role[]>('/permissions/roles/');
-      return response.data;
+      console.log('🚀 Making roles API call to /permissions/roles/');
+      try {
+        const response = await apiClient.get<Role[]>('/permissions/roles/');
+        
+        console.log('🔍 Roles API response:', response);
+        console.log('🔍 Roles response.data:', response.data);
+        console.log('🔍 Roles response type:', typeof response);
+        console.log('🔍 Roles response.data type:', typeof response.data);
+        
+        // The response itself might be the data (not wrapped in .data)
+        const actualData = response.data || response;
+        
+        // Handle undefined/null response
+        if (!actualData) {
+          console.log('⚠️ Roles response is undefined/null, returning empty array');
+          return [];
+        }
+        
+        const roles = Array.isArray(actualData) ? actualData : [];
+        console.log('✅ Roles data loaded:', roles);
+        return roles;
+      } catch (error) {
+        console.error('❌ Roles API error:', error);
+        throw error;
+      }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchOnWindowFocus: false,

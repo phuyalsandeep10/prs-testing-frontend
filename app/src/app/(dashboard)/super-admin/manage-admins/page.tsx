@@ -17,7 +17,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useRouter } from 'next/navigation';
-import { apiClient, ApiError } from '@/lib/api';
+import { apiClient, ApiError } from '@/lib/api-client';
 
 interface Admin {
   id: number;
@@ -38,7 +38,7 @@ export default function ManageAdminsPage() {
     try {
       const response = await apiClient.get<any>('/auth/users/', { role: 'Org Admin' });
 
-      const adminsData = Array.isArray(response.data) ? response.data : response.data?.results || [];
+      const adminsData = Array.isArray(response) ? response : response?.results || [];
       setAdmins(adminsData);
     } catch (error: any) {
       console.error('Error loading admins:', error);

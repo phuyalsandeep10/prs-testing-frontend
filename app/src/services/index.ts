@@ -12,11 +12,24 @@ import {
 import { 
   userApi, 
   clientApi, 
-  teamApi, 
-  commissionApi, 
-  dashboardApi,
-  enableMockData 
-} from '@/lib/api';
+  teamApi 
+} from '@/lib/api-client';
+
+// Note: commissionApi and dashboardApi may need to be implemented in api-client
+// enableMockData flag - temporarily hardcoded for migration
+const enableMockData = false;
+
+// Temporary placeholder APIs for commission and dashboard
+const commissionApi = {
+  getAll: async (params: any) => { throw new Error('Commission API not yet implemented'); },
+  update: async (data: any) => { throw new Error('Commission API not yet implemented'); },
+  bulkUpdate: async (data: any) => { throw new Error('Commission API not yet implemented'); },
+  export: async (format: string, filters: any) => { throw new Error('Commission API not yet implemented'); },
+};
+
+const dashboardApi = {
+  getStats: async (role: any) => { throw new Error('Dashboard API not yet implemented'); },
+};
 
 // ==================== MOCK DATA (Development Only) ====================
 import { getClients, getClientById } from '@/data/clients';

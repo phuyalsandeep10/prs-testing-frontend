@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { apiClient, ApiError } from '@/lib/api';
+import { apiClient, ApiError } from '@/lib/api-client';
 import { useAuth } from '@/stores';
 import { USER_ROLES } from '@/lib/constants';
 import { toast } from 'sonner';

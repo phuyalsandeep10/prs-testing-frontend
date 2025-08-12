@@ -9,8 +9,9 @@ import Image from "next/image";
 import { format } from "date-fns";
 import { ReusableTable } from "@/components/salesperson/deals/ReusableTable";
 import ExpandButton from "@/components/shared/ExpandButton";
-import { apiClient } from "@/lib/api";
+import { apiClient } from "@/lib/api-client";
 import { Deal, Payment } from "@/types/deals";
+import styles from "./DealsTable.module.css";
 
 // Dummy data removal and type import will happen here.
 // The mock data `Mainusers` will be deleted.
@@ -98,11 +99,11 @@ const DealsTable = ({ setTogglePaymentForm }: DealsTableProps) => {
             <div className="flex items-center space-x-2">
               <div className="w-16 bg-gray-200 rounded-full h-2">
                 <div 
-                  className={`h-2 rounded-full ${
+                  className={`h-2 rounded-full ${styles.progressBar} ${
                     progress >= 100 ? 'bg-green-500' : 
                     progress >= 50 ? 'bg-yellow-500' : 'bg-red-500'
                   }`}
-                  style={{ width: `${Math.min(progress, 100)}%` }}
+                  style={{ '--progress-width': `${Math.min(progress, 100)}%` } as React.CSSProperties}
                 ></div>
               </div>
               <span className="text-xs font-medium">

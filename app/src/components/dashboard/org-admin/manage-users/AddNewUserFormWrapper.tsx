@@ -15,6 +15,7 @@ import {
   useRoles as useAllRoles,
   Role,
 } from "@/hooks/api/useRoles";
+import { SearchableCountrySelect } from "@/components/ui/searchable-country-select";
 
 // Static fallback roles – shown when API call fails or returns empty
 const FALLBACK_ROLES: Array<{ id: string; name: string }> = [
@@ -36,7 +37,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { PhoneInput } from "@/components/ui/phone-input";
 import {
   Select,
   SelectContent,
@@ -91,9 +91,11 @@ export function AddNewUserFormWrapper({
   initialData,
   isEdit = false,
 }: AddNewUserFormWrapperProps) {
+  const isSubmittingRef = React.useRef(false);
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
   const [passwordValue, setPasswordValue] = React.useState("");
+  const [selectedCountryCode, setSelectedCountryCode] = React.useState("+977");
   const { user } = useAuth();
   const { addNotification } = useUI();
 
@@ -102,8 +104,9 @@ export function AddNewUserFormWrapper({
   const { data: teamsData, isLoading: teamsLoading } = useTeamsQuery();
   const teams = teamsData?.data || [];
 
+
   // Roles for the current organization (fallback to all roles if user not tied to org)
-  const organizationId = user?.organizationId ?? "";
+  const organizationId = user?.organization || user?.organizationId || "";
   const { data: apiRoles, isLoading: orgRolesLoading } =
     useOrganizationRoles(organizationId);
 
@@ -143,12 +146,14 @@ export function AddNewUserFormWrapper({
       contactNumber: initialData?.phoneNumber?.replace("+977 - ", "") || "",
       password: "",
       confirmPassword: "",
-      role: findRoleIdByName(initialData?.role),
+      role: findRoleIdByName(initialData?.role) || "",
       team: initialData?.assignedTeam || "",
     },
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     try {
       // console.log('📝 [USER_TABLE_DEBUG] Form submission started');
       // console.log('📝 [USER_TABLE_DEBUG] Form values:', values);
@@ -157,18 +162,21 @@ export function AddNewUserFormWrapper({
       const [firstName, ...lastNameParts] = values.fullName.trim().split(" ");
       const lastName = lastNameParts.join(" ") || firstName;
 
+      const normalizedEmail = values.email.toLowerCase().trim();
+      
       const userData: any = {
-        username: values.email.split("@")[0],
+        username: `${normalizedEmail.split("@")[0]}_${Date.now()}`, // Make username unique to avoid conflicts
         first_name: firstName,
         last_name: lastName,
-        email: values.email,
-        contact_number: `+977-${values.contactNumber}`,
+        email: normalizedEmail, // Normalize email
+        contact_number: `${selectedCountryCode}-${values.contactNumber}`, // Use selected country code
         password: values.password,
-        role: values.role, // Pass the role name (string) directly
+        role: values.role,
         is_active: true,
+        organization: user?.organization || user?.organizationId || organizationId || null,
       };
 
-      // console.log('📤 [USER_TABLE_DEBUG] Sending user data:', userData);
+      console.log('📤 [USER_TABLE_DEBUG] Sending user data:', userData);
 
       if (values.team) {
         userData.teams = [values.team];
@@ -193,15 +201,7 @@ export function AddNewUserFormWrapper({
           new CustomEvent("userCreated", { detail: { id: result.id } })
         );
 
-        // Additional manual refresh trigger - dispatch a custom event that ManageUsersPage can listen to
-        setTimeout(() => {
-          // console.log('🔄 [USER_TABLE_DEBUG] Dispatching manual refresh event...');
-          window.dispatchEvent(
-            new CustomEvent("forceUserTableRefresh", {
-              detail: { userId: result.id },
-            })
-          );
-        }, 500);
+        // React Query will handle cache invalidation automatically
       }
 
       form.reset();
@@ -209,8 +209,27 @@ export function AddNewUserFormWrapper({
         onFormSubmit();
       }
       onClose();
-    } catch (error) {
-      // console.error('❌ [USER_TABLE_DEBUG] Error in form submission:', error);
+    } catch (error: any) {
+      console.error('❌ [USER_TABLE_DEBUG] Error in form submission:', error);
+      console.error('❌ [USER_TABLE_DEBUG] Error details:', error.details || error.message);
+      
+      // Show specific validation errors
+      if (error.details && typeof error.details === 'object') {
+        const errorMessages = Object.entries(error.details)
+          .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+          .join('\n');
+        
+        toast.error('Validation Error', {
+          description: errorMessages,
+          duration: 5000,
+        });
+      } else {
+        toast.error('Error creating user', {
+          description: error.message || 'Failed to create user',
+        });
+      }
+    } finally {
+      isSubmittingRef.current = false;
     }
   };
 
@@ -250,7 +269,7 @@ export function AddNewUserFormWrapper({
       {/* Form Body - Exact Figma Layout */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form id="add-user-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Full Name */}
             <FormField
               control={form.control}
@@ -306,14 +325,21 @@ export function AddNewUserFormWrapper({
                     Contact Number<span className="text-red-500 ml-1">*</span>
                   </FormLabel>
                   <FormControl>
-                    <PhoneInput
-                      value={field.value || ""}
-                      onChange={field.onChange}
-                      placeholder="Enter phone number"
-                      disabled={isLoading}
-                      className="w-full"
-                      inputClassName="h-[48px] shadow-[0px_0px_4px_0px_#8393FC] focus-visible:border-[#6B7FFF] focus-visible:outline-[#6B7FFF] focus:ring-[#6B7FFF] text-[16px]"
-                    />
+                    <div className="flex">
+                      <SearchableCountrySelect
+                        value={selectedCountryCode}
+                        onChange={setSelectedCountryCode}
+                        disabled={isLoading}
+                        className="w-[150px]"
+                      />
+                      <Input
+                        type="tel"
+                        placeholder="Enter phone number"
+                        className="h-[48px] rounded-l-none border-l-0 shadow-[0px_0px_4px_0px_#8393FC] focus-visible:border-[#6B7FFF] focus-visible:outline-[#6B7FFF] focus:ring-[#6B7FFF] text-[16px] rounded-r-[6px]"
+                        {...field}
+                        disabled={isLoading}
+                      />
+                    </div>
                   </FormControl>
                   <FormMessage className="text-[12px] text-red-500 mt-1" />
                 </FormItem>
@@ -536,7 +562,7 @@ export function AddNewUserFormWrapper({
           </Button>
           <Button
             type="submit"
-            onClick={form.handleSubmit(onSubmit)}
+            form="add-user-form"
             disabled={isLoading}
             className="flex-1 h-[48px] bg-[#22C55E] hover:bg-[#16A34A] text-white border-0 text-[16px] font-medium rounded-lg"
           >

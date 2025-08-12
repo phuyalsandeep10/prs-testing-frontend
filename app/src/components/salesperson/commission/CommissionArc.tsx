@@ -1,6 +1,7 @@
 "use client";
 
 import type React from "react";
+import styles from './CommissionArc.module.css';
 import { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 
@@ -184,8 +185,8 @@ const CommissionArc: React.FC<CommissionArcProps> = ({
       <div className="w-full flex justify-center overflow-hidden">
         <svg
           ref={svgRef}
-          className="w-full h-auto max-w-full"
-          style={{ maxHeight: "180px" }}
+          className={`w-full h-auto max-w-full ${styles.chartSvg}`}
+          style={{ '--max-height': '180px' } as React.CSSProperties}
         />
       </div>
 

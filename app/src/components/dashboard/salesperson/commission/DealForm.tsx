@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DealSchema } from "../../../salesperson/Deal/DealSchema";
-import { apiClient } from "@/lib/api";
+import { apiClient } from "@/lib/api-client";
 import { Client } from "@/types/deals";
 
 type DealFormData = z.infer<typeof DealSchema>;

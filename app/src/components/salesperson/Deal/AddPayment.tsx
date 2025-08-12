@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ChevronDown, Paperclip } from "lucide-react";
-import { apiClient } from "@/lib/api";
+import { apiClient } from "@/lib/api-client";
 import { toast } from "sonner";
 
 const AddPaymentSchema = z.object({

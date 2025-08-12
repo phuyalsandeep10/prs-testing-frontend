@@ -2,6 +2,7 @@
 import React, { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import Image from "next/image";
+import styles from "./BottomSecond.module.css";
 
 interface BottomSecondProps {
   image: string;
@@ -66,12 +67,7 @@ const BottomSecond: React.FC<BottomSecondProps> = ({ image, alt }) => {
   return (
     <div
       ref={containerRef}
-      style={{
-        height: "198px",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-      }}
+      className={styles.container}
     >
       <div ref={imgRef}>
         {image ? (

@@ -69,7 +69,16 @@ export const useRoles = () => {
     queryFn: async (): Promise<Role[]> => {
       const response = await apiClient.get<RolesResponse | Role[]>('/permissions/roles/');
       
+      // Handle undefined/null response
+      if (!response || response.data === undefined || response.data === null) {
+        return [];
+      }
+      
       // Handle both paginated and direct array responses
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+      
       if (Array.isArray(response)) {
         return response;
       }
@@ -92,7 +101,16 @@ export const useOrganizationRoles = (organizationId: string) => {
         `/permissions/roles/?organization=${organizationId}`
       );
       
+      // Handle undefined/null response
+      if (!response || response.data === undefined || response.data === null) {
+        return [];
+      }
+      
       // Handle both paginated and direct array responses
+      if (Array.isArray(response.data)) {
+        return response.data;
+      }
+      
       if (Array.isArray(response)) {
         return response;
       }
@@ -122,7 +140,16 @@ export const useRole = (roleId: string) => {
 export const usePermissions = () => {
   return useQuery({
     queryKey: ['permissions'],
-    queryFn: () => apiClient.get<Permission[]>('/permissions/all/'),
+    queryFn: async (): Promise<Permission[]> => {
+      const response = await apiClient.get<Permission[]>('/permissions/all/');
+      
+      // Handle undefined/null response
+      if (!response || response.data === undefined || response.data === null) {
+        return [];
+      }
+      
+      return Array.isArray(response.data) ? response.data : [];
+    },
     staleTime: 10 * 60 * 1000, // Permissions rarely change
   });
 };

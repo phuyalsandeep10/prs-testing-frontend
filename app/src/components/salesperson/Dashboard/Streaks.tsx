@@ -3,6 +3,7 @@
 import React from "react";
 import { useStreaks } from "@/hooks/api";
 import { Star, Loader2, AlertTriangle } from "lucide-react";
+import styles from "./Streaks.module.css";
 
 interface StreaksProps {
   total?: number; // Total stars shown (default 5)
@@ -71,8 +72,7 @@ export default function Streaks({ total = 5 }: StreaksProps) {
             {/* Half empty star */}
             {halfEmptyStars === 1 && (
               <Star
-                className="w-8 h-8"
-                style={{ fill: "url(#halfStarGradientEmpty)" }}
+                className={`w-8 h-8 ${styles.halfStar}`}
               />
             )}
 
@@ -94,7 +94,7 @@ export default function Streaks({ total = 5 }: StreaksProps) {
         height="0"
         aria-hidden="true"
         focusable="false"
-        style={{ position: "absolute" }}
+        className={styles.hiddenSvg}
       >
         <defs>
           <linearGradient

@@ -3,6 +3,7 @@ import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import RefundComponent from "@/components/dashboard/verifier/dashboard/RefundComponent";
 import { Skeleton } from "@/components/ui/skeleton";
+import styles from "./RefundSection.module.css";
 
 const fetchRefunds = async () => {
   const res = await fetch(
@@ -68,8 +69,7 @@ const RefundSection = () => {
           {Array.from({ length: 5 }).map((_, idx) => (
             <div
               key={idx}
-              className="flex justify-between space-x-4"
-              style={{ minHeight: 32 }}
+              className={`flex justify-between space-x-4 ${styles.skeletonRow}`}
             >
               <Skeleton className="w-20 h-6 rounded" />
               <Skeleton className="w-32 h-6 rounded" />

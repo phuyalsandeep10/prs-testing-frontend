@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { cn } from "@/lib/utils"
+import styles from "./progress.module.css"
 
 interface ProgressProps extends React.HTMLAttributes<HTMLDivElement> {
   value?: number
@@ -22,8 +23,8 @@ const Progress = React.forwardRef<HTMLDivElement, ProgressProps>(
         {...props}
       >
         <div
-          className="h-full bg-blue-600 transition-all duration-300 ease-out"
-          style={{ width: `${percentage}%` }}
+          className={`h-full bg-blue-600 transition-all duration-300 ease-out ${styles.progressFill}`}
+          style={{ '--progress-percentage': `${percentage}%` } as React.CSSProperties}
         />
       </div>
     )

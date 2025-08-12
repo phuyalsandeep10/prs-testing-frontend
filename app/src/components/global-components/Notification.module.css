@@ -1,0 +1,8 @@
+.notificationContent {
+  position: fixed;
+  top: var(--top);
+  right: var(--right);
+  left: auto;
+  transform: none;
+  margin: 0;
+}

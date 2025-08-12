@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import styles from './Notification.module.css';
 import { useNotifications, useUnreadCount, useMarkAsRead, useMarkAllAsRead } from "@/hooks/useNotifications";
 import type { Notification as NotificationType } from "@/types";
 import { formatDistanceToNow, startOfDay, isSameDay, subDays } from "date-fns";
@@ -195,15 +196,11 @@ const NotificationComponent: React.FC<NotificationProps> = ({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <NotificationContent
-        className="p-0 bg-white shadow-2xl w-[540px] max-w-[98vw] h-[700px] max-h-[95vh] rounded-2xl border border-gray-100 mx-auto mt-12 flex flex-col"
+        className={`p-0 bg-white shadow-2xl w-[540px] max-w-[98vw] h-[700px] max-h-[95vh] rounded-2xl border border-gray-100 mx-auto mt-12 flex flex-col ${styles.notificationContent}`}
         style={{
-          position: "fixed",
-          top: `${position.top}px`,
-          right: `${position.right}px`,
-          left: "auto",
-          transform: "none",
-          margin: 0,
-        }}
+          '--top': `${position.top}px`,
+          '--right': `${position.right}px`,
+        } as React.CSSProperties}
         onInteractOutside={(e) => {
           // Prevent closing when clicking on the bell icon
           if (anchorRef?.current?.contains(e.target as Node)) {

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api';
+import { apiClient } from '@/lib/api-client';
 import { NotificationPreferences } from '@/types';
 import { useAuth } from '@/stores';
 import { toast } from 'sonner';

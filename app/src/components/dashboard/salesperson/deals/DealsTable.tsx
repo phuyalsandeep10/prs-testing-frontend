@@ -8,7 +8,7 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { UnifiedTable } from "@/components/core";
 import ExpandButton from "@/components/dashboard/salesperson/deals/ExpandButton";
-import { apiClient } from "@/lib/api";
+import { apiClient } from "@/lib/api-client";
 import { Deal } from "@/types/deals";
 import Image from "next/image";
 import Edit from "@/assets/icons/edit.svg";
@@ -44,7 +44,8 @@ const fetchDeals = async (searchTerm: string): Promise<Deal[]> => {
       limit: 25, // Use the actual limit that works
       ordering: "-created_at", // Sort by creation date descending to get newest first
     });
-    const dealsData = response.data.results;
+    // The apiClient.get() method returns the data directly, not wrapped in a .data property
+    const dealsData = response.results;
     return dealsData || []; // Return the data array from the response
   } catch (error) {
     throw error;

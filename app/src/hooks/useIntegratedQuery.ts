@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth, useUI, useApp, usePermissions } from '@/stores';
 import { PaginatedResponse, CreateInput, UpdateInput } from '@/types';
 import { User } from '@/lib/types/roles';
-import { apiClient } from '@/lib/api';
+import { apiClient } from '@/lib/api-client';
 import { useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { hasPermission as hasRolePermission } from '@/lib/auth/permissions';
@@ -204,8 +204,12 @@ export const useCreateUserMutation = () => {
     mutationFn: async (userData: CreateInput<User>): Promise<User> => {
       // console.log('🚀 [USER_TABLE_DEBUG] Creating user with data:', userData);
       const response = await apiClient.post<User>('/auth/users/', userData);
-      // console.log('✅ [USER_TABLE_DEBUG] User created successfully:', response.data);
-      return response.data!;
+      // Support both direct payloads and axios-like { data }
+      const payload = (response as any)?.data ?? response;
+      if (!payload) {
+        throw new Error('Invalid response data from server');
+      }
+      return payload as User;
     },
     onMutate: async (newUser) => {
       const rawOrg = (newUser as any).organization;
@@ -298,41 +302,7 @@ export const useCreateUserMutation = () => {
         
         // console.log('🔄 [USER_TABLE_DEBUG] Cache invalidation and refetch triggered');
         
-        // Check if refetch worked after a short delay
-        setTimeout(() => {
-          const updatedCache = queryClient.getQueryData([...queryKeys.users, String((data as any).organization ?? ''), undefined]);
-          // console.log('💾 [USER_TABLE_DEBUG] Cache after refetch:', updatedCache);
-          
-          if (updatedCache) {
-            const userCount = (updatedCache as any).data?.length || 0;
-            // console.log('📊 [USER_TABLE_DEBUG] User count in cache after refetch:', userCount);
-            
-            // Check if the new user is in the cache
-            const newUserInCache = (updatedCache as any).data?.find((u: any) => u.id === data.id);
-            if (newUserInCache) {
-              // console.log('✅ [USER_TABLE_DEBUG] New user found in cache! Table should update.');
-            } else {
-              // console.log('⚠️ [USER_TABLE_DEBUG] New user NOT found in cache. Manual cache update needed.');
-              
-              // Manual cache update as backup
-              queryClient.setQueryData([...queryKeys.users, String((data as any).organization ?? ''), undefined], (old: any) => {
-                if (!old) return old;
-                return {
-                  ...old,
-                  data: [data, ...old.data],
-                  pagination: {
-                    ...old.pagination,
-                    total: old.pagination.total + 1,
-                  },
-                };
-              });
-              
-              // console.log('🔧 [USER_TABLE_DEBUG] Manual cache update applied');
-            }
-          } else {
-            // console.log('❌ [USER_TABLE_DEBUG] No cache data found after refetch');
-          }
-        }, 1000);
+        // React Query will handle the cache updates automatically
       }
       
       toast.success('User created successfully', { description: `${data.first_name} ${data.last_name} has been added to the system.` });
@@ -345,6 +315,8 @@ export const useCreateUserMutation = () => {
         url: `/org-admin/manage-users/${data.id}`,
       });
     },
+    // Ensure no automatic retries of POST (prevents accidental duplicates)
+    retry: 0,
   });
 };
 
@@ -356,7 +328,7 @@ export const useUpdateUserMutation = () => {
     mutationFn: async (userData: UpdateInput<User>): Promise<User> => {
       const { id, ...data } = userData;
       const response = await apiClient.patch<User>(`/auth/users/${id}/`, data);
-      return response.data!;
+      return ((response as any)?.data ?? response) as User;
     },
     onSuccess: (data, variables) => {
       addNotification({
@@ -939,7 +911,14 @@ export const useCommissionQuery = (filters?: Record<string, any>) => {
       const response = await apiClient.get<PaginatedResponse<Commission>>('/commission/commissions/', {
         params: allFilters,
       });
-      return response.data!;
+      // Handle undefined or null response data
+      if (!response || response.data === undefined || response.data === null) {
+        return {
+          data: [],
+          pagination: { page: 1, limit: 0, total: 0, totalPages: 0 }
+        };
+      }
+      return response.data;
     },
     enabled: isAuthInitialized && !!organizationId && hasPermission('manage:deals'),
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -965,7 +944,11 @@ export const useOrgAdminCommissionQuery = () => {
     queryKey: [...queryKeys.commission, 'org-admin'],
     queryFn: async (): Promise<Commission[]> => {
       const response = await apiClient.get<Commission[]>('commission/commissions/org-admin/');
-      return response.data!;
+      // Handle undefined response data
+      if (!response || response.data === undefined || response.data === null) {
+        return [];
+      }
+      return Array.isArray(response.data) ? response.data : [];
     },
     enabled: isAuthInitialized && hasPermission('manage:deals') && user?.role === 'org-admin',
     staleTime: 0, // No stale time - always refetch

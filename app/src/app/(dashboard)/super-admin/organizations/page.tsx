@@ -47,6 +47,8 @@ export default function OrganizationsPage() {
       toast.success(`Organization "${orgName}" has been deleted successfully`);
     } catch (error: any) {
       console.error('Failed to delete organization:', error);
+      console.error('Error status:', error.status);
+      console.error('Error message:', error.message);
       
       // Handle specific error cases
       if (error.status === 401) {
@@ -55,6 +57,15 @@ export default function OrganizationsPage() {
         toast.error('You do not have permission to delete this organization.');
       } else if (error.status === 404) {
         toast.error('Organization not found. It may have been already deleted.');
+      } else if (error.status === 500 || error.message?.includes('HTTP 500')) {
+        // Handle 500 errors - often foreign key constraint issues from Django
+        toast.error(`Cannot delete "${orgName}" - this organization has associated data (users, teams, or deals). Please remove or reassign the associated data first, then try again.`);
+      } else if (error.status === 400 && error.message?.includes('protected foreign keys')) {
+        // Handle foreign key constraint errors
+        toast.error(`Cannot delete "${orgName}" - this organization has associated data (users, teams, or deals). Please remove or reassign the associated data first, then try again.`);
+      } else if (error.message?.includes('referenced through protected foreign keys') || error.message?.includes('foreign key constraint')) {
+        // Handle other variations of foreign key errors
+        toast.error(`Cannot delete "${orgName}" - this organization has associated data. Please remove or reassign the associated data first, then try again.`);
       } else {
         toast.error(`Failed to delete organization: ${error.message || 'Unknown error'}`);
       }

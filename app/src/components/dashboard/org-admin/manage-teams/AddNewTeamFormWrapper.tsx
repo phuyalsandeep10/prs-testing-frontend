@@ -27,7 +27,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { PhoneInput } from "@/components/ui/phone-input";
+import { SearchableCountrySelect } from "@/components/ui/searchable-country-select";
 import {
   Select,
   SelectContent,
@@ -73,6 +73,7 @@ export function AddNewTeamFormWrapper({
 }: AddNewTeamFormWrapperProps) {
   const { user } = useAuth();
   const { addNotification } = useUI();
+  const [selectedCountryCode, setSelectedCountryCode] = React.useState("+977");
 
   // Correctly get and parse organization ID
   const orgIdStr = user?.organizationId ? String(user.organizationId) : "";
@@ -217,7 +218,7 @@ export function AddNewTeamFormWrapper({
       // Prepare team data for backend
       const teamData: any = {
         name: values.teamName,
-        contact_number: values.contactNumber,
+        contact_number: `${selectedCountryCode}-${values.contactNumber}`,
         team_lead_id: teamLeadId,
         member_ids: teamMemberIds,
       } as Record<string, any>;
@@ -477,14 +478,21 @@ export function AddNewTeamFormWrapper({
                     Contact Number<span className="text-red-500 ml-1">*</span>
                   </FormLabel>
                   <FormControl>
-                    <PhoneInput
-                      value={field.value || ""}
-                      onChange={field.onChange}
-                      placeholder="Enter team contact number"
-                      disabled={isLoading}
-                      className="w-full"
-                      inputClassName="h-12 focus:!outline-[#4F46E5] focus:ring-1 focus:!ring-[#4F46E5] text-[16px] shadow-[0px_0px_4px_0px_#8393FC]"
-                    />
+                    <div className="flex">
+                      <SearchableCountrySelect
+                        value={selectedCountryCode}
+                        onChange={setSelectedCountryCode}
+                        disabled={isLoading}
+                        className="w-[150px]"
+                      />
+                      <Input
+                        type="tel"
+                        placeholder="Enter team contact number"
+                        className="h-12 rounded-l-none border-l-0 focus:!outline-[#4F46E5] focus:ring-1 focus:!ring-[#4F46E5] text-[16px] shadow-[0px_0px_4px_0px_#8393FC] rounded-r-[6px]"
+                        {...field}
+                        disabled={isLoading}
+                      />
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

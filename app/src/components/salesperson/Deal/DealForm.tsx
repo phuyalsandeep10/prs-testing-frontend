@@ -13,7 +13,7 @@ import TextAreaField from "@/components/ui/clientForm/TextAreaField";
 import Button from "@/components/ui/clientForm/Button";
 import { Combobox } from "@/components/ui/combobox";
 import CurrencySelector from "./CurrencySelector";
-import { apiClient } from "@/lib/api";
+import { apiClient } from "@/lib/api-client";
 import { Client } from "@/types/deals";
 import { toast } from "sonner";
 

@@ -8,7 +8,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { useAuth, useUI } from "@/stores";
-import { apiClient } from "@/lib/api";
+import { apiClient } from "@/lib/api-client";
 import { redirectUserByRole } from '@/lib/utils/routing';
 
 import { Button } from "@/components/ui/button";
@@ -70,7 +70,8 @@ const useLoginMutation = () => {
           credentials
         );
         console.log("✅ Regular login successful");
-        return regularResponse.data!;
+        console.log("📦 Full regular response:", regularResponse);
+        return regularResponse || {};
       } catch (regularError: any) {
         console.log("❌ Regular login failed, trying admin endpoints...");
         console.log("❌ Regular error status:", regularError.status);
@@ -85,7 +86,7 @@ const useLoginMutation = () => {
               credentials
             );
             console.log("✅ Super admin login successful");
-            return superAdminResponse.data!;
+            return superAdminResponse || {};
           } catch (superAdminError: any) {
             console.log("❌ Super admin login failed, trying org admin...");
             console.log("❌ Super admin error status:", superAdminError.status);
@@ -99,7 +100,7 @@ const useLoginMutation = () => {
                   credentials
                 );
                 console.log("✅ Org admin login successful");
-                return orgAdminResponse.data!;
+                return orgAdminResponse || {};
               } catch (orgAdminError: any) {
                 console.log("❌ All login attempts failed");
                 console.log("❌ Org admin error status:", orgAdminError.status);
@@ -118,11 +119,21 @@ const useLoginMutation = () => {
       console.log("❌ Login mutation error:", error);
       console.log("❌ Error status:", error.status);
       console.log("❌ Error message:", error.message);
-      addNotification({
-        type: "error",
-        title: "Login Failed",
-        message: error.message || "Invalid credentials. Please try again.",
-      });
+      
+      // Handle rate limiting errors with specific messaging
+      if (error.status === 429 || error.code === 'RATE_LIMIT_EXCEEDED') {
+        addNotification({
+          type: "error",
+          title: "Too Many Login Attempts",
+          message: "You've made too many login attempts. Please wait a moment before trying again.",
+        });
+      } else {
+        addNotification({
+          type: "error",
+          title: "Login Failed",
+          message: error.message || "Invalid credentials. Please try again.",
+        });
+      }
     },
   });
 };
@@ -151,8 +162,8 @@ const useOTPVerifyMutation = () => {
         { email, otp }
       );
       
-      console.log("📥 OTP verification response:", response.data);
-      return response.data!;
+      console.log("📥 OTP verification response:", response);
+      return response;
     },
     onSuccess: (data, variables) => {
       if (data.requires_password_change && data.temporary_token) {
@@ -170,11 +181,20 @@ const useOTPVerifyMutation = () => {
       }
     },
     onError: (error: any) => {
-      addNotification({
-        type: "error",
-        title: "OTP Verification Failed",
-        message: error.message || "Invalid OTP. Please try again.",
-      });
+      // Handle rate limiting errors with specific messaging
+      if (error.status === 429 || error.code === 'RATE_LIMIT_EXCEEDED') {
+        addNotification({
+          type: "error",
+          title: "Too Many OTP Attempts",
+          message: "You've made too many OTP verification attempts. Please wait a moment before trying again.",
+        });
+      } else {
+        addNotification({
+          type: "error",
+          title: "OTP Verification Failed",
+          message: error.message || "Invalid OTP. Please try again.",
+        });
+      }
     },
   });
 };
@@ -225,7 +245,7 @@ export default function LoginForm() {
       
       console.log("📥 Login response:", result);
       
-      if (result.requires_otp) {
+      if (result && result.requires_otp) {
         console.log("📱 OTP required, user type:", result.user_type);
         setUserEmail(values.email);
         // Store user type for OTP verification
@@ -233,7 +253,7 @@ export default function LoginForm() {
           localStorage.setItem("userType", result.user_type);
         }
         setStep("otp");
-      } else if (result.requires_password_change && result.temporary_token) {
+      } else if (result && result.requires_password_change && result.temporary_token) {
         console.log("🔑 Password change required for user type:", result.user_type);
         localStorage.setItem("tempToken", result.temporary_token);
         localStorage.setItem("tempEmail", values.email);
@@ -241,7 +261,7 @@ export default function LoginForm() {
           localStorage.setItem("userType", result.user_type);
         }
         router.push("/change-password");
-      } else if (result.token && result.user) {
+      } else if (result && result.token && result.user) {
         console.log("✅ Direct login successful");
         login(result.token, result.user);
         addNotification({
@@ -250,6 +270,13 @@ export default function LoginForm() {
           message: `Welcome back, ${result.user.first_name || result.user.email}!`,
         });
         handleSuccessfulLoginRedirect(result.user);
+      } else {
+        console.error("❌ Login response is undefined or invalid");
+        addNotification({
+          type: "error",
+          title: "Login Failed",
+          message: "Invalid response from server. Please try again.",
+        });
       }
     } catch (error) {
       // Error is handled by the mutation's onError callback

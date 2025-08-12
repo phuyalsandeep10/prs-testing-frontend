@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { User, UserRole, ApiResponse } from '@/types';
-import { userApi } from '@/lib/api';
+import { userApi } from '@/lib/api-client';
 import { USER_ROLES, ERROR_MESSAGES } from '@/lib/constants';
 
 interface UseUserState {

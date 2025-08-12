@@ -14,7 +14,7 @@ import { useDealExpanded } from "@/hooks/api/useDeals";
 import { Deal, Payment } from "@/types/deals";
 import { useRoleConfig } from "@/hooks/useRoleBasedColumns";
 import { Button } from "@/components/ui/button";
-import { apiClient } from "@/lib/api";
+import { apiClient } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency } from "@/lib/currency";

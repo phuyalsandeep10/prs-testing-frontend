@@ -7,7 +7,7 @@ import { Edit, Plus, ChevronRight, ChevronDown, X } from "lucide-react";
 import Image from "next/image";
 import EditIcon from "@/assets/icons/edit.svg";
 import AddIcon from "@/assets/icons/add.svg";
-import { apiClient } from "@/lib/api";
+import { apiClient } from "@/lib/api-client";
 import {
   AlertDialog,
   AlertDialogAction,

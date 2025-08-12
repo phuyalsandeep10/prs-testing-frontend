@@ -1,0 +1,7 @@
+.halfStar {
+  fill: url(#halfStarGradientEmpty);
+}
+
+.hiddenSvg {
+  position: absolute;
+}

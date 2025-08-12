@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { paymentApi } from '@/lib/api';
+import { paymentApi } from '@/lib/api-client';
 import type { Payment } from '@/types/deals';
 import type { PaginatedResponse, CreateInput, UpdateInput } from '@/types';
 import { useAuth, useUI } from '@/stores';

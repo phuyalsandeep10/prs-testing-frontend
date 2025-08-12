@@ -12,7 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Loader2 } from 'lucide-react';
 import SlideModal from '@/components/ui/SlideModal';
 import { useOrganizations } from "@/hooks/api";
-import { apiClient, ApiError } from '@/lib/api';
+import { apiClient, ApiError } from '@/lib/api-client';
 
 // Zod validation schema
 const adminSchema = z.object({
@@ -72,7 +72,7 @@ export default function EditAdminPage() {
     try {
       setLoading(true);
       const response = await apiClient.get<Admin>(`/auth/users/${adminId}/`);
-      const adminData = response.data;
+      const adminData = response;
       setAdmin(adminData);
       
       // Find the organization ID from the organization name

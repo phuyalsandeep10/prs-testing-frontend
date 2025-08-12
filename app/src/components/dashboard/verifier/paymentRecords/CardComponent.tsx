@@ -11,6 +11,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import styles from "./CardComponent.module.css";
 
 interface CardProps {
   title: string;
@@ -87,7 +88,13 @@ const CircleProgress = ({
   const offset = circumference - (percentage / 100) * circumference;
 
   return (
-    <div className="relative" style={{ width: size, height: size }}>
+    <div 
+      className={styles.circleProgress}
+      style={{ 
+        "--circle-size": `${size}px`,
+        "--progress-color": `url(#${gradientId})`
+      } as React.CSSProperties}
+    >
       <svg width={size} height={size} className="rotate-[-90deg]">
         <defs>
           <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
@@ -114,10 +121,7 @@ const CircleProgress = ({
           fill="none"
         />
       </svg>
-      <span
-        className="absolute inset-0 flex items-center justify-center text-[9px] font-semibold"
-        style={{ color: `url(#${gradientId})` }}
-      >
+      <span className={styles.progressText}>
         {percentage}%
       </span>
     </div>
@@ -156,11 +160,11 @@ const CardComponent: React.FC<CardProps> = ({
           {subtitle}
         </p>
         <div
-          className="text-[9px] rounded-[5px] border font-medium pt-[2px] px-[6px] pb-[2px] w-fit"
+          className={styles.changeTag}
           style={{
-            color: color.text,
-            borderColor: color.border,
-          }}
+            "--tag-color": color.text,
+            "--tag-border-color": color.border,
+          } as React.CSSProperties}
         >
           {change}
         </div>

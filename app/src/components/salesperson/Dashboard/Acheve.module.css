@@ -1,0 +1,33 @@
+.achievement {
+  background-color: var(--achievement-bg-color);
+}
+
+.welcomeMessage {
+  color: var(--text-color);
+}
+
+.progressBar {
+  width: var(--progress-width);
+  background: linear-gradient(to right, #A7D9FF, #7ABFFF, #4D9FFF, #2080FF);
+}
+
+.progressMarker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: #7E7E7E;
+  left: var(--marker-position);
+}
+
+.marker45 {
+  --marker-position: 45%;
+}
+
+.marker65 {
+  --marker-position: 65%;
+}
+
+.marker85 {
+  --marker-position: 85%;
+}

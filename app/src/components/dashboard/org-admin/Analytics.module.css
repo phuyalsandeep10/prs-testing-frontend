@@ -1,0 +1,8 @@
+.chartBar {
+  height: var(--bar-height);
+  min-height: 8px;
+}
+
+.progressBar {
+  width: var(--progress-width);
+}

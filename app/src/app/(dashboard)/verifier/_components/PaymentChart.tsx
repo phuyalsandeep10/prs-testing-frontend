@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import styles from './PaymentChart.module.css';
 import PaymentDistribution from "@/components/dashboard/verifier/dashboard/PaymentDistribution";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
@@ -101,8 +102,8 @@ const PaymentChart = () => {
           {legends.map(({ label, color }) => (
             <li key={label} className="flex items-center gap-2 text-sm">
               <span
-                className="inline-block w-[8px] h-[8px] rounded-full"
-                style={{ backgroundColor: color }}
+                className={`inline-block w-[8px] h-[8px] rounded-full ${styles.legendColor}`}
+                style={{ '--legend-color': color } as React.CSSProperties}
               ></span>
               {label}
             </li>

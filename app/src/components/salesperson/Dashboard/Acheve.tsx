@@ -16,6 +16,7 @@ import box100 from "@/assets/photo/box100.png";
 import { useMemo } from "react";
 import { useDashboard } from "@/hooks/api";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import styles from "./Acheve.module.css";
 
 const Acheve = () => {
   const { data, isLoading, error, refetch } = useDashboard();
@@ -130,8 +131,8 @@ const Acheve = () => {
 
   return (
     <Card
-      className="relative w-full h-[212px] border rounded-lg pl-8 overflow-hidden shadow-md"
-      style={{ backgroundColor: bgColor }}
+      className={`relative w-full h-[212px] border rounded-lg pl-8 overflow-hidden shadow-md ${styles.achievement}`}
+      style={{ '--achievement-bg-color': bgColor } as React.CSSProperties}
     >
       <div
         className={`absolute left-[-90px] top-[-40px] ${leftAvatarRotation}`}
@@ -168,8 +169,8 @@ const Acheve = () => {
         </Button>
 
         <h2
-          className="text-xl font-outfit font-semibold pb-[31px]"
-          style={{ color: textColor }}
+          className={`text-xl font-outfit font-semibold pb-[31px] ${styles.welcomeMessage}`}
+          style={{ '--text-color': textColor } as React.CSSProperties}
         >
           Welcome Message
         </h2>
@@ -190,32 +191,19 @@ const Acheve = () => {
             <div className="px-6 pb-[12px]">
               <div className="relative w-full h-[10px] bg-gray-200 rounded-md overflow-hidden">
                 <div
-                  className="h-full"
-                  style={{
-                    width: `${Math.min(percentage, 100)}%`,
-                    background:
-                      "linear-gradient(to right, #A7D9FF, #7ABFFF, #4D9FFF, #2080FF)",
-                  }}
+                  className={`h-full ${styles.progressBar}`}
+                  style={{ '--progress-width': `${Math.min(percentage, 100)}%` } as React.CSSProperties}
                 ></div>
 
                 <div className="absolute inset-0">
                   {percentage < 45 && (
-                    <div
-                      className="absolute top-0 bottom-0 w-[1px] bg-[#7E7E7E]"
-                      style={{ left: "45%" }}
-                    />
+                    <div className={`${styles.progressMarker} ${styles.marker45}`} />
                   )}
                   {percentage < 65 && (
-                    <div
-                      className="absolute top-0 bottom-0 w-[1px] bg-[#7E7E7E]"
-                      style={{ left: "65%" }}
-                    />
+                    <div className={`${styles.progressMarker} ${styles.marker65}`} />
                   )}
                   {percentage < 85 && (
-                    <div
-                      className="absolute top-0 bottom-0 w-[1px] bg-[#7E7E7E]"
-                      style={{ left: "85%" }}
-                    />
+                    <div className={`${styles.progressMarker} ${styles.marker85}`} />
                   )}
                 </div>
               </div>
