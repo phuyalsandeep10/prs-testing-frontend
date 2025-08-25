@@ -87,8 +87,10 @@ const quickTasks = [
 ];
 
 export default function QuickActions({ systemStatus }: QuickActionsProps) {
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
+  const getStatusColor = (status: string | undefined) => {
+    if (!status) return 'bg-gray-100 text-gray-700';
+    
+    switch (status.toLowerCase()) {
       case 'healthy':
       case 'online':
         return 'bg-green-100 text-green-700';

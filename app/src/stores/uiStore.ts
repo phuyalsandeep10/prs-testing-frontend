@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 
 interface Notification {
   id: string;
-  type: 'success' | 'error' | 'warning' | 'info';
+  type: 'success' | 'error' | 'warning' | 'info' | 'loading' | 'denied' | 'rejected' | 'approved' | 'pending' | 'payment' | 'verification';
   title: string;
   message: string;
   duration?: number;

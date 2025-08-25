@@ -8,7 +8,7 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { UnifiedTable } from '@/components/core/UnifiedTable';
 import { PermissionGate } from '@/components/common/PermissionGate';
 import { useClientsQuery, useDeleteClientMutation, useUpdateClientMutation } from '@/hooks/useIntegratedQuery';
-import { useTableStateSync } from '@/hooks/useIntegratedQuery';
+import { useTableStateSync } from '@/hooks/useTableStateSync';
 import { useUI } from '@/stores';
 import { exportToCSV } from '@/lib/utils/export';
 import { ClientKanbanView } from './ClientKanbanView';
@@ -35,16 +35,34 @@ export function ManageClientsClient() {
     }),
   }), [tableState]);
 
-  // React Query for server state
+  // React Query for server state - no organization ID needed, backend handles filtering
   const {
     data: clientsData,
     isLoading,
     error,
-    refetch
-  } = useClientsQuery(user?.organizationId, queryParams);
+    refetch,
+    isFetching,
+    status,
+    fetchStatus
+  } = useClientsQuery(queryParams);
 
   // Extract clients from response
   const clients = clientsData?.data || [];
+
+  // Debug logging
+  console.log('🔍 [MANAGE_CLIENTS_DEBUG] ===== MANAGE CLIENTS DEBUG =====');
+  console.log('🔍 [MANAGE_CLIENTS_DEBUG] user:', user);
+  console.log('🔍 [MANAGE_CLIENTS_DEBUG] organizationId:', user?.organizationId);
+  console.log('🔍 [MANAGE_CLIENTS_DEBUG] organization (number):', user?.organization);
+  console.log('🔍 [MANAGE_CLIENTS_DEBUG] queryParams:', queryParams);
+  console.log('🔍 [MANAGE_CLIENTS_DEBUG] isLoading:', isLoading);
+  console.log('🔍 [MANAGE_CLIENTS_DEBUG] isFetching:', isFetching);
+  console.log('🔍 [MANAGE_CLIENTS_DEBUG] status:', status);
+  console.log('🔍 [MANAGE_CLIENTS_DEBUG] fetchStatus:', fetchStatus);
+  console.log('🔍 [MANAGE_CLIENTS_DEBUG] error:', error);
+  console.log('🔍 [MANAGE_CLIENTS_DEBUG] clientsData:', clientsData);
+  console.log('🔍 [MANAGE_CLIENTS_DEBUG] clients count:', clients?.length);
+  console.log('🔍 [MANAGE_CLIENTS_DEBUG] ===============================');
 
   // Search and filter functionality
   const filteredClients = useMemo(() => {
@@ -321,7 +339,7 @@ export function ManageClientsClient() {
             data={filteredClients as any}
             columns={columns as ColumnDef<unknown>[]}
             loading={isLoading}
-            error={error?.message}
+            error={error ? 'Failed to load clients' : null}
             onRefresh={handleRefreshClick}
             onExport={handleExport}
             config={{

@@ -1,6 +1,6 @@
-import { User } from '@/lib/types/roles';
-
 // ==================== CORE TYPES ====================
+// Re-export User and Client types to make them available from main types module
+export type { User, Client } from '@/lib/types/roles';
 export interface BaseEntity {
   id: string;
   createdAt?: string;
@@ -8,22 +8,23 @@ export interface BaseEntity {
 }
 
 // ==================== USER & AUTH TYPES ====================
-// This is now the single source of truth for the User type.
-// Other User types have been removed to avoid conflicts.
-export type UserRole = 
-  | 'super-admin' 
-  | 'org-admin' 
-  | 'supervisor' 
-  | 'salesperson' 
-  | 'verifier' 
-  | 'team-member';
+// Re-export UserRole from the main roles module to avoid conflicts
+export type { UserRole } from '@/lib/types/roles';
 export type UserStatus = 'active' | 'inactive' | 'invited' | 'suspended';
 
 export interface AuthState {
-  user: User | null;
+  user: import('@/lib/types/roles').User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
 }
+
+export interface AuthResponse {
+  token: string;
+  user: import('@/lib/types/roles').User;
+  message?: string;
+}
+
+export interface PasswordChangeResponse extends AuthResponse {}
 
 export interface Activity {
   timestamp: string;
@@ -36,7 +37,7 @@ export interface TeamMember {
   id: string;
   name: string;
   avatar: string;
-  role?: UserRole;
+  role?: import('@/lib/types/roles').UserRole;
 }
 
 export interface Team extends BaseEntity {
@@ -83,11 +84,21 @@ export interface Role {
 }
 
 // ==================== API TYPES ====================
-export interface ApiResponse<T> {
+// Consolidated ApiResponse interface - single source of truth
+export interface ApiResponse<T = any> {
   data: T;
   message?: string;
   success: boolean;
   errors?: string[];
+  meta?: {
+    total?: number;
+    page?: number;
+    limit?: number;
+    totalPages?: number;
+    count?: number;
+    next?: string | null;
+    previous?: string | null;
+  };
 }
 
 export interface PaginatedResponse<T> {
@@ -98,6 +109,16 @@ export interface PaginatedResponse<T> {
     total: number;
     totalPages: number;
   };
+  success?: boolean;
+  message?: string;
+}
+
+// Alternative paginated response structure for backend compatibility
+export interface PaginatedApiResponse<T> {
+  results: T[];
+  count: number;
+  next: string | null;
+  previous: string | null;
 }
 
 export interface ApiError {
@@ -200,8 +221,15 @@ export interface NotificationPreferences {
 
 export interface UserSession extends BaseEntity {
   ip_address?: string;
+  user_agent?: string; // Add missing user_agent property
   device: string;
   is_current_session?: boolean;
+  // Add device object structure for browser/os info
+  device_info?: {
+    browser?: string;
+    os?: string;
+  };
+  last_activity?: string; // Add missing last_activity property
 }
 
 // ==================== DASHBOARD TYPES ====================

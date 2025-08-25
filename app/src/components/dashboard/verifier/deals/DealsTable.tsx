@@ -134,11 +134,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
   const ExpandedRowContent = ({ dealId }: { dealId: string }) => {
     const { data: nestedData, isLoading, error } = useDealExpanded(dealId);
 
-    console.log('🔍 [EXPANDED_ROW_CONTENT] dealId:', dealId);
-    console.log('🔍 [EXPANDED_ROW_CONTENT] nestedData:', nestedData);
-    console.log('🔍 [EXPANDED_ROW_CONTENT] isLoading:', isLoading);
-    console.log('🔍 [EXPANDED_ROW_CONTENT] error:', error);
-    console.log('🔍 [EXPANDED_ROW_CONTENT] nestedData length:', nestedData?.length);
+    // Expanded row content debug logging removed for production
 
     if (isLoading) {
       return (
@@ -298,8 +294,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
         header: "Receipt Link",
         cell: ({ row }) => {
           const receiptLink = row.original.receipt_link;
-          console.log("🔍 [VERIFIER] Receipt link value:", receiptLink);
-          console.log("🔍 [VERIFIER] Full row data:", row.original);
+          // Receipt link processing
           
           if (receiptLink) {
             // Fix relative URLs by making them absolute with backend URL
@@ -320,7 +315,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:text-blue-800 underline"
                 onClick={(e) => {
-                  console.log("📎 [VERIFIER] Clicking receipt link:", fullUrl);
+                  // Opening receipt link
                 }}
               >
                 View Receipt
@@ -346,9 +341,19 @@ const DealsTable: React.FC<DealsTableProps> = ({
             textClass += " text-gray-500";
           }
           
+          // Safely extract text from verifiedBy object
+          let displayText = 'Not verified yet';
+          if (verifiedBy) {
+            if (typeof verifiedBy === 'string') {
+              displayText = verifiedBy;
+            } else if (typeof verifiedBy === 'object') {
+              displayText = verifiedBy.full_name || verifiedBy.name || verifiedBy.email || 'Verified';
+            }
+          }
+          
           return (
             <div className={textClass}>
-              {verifiedBy || 'Not verified yet'}
+              {displayText}
             </div>
           );
         },
@@ -611,7 +616,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
             <div className="flex items-center justify-center gap-1">
               {MainActionButtons}
               <ExpandButton
-                isExpanded={!!expandedRows[row.id]}
+                isExpanded={!!tableExpandedRows[row.id]}
                 onToggle={() => handleExpand(row)}
               />
             </div>
@@ -675,6 +680,32 @@ const DealsTable: React.FC<DealsTableProps> = ({
     document.body.removeChild(link);
   }, []);
 
+  // Convert dealId-based expandedRows to row.id-based for UnifiedTable
+  const tableExpandedRows = useMemo(() => {
+    const result: Record<string, boolean> = {};
+    deals.forEach((deal, index) => {
+      const dealId = deal.deal_id || deal.id;
+      // UnifiedTable uses ${dealId}-${index} as row.id
+      const rowId = `${dealId}-${index}`;
+      if (expandedRows[dealId]) {
+        result[rowId] = true;
+      }
+    });
+    return result;
+  }, [expandedRows, deals]);
+
+  const handleExpandedRowsChange = useCallback((newExpandedRows: Record<string, boolean>) => {
+    const newDealExpandedRows: Record<string, boolean> = {};
+    Object.entries(newExpandedRows).forEach(([rowId, isExpanded]) => {
+      // Extract dealId from rowId format: ${dealId}-${index}
+      const dealId = rowId.split('-').slice(0, -1).join('-'); // Remove last part (index)
+      if (dealId) {
+        newDealExpandedRows[dealId] = isExpanded;
+      }
+    });
+    setExpandedRows(newDealExpandedRows);
+  }, [deals]);
+
   return (
     <UnifiedTable
       key={`verifier-deals-${deals.length}`}
@@ -683,9 +714,9 @@ const DealsTable: React.FC<DealsTableProps> = ({
       loading={isLoading}
       error={isError ? "Failed to load deals" : undefined}
       expandedContent={renderExpandedContent}
-      expandedRows={expandedRows}
-      onExpandedRowsChange={setExpandedRows}
-      onExport={handleExport}
+      expandedRows={tableExpandedRows}
+      onExpandedRowsChange={handleExpandedRowsChange}
+      onExport={(data: Deal[] | unknown[]) => handleExport(data as Deal[])}
       getRowProps={(row) => ({
         className: getRowClassName(row as Row<Deal>),
       })}

@@ -40,9 +40,8 @@ const DealsPage = () => {
   };
 
   const handleEditDeal = (dealId: string) => {
-    // In a real app, you would fetch the deal data here
-    const dealData = { id: dealId }; // Mock data
-    openModal("edit", dealId, dealData);
+    // Open modal in edit mode - same as salesperson page
+    openModal("edit", dealId, null);
   };
 
   const handleAddPayment = (dealId: string) => {

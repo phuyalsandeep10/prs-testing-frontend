@@ -52,7 +52,8 @@ const CurrencySelector: React.FC<CurrencySelectorProps> = ({
   useEffect(() => {
     const fetchCurrencies = async () => {
       try {
-        const data: BackendCurrency[] = await apiClient.get('/commission/currencies/');
+        const response = await apiClient.get<BackendCurrency[]>('/commission/currencies/');
+        const data = response.data;
         setCurrencies(data);
       } catch (error) {
         console.error('Error fetching currencies:', error);

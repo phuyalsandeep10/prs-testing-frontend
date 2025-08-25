@@ -47,7 +47,8 @@ import {
 
 // We will fetch available roles from the backend instead of hard coding
 
-const formSchema = z
+// Create different schemas for create vs edit modes
+const createUserSchema = z
   .object({
     fullName: z
       .string()
@@ -77,6 +78,23 @@ const formSchema = z
     message: "Passwords don't match",
     path: ["confirmPassword"],
   });
+
+const editUserSchema = z.object({
+  fullName: z
+    .string()
+    .min(2, "Full name must be at least 2 characters")
+    .max(100, "Full name must be less than 100 characters")
+    .regex(/^[a-zA-Z\s]+$/, "Full name can only contain letters and spaces"),
+  email: z
+    .string()
+    .email("Invalid email address")
+    .max(254, "Email must be less than 254 characters"),
+  contactNumber: z
+    .string()
+    .min(10, "Contact number must be at least 10 digits"),
+  role: z.string().min(1, "Role is required"),
+  team: z.string().optional(),
+});
 
 interface AddNewUserFormWrapperProps {
   onClose: () => void;
@@ -138,9 +156,20 @@ export function AddNewUserFormWrapper({
   const createUserMutation = useCreateUserMutation();
   const updateUserMutation = useUpdateUserMutation();
 
+  // Choose schema based on edit mode
+  const formSchema = isEdit ? editUserSchema : createUserSchema;
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
+    defaultValues: isEdit ? {
+      // Edit mode - no password fields
+      fullName: initialData?.fullName || "",
+      email: initialData?.email || "",
+      contactNumber: initialData?.phoneNumber?.replace("+977 - ", "") || "",
+      role: findRoleIdByName(initialData?.role) || "",
+      team: initialData?.assignedTeam || "",
+    } : {
+      // Create mode - with password fields
       fullName: initialData?.fullName || "",
       email: initialData?.email || "",
       contactNumber: initialData?.phoneNumber?.replace("+977 - ", "") || "",
@@ -170,7 +199,8 @@ export function AddNewUserFormWrapper({
         last_name: lastName,
         email: normalizedEmail, // Normalize email
         contact_number: `${selectedCountryCode}-${values.contactNumber}`, // Use selected country code
-        password: values.password,
+        // Only include password when creating new user
+        ...(isEdit ? {} : { password: (values as any).password }),
         role: values.role,
         is_active: true,
         organization: user?.organization || user?.organizationId || organizationId || null,
@@ -186,22 +216,27 @@ export function AddNewUserFormWrapper({
         // console.log('🔄 [USER_TABLE_DEBUG] Updating existing user...');
         await updateUserMutation.mutateAsync({
           id: initialData.id,
-          data: userData,
+          ...userData,
         });
         window.dispatchEvent(
           new CustomEvent("userUpdated", { detail: { id: initialData.id } })
         );
       } else {
-        // console.log('➕ [USER_TABLE_DEBUG] Creating new user...');
         const result = await createUserMutation.mutateAsync(userData);
-        // console.log('✅ [USER_TABLE_DEBUG] User created successfully, dispatching events...');
 
-        // Dispatch custom event for compatibility
+        // Dispatch custom event for compatibility (this will trigger manual refetch)
         window.dispatchEvent(
           new CustomEvent("userCreated", { detail: { id: result.id } })
         );
 
-        // React Query will handle cache invalidation automatically
+        // Additional fallback: force refresh after a short delay to ensure UI updates
+        setTimeout(() => {
+          window.dispatchEvent(
+            new CustomEvent("forceUserTableRefresh", { detail: { reason: "fallback" } })
+          );
+        }, 1000);
+
+        // React Query cache invalidation should happen automatically in the mutation
       }
 
       form.reset();
@@ -346,7 +381,9 @@ export function AddNewUserFormWrapper({
               )}
             />
 
-            {/* Password Fields */}
+            {/* Password Fields - Only show when creating new user */}
+            {!isEdit && (
+            <>
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -469,6 +506,8 @@ export function AddNewUserFormWrapper({
                   ))}
                 </div>
               </div>
+            )}
+            </>
             )}
 
             {/* Role and Team */}

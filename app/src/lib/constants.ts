@@ -15,12 +15,12 @@ export const PAGINATION = {
 
 // ==================== USER ROLES ====================
 export const USER_ROLES = {
-  SUPER_ADMIN: 'super-admin',
-  ORG_ADMIN: 'org-admin',
+  SUPER_ADMIN: 'super_admin',
+  ORG_ADMIN: 'org_admin',
   SALESPERSON: 'salesperson',
   SUPERVISOR: 'supervisor',
   VERIFIER: 'verifier',
-  TEAM_MEMBER: 'team-member',
+  TEAM_MEMBER: 'team_member',
 } as const;
 
 export const ROLE_PERMISSIONS = {
@@ -98,7 +98,7 @@ export const ROUTES = {
   LOGIN: '/login',
   LOGOUT: '/logout',
   
-  // Dashboard
+  // Dashboard (updated to match UserRole enum values)
   DASHBOARD: {
     SUPER_ADMIN: '/super-admin',
     ORG_ADMIN: '/org-admin',
@@ -108,7 +108,7 @@ export const ROUTES = {
     TEAM_MEMBER: '/team-member',
   },
   
-  // Feature Routes
+  // Feature Routes (updated to match UserRole enum values)
   USERS: '/org-admin/manage-users',
   CLIENTS: '/org-admin/manage-clients',
   TEAMS: '/org-admin/manage-teams',

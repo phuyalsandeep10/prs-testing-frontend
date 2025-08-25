@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useMemo } from "react";
 import styles from './PaymentChart.module.css';
 import PaymentDistribution from "@/components/dashboard/verifier/dashboard/PaymentDistribution";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useQuery } from "@tanstack/react-query";
+import { useVerifierDataContext } from "./VerifierDataProvider";
+import { normalizePaymentDistributionResponse } from "../_utils/apiResponseNormalizers";
 
 const legends = [
   { label: "Processing", color: "#465FFF" },
@@ -16,65 +17,28 @@ const legends = [
   { label: "Chargeback", color: "#EA1000" },
 ];
 
-type PaymentStatus = {
-  pending_invoices: number;
-  paid_invoices: number;
-  rejected_invoices: number;
-  refunded_invoices: number;
-  bad_debt_invoices: number;
-};
-
-const fetchPaymentDistribution = async (token: string) => {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/verifier/dashboard/payment-status-distribution/`,
-    {
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Token ${token}`,
-      },
-    }
-  );
-
-  if (!res.ok) {
-    const errorText = await res.text();
-    console.error("Payment Distribution API error:", errorText);
-    throw new Error("Failed to fetch payment status distribution");
-  }
-
-  const data: PaymentStatus = await res.json();
-
-  // Mapping backend data to chart values
-  const chartData = [
-    { label: "Processing", value: data.pending_invoices },
-    { label: "Success", value: data.paid_invoices },
-    { label: "Failed", value: data.rejected_invoices },
-    { label: "Pending", value: data.pending_invoices },
-    { label: "Initiated", value: data.pending_invoices },
-    { label: "Refunded", value: data.refunded_invoices },
-    { label: "Chargeback", value: data.bad_debt_invoices },
-  ];
-
-  return chartData;
-};
-
 const PaymentChart = () => {
-  const [token, setToken] = useState<string | null>(null);
+  const { paymentDistributionData, paymentDistributionLoading, paymentDistributionError } = useVerifierDataContext();
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedToken = localStorage.getItem("authToken");
-      setToken(storedToken);
-    }
-  }, []);
+  // Memoize chart data transformation
+  const data = useMemo(() => {
+    if (!paymentDistributionData) return null;
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["payment-distribution", token],
-    queryFn: () => fetchPaymentDistribution(token!),
-    enabled: !!token,
-    refetchOnWindowFocus: false,
-  });
+    // Use normalizer for consistent data structure
+    const normalized = normalizePaymentDistributionResponse(paymentDistributionData);
 
-  if (isLoading || !data) {
+    return [
+      { label: "Processing", value: normalized.processing_invoices },
+      { label: "Success", value: normalized.paid_invoices },
+      { label: "Failed", value: normalized.rejected_invoices },
+      { label: "Pending", value: normalized.pending_invoices },
+      { label: "Initiated", value: normalized.initiated_invoices },
+      { label: "Refunded", value: normalized.refunded_invoices },
+      { label: "Chargeback", value: normalized.bad_debt_invoices },
+    ];
+  }, [paymentDistributionData]);
+
+  if (paymentDistributionLoading || !data) {
     return (
       <div className="flex flex-wrap gap-4 p-4">
         <Skeleton className="h-[250px] w-[320px] rounded-md" />
@@ -82,6 +46,22 @@ const PaymentChart = () => {
           {Array.from({ length: 6 }).map((_, idx) => (
             <Skeleton key={idx} className="h-4 w-32" />
           ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (paymentDistributionError) {
+    return (
+      <div className="flex flex-wrap gap-4 rounded-sm border-[1px] border-[#A9A9A9] p-4">
+        <div className="text-center w-full">
+          <p className="text-red-500 text-sm mb-2">Failed to load payment distribution</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="text-blue-500 hover:text-blue-600 text-xs underline"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );

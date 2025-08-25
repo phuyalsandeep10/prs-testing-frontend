@@ -21,7 +21,7 @@ const DealsPage = () => {
   // Add state for payment verification modal
   const [verificationModalState, setVerificationModalState] = useState({
     isOpen: false,
-    paymentId: null as string | null,
+    paymentId: undefined as string | number | undefined,
   });
   
   const [searchTerm, setSearchTerm] = useState("");
@@ -46,7 +46,7 @@ const DealsPage = () => {
 
   // Add handler for payment verification
   const handleVerifyPayment = (dealId: string, paymentId: string, status: 'verified' | 'rejected') => {
-    console.log('🔍 [DEALS_PAGE_DEBUG] handleVerifyPayment called:', { dealId, paymentId, status });
+    // Payment verification handler called
     setVerificationModalState({
       isOpen: true,
       paymentId: paymentId,
@@ -56,13 +56,13 @@ const DealsPage = () => {
   const closeVerificationModal = () => {
     setVerificationModalState({
       isOpen: false,
-      paymentId: null,
+      paymentId: undefined,
     });
   };
 
   const handleVerificationSuccess = () => {
     // Optionally refetch deals data or show success message
-    console.log('🔍 [DEALS_PAGE_DEBUG] Payment verification successful');
+    // Payment verification completed successfully
   };
 
   return (

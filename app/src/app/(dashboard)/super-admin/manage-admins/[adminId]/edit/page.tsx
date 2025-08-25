@@ -29,7 +29,7 @@ const adminSchema = z.object({
     .min(1, "Email is required"),
   organization: z.string()
     .min(1, "Organization is required"),
-  is_active: z.string().default("true"),
+  is_active: z.string(),
 });
 
 type AdminFormData = z.infer<typeof adminSchema>;
@@ -72,11 +72,11 @@ export default function EditAdminPage() {
     try {
       setLoading(true);
       const response = await apiClient.get<Admin>(`/auth/users/${adminId}/`);
-      const adminData = response;
+      const adminData = (response as any).data || response;
       setAdmin(adminData);
       
       // Find the organization ID from the organization name
-      const orgId = organizations.find(org => org.name === adminData.organization_name)?.id?.toString() || '';
+      const orgId = organizations.find(org => org.name === (adminData as any).organization_name)?.id?.toString() || '';
       
       // Populate form with admin data
       form.reset({
@@ -120,16 +120,12 @@ export default function EditAdminPage() {
     try {
       setUpdating(true);
       
-      // Find the selected organization name from the organizations list
-      const selectedOrg = organizations.find(org => org.id.toString() === values.organization);
-      const organizationName = selectedOrg ? selectedOrg.name : values.organization;
-
       // Update the admin user
       const adminData = {
         first_name: values.first_name,
         last_name: values.last_name,
         email: values.email,
-        organization: organizationName, // Send name as string
+        organization: parseInt(values.organization), // Convert string ID to integer
         is_active: values.is_active === "true",
       };
       

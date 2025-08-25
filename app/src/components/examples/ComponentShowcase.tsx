@@ -67,7 +67,7 @@ const userColumns = [
       <div className="text-sm text-gray-500">{row.getValue("lastLogin")}</div>
     ),
   },
-] as any;
+] as ColumnDef<unknown>[];
 
 // Form schema and configuration
 const demoFormSchema = z.object({
@@ -78,7 +78,7 @@ const demoFormSchema = z.object({
     required_error: "Please select a role",
   }),
   bio: z.string().min(10, "Bio must be at least 10 characters"),
-  notifications: z.boolean().default(false),
+  notifications: z.boolean(), // Remove default to make it required
   avatar: z.any().optional(),
 });
 
@@ -216,9 +216,10 @@ export default function ComponentShowcase() {
     alert("Form submitted successfully! Check the console for details.");
   };
 
-  const handleTableExport = (data: SampleUser[]) => {
-    console.log("Exporting data:", data);
-    alert(`Exporting ${data.length} records...`);
+  const handleTableExport = (data: SampleUser[] | unknown[]) => {
+    const usersData = data as SampleUser[];
+    console.log("Exporting data:", usersData);
+    alert(`Exporting ${usersData.length} records...`);
   };
 
   const handleTableRefresh = () => {

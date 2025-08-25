@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo } from "react";
 import TopClientCard from "@/components/salesperson/commission/TopClientCard";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCommissionData } from "@/hooks/api";
+import { useCommissionPeriod } from "./CommissionPeriodProvider";
+import { useCommissionDataContext } from "./CommissionDataProvider";
+import { normalizeCommissionResponse } from "../_utils/apiResponseNormalizer";
 
 interface ClientData {
   name: string;
@@ -13,15 +15,20 @@ interface ClientData {
 // Using standardized hooks - no manual API functions needed
 
 // 🔁 Dynamic content only
-const TopClientContent = ({ view }: { view: string }) => {
-  // Use standardized hook for commission data with period filtering
-  const { data: commissionResponse, isLoading, error } = useCommissionData(view);
+const TopClientContent = () => {
+  // Use shared data context for coordinated API calls
+  const { commissionData: commissionResponse, commissionLoading: isLoading, commissionError: error } = useCommissionDataContext();
   
-  // Transform the data to match the expected format
-  const data = commissionResponse?.top_clients_this_period?.map(client => ({
-    name: client.client_name,
-    value: client.total_value,
-  })) || [];
+  // Transform the data using normalizer for consistent format
+  const data = useMemo(() => {
+    if (!commissionResponse) return [];
+    
+    const normalizedData = normalizeCommissionResponse(commissionResponse);
+    return normalizedData.top_clients_this_period.map(client => ({
+      name: client.client_name,
+      value: client.total_value,
+    }));
+  }, [commissionResponse]);
 
   if (isLoading) {
     return (
@@ -46,12 +53,10 @@ const TopClientContent = ({ view }: { view: string }) => {
 };
 
 const TopClientSection = () => {
-  const [view, setView] = useState<"yearly" | "monthly" | "quarterly">(
-    "monthly"
-  );
+  const { period, setPeriod } = useCommissionPeriod();
 
   const getSubheading = () => {
-    switch (view) {
+    switch (period) {
       case "yearly":
         return "Yearly Top Clients";
       case "monthly":
@@ -77,9 +82,9 @@ const TopClientSection = () => {
             </div>
             <div className="w-full md:w-40">
               <select
-                value={view}
+                value={period}
                 onChange={(e) =>
-                  setView(e.target.value as "yearly" | "monthly" | "quarterly")
+                  setPeriod(e.target.value as "yearly" | "monthly" | "quarterly")
                 }
                 className="w-full px-3 py-1.5 border border-[#C3C3CB] rounded-md text-sm text-[#4B5563] shadow-sm focus:outline-none"
               >
@@ -91,7 +96,7 @@ const TopClientSection = () => {
       </div>
 
       {/* Dynamic section (only this rerenders) */}
-      <TopClientContent view={view} />
+      <TopClientContent />
     </div>
   );
 };

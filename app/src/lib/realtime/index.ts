@@ -76,15 +76,22 @@ export class WebSocketConnectionManager {
         return;
       }
 
-      // Attach auth token if available and not already present in the URL
-      const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-      let urlWithToken = this.config.url;
-      if (token && !urlWithToken.includes('token=')) {
-        urlWithToken += (urlWithToken.includes('?') ? '&' : '?') + `token=${token}`;
-      }
-      this.ws = new WebSocket(urlWithToken, this.config.protocols);
+      // DISABLED: Old token-based WebSocket connection
+      // This WebSocket connection is replaced by the notification-specific WebSocket
+      // in /lib/realtime/notifications.ts which uses proper WebSocket tokens
+      console.warn('⚠️ Legacy WebSocket connection disabled. Using notification-specific WebSocket instead.');
+      this.isConnecting = false;
+      return;
+      
+      // Legacy code kept for reference:
+      // const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
+      // let urlWithToken = this.config.url;
+      // if (token && !urlWithToken.includes('token=')) {
+      //   urlWithToken += (urlWithToken.includes('?') ? '&' : '?') + `token=${token}`;
+      // }
+      // this.ws = new WebSocket(urlWithToken, this.config.protocols);
 
-      this.ws.onopen = () => {
+      this.ws!.onopen = () => {
         console.log('WebSocket connected to:', this.config.url);
         this.isConnecting = false;
         this.reconnectAttempts = 0;
@@ -92,7 +99,7 @@ export class WebSocketConnectionManager {
         this.emit('connected', null);
       };
 
-      this.ws.onmessage = (event) => {
+      this.ws!.onmessage = (event) => {
         try {
           const message: RealtimeMessage = JSON.parse(event.data);
           this.handleMessage(message);
@@ -101,7 +108,7 @@ export class WebSocketConnectionManager {
         }
       };
 
-      this.ws.onclose = (event) => {
+      this.ws!.onclose = (event) => {
         console.log('WebSocket disconnected:', event.code, event.reason);
         this.isConnecting = false;
         this.stopHeartbeat();
@@ -112,7 +119,7 @@ export class WebSocketConnectionManager {
         }
       };
 
-      this.ws.onerror = (error) => {
+      this.ws!.onerror = (error) => {
         console.error('WebSocket connection error:', {
           url: this.config.url,
           error: error,

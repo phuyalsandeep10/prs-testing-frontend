@@ -23,7 +23,18 @@ export const usePaymentsQuery = (filters?: { dealId?: string; clientId?: string;
 
   const query = useQuery<PaginatedResponse<Payment>, Error>({
     queryKey: paymentQueryKeys.list(filters),
-    queryFn: () => paymentApi.getAll(filters).then((res) => res),
+    queryFn: async () => {
+      const res = await paymentApi.getAll(filters);
+      // Ensure we return the correct type
+      if (res && typeof res === 'object' && 'data' in res && 'pagination' in res) {
+        return res as PaginatedResponse<Payment>;
+      }
+      // Fallback to empty paginated response
+      return {
+        data: [],
+        pagination: { page: 1, limit: 0, total: 0, totalPages: 0 }
+      };
+    },
     enabled: isAuthInitialized && hasPermission('manage:deals'), // same permission gate; adjust if needed
     staleTime: 2 * 60 * 1000,
   });

@@ -102,3 +102,33 @@ export {
   usePrefetchRole,
   roleKeys,
 } from './useRoles';
+
+// Team operations
+export {
+  useTeams,
+  useTeam,
+  useCreateTeam,
+  useUpdateTeam,
+  useDeleteTeam,
+  useAddTeamMembers,
+  useRemoveTeamMember,
+  teamKeys,
+} from './useTeams';
+
+// Commission operations
+export {
+  useCommissions,
+  useCommission,
+  useUserCommissions,
+  useOrgAdminCommissions,
+  useCommissionAnalytics,
+  useCreateCommission,
+  useUpdateCommission,
+  useDeleteCommission,
+  useCalculateCommission,
+  useBulkUpdateCommissions,
+  useBulkCalculateCommissions,
+  useExportCommissions,
+  useExportSelectedCommissions,
+  commissionKeys,
+} from './useCommissions';

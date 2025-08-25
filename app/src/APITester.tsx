@@ -15,7 +15,7 @@ const APITester = () => {
       setCommissionData(response);
     } catch (err: any) {
       console.error('Commission API Error:', err);
-      setError(err.message || 'Unknown error');
+      setError(err?.message || err?.toString() || 'Unknown error');
     } finally {
       setLoading(false);
     }

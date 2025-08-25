@@ -17,6 +17,7 @@ import { useRef, useState } from "react";
 import NotificationComponent from "@/components/global-components/Notification";
 import { useAuth } from "@/stores";
 import { useUnreadCount } from "@/hooks/useNotifications";
+import { useProfile } from "@/hooks/useProfile";
 
 export default function Header() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -25,6 +26,17 @@ export default function Header() {
 
   // ===== Auth =====
   const { user, logout } = useAuth();
+  
+  // ===== Profile Data (for fresh avatar) =====
+  const { data: profileData } = useProfile();
+  
+  // Use fresh profile avatar if available, fallback to auth store avatar
+  const currentAvatar = profileData?.avatar || (user as any)?.avatar;
+  
+  // Debug user data
+  console.log('Header - Auth user data:', user);
+  console.log('Header - Profile data:', profileData);
+  console.log('Header - Current avatar:', currentAvatar);
 
   // ===== Notifications =====
   const { data: unreadCount } = useUnreadCount();
@@ -92,7 +104,12 @@ export default function Header() {
               className="flex items-center gap-3 relative rounded-full p-2 h-auto"
             >
               <Avatar className="h-10 w-10">
-                <AvatarImage src={(user as any)?.avatar} alt={fullName} />
+                <AvatarImage 
+                  src={currentAvatar?.startsWith('/media/') 
+                    ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8001'}${currentAvatar}` 
+                    : currentAvatar} 
+                  alt={fullName} 
+                />
                 <AvatarFallback>{avatarInitials}</AvatarFallback>
               </Avatar>
               <div className="text-left">
@@ -108,9 +125,16 @@ export default function Header() {
               Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => {
-              logout();
-              router.push("/login");
+            <DropdownMenuItem onClick={async () => {
+              try {
+                logout();
+                // Clear any remaining cache or state
+                window.location.href = "/login";
+              } catch (error) {
+                console.error("Logout error:", error);
+                // Force redirect even if logout fails
+                window.location.href = "/login";
+              }
             }}>Logout</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

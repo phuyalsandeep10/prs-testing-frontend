@@ -71,7 +71,7 @@ const useLoginMutation = () => {
         );
         console.log("✅ Regular login successful");
         console.log("📦 Full regular response:", regularResponse);
-        return regularResponse || {};
+        return regularResponse?.data || regularResponse || {};
       } catch (regularError: any) {
         console.log("❌ Regular login failed, trying admin endpoints...");
         console.log("❌ Regular error status:", regularError.status);
@@ -86,7 +86,7 @@ const useLoginMutation = () => {
               credentials
             );
             console.log("✅ Super admin login successful");
-            return superAdminResponse || {};
+            return superAdminResponse?.data || superAdminResponse || {};
           } catch (superAdminError: any) {
             console.log("❌ Super admin login failed, trying org admin...");
             console.log("❌ Super admin error status:", superAdminError.status);
@@ -100,7 +100,7 @@ const useLoginMutation = () => {
                   credentials
                 );
                 console.log("✅ Org admin login successful");
-                return orgAdminResponse || {};
+                return orgAdminResponse?.data || orgAdminResponse || {};
               } catch (orgAdminError: any) {
                 console.log("❌ All login attempts failed");
                 console.log("❌ Org admin error status:", orgAdminError.status);
@@ -163,23 +163,19 @@ const useOTPVerifyMutation = () => {
       );
       
       console.log("📥 OTP verification response:", response);
-      return response;
-    },
-    onSuccess: (data, variables) => {
-      if (data.requires_password_change && data.temporary_token) {
-        localStorage.setItem("tempToken", data.temporary_token);
-        localStorage.setItem("tempEmail", variables.email);
-        router.push("/change-password");
-      } else if (data.token && data.user) {
-        login(data.token, data.user);
-        addNotification({
-          type: "success",
-          title: "Login Successful",
-          message: `Welcome back, ${data.user.first_name || data.user.email}!`,
-        });
-        redirectUserByRole(data.user, router, addNotification);
+      
+      // Handle different response structures
+      if (response?.data) {
+        return response.data;
+      } else if (response && typeof response === 'object') {
+        // Direct response object
+        return response as OTPVerifyResponse;
       }
+      
+      console.error('❌ Invalid OTP response structure:', response);
+      throw new Error('Invalid response data from server');
     },
+    // Remove automatic success handling to let form handle it manually
     onError: (error: any) => {
       // Handle rate limiting errors with specific messaging
       if (error.status === 429 || error.code === 'RATE_LIMIT_EXCEEDED') {
@@ -245,31 +241,34 @@ export default function LoginForm() {
       
       console.log("📥 Login response:", result);
       
-      if (result && result.requires_otp) {
-        console.log("📱 OTP required, user type:", result.user_type);
+      // The login mutation already returns the extracted data
+      const data = result;
+      console.log("📥 Login data:", data);
+      
+      if (data && data.requires_otp) {
+        console.log("📱 OTP required, user type:", data.user_type);
         setUserEmail(values.email);
         // Store user type for OTP verification
-        if (result.user_type) {
-          localStorage.setItem("userType", result.user_type);
+        if (data.user_type) {
+          localStorage.setItem("userType", data.user_type);
         }
         setStep("otp");
-      } else if (result && result.requires_password_change && result.temporary_token) {
-        console.log("🔑 Password change required for user type:", result.user_type);
-        localStorage.setItem("tempToken", result.temporary_token);
+      } else if (data && data.requires_password_change && data.temporary_token && data.user_type === 'org_admin') {
+        // Only org_admin users with temporary passwords should go to change-password page
+        console.log("🔑 Password change required for org_admin user");
+        localStorage.setItem("tempToken", data.temporary_token);
         localStorage.setItem("tempEmail", values.email);
-        if (result.user_type) {
-          localStorage.setItem("userType", result.user_type);
-        }
+        localStorage.setItem("userType", data.user_type);
         router.push("/change-password");
-      } else if (result && result.token && result.user) {
+      } else if (data && data.token && data.user) {
         console.log("✅ Direct login successful");
-        login(result.token, result.user);
+        login(data.token, data.user);
         addNotification({
           type: "success",
           title: "Login Successful",
-          message: `Welcome back, ${result.user.first_name || result.user.email}!`,
+          message: `Welcome back, ${data.user.first_name || data.user.email}!`,
         });
-        handleSuccessfulLoginRedirect(result.user);
+        handleSuccessfulLoginRedirect(data.user);
       } else {
         console.error("❌ Login response is undefined or invalid");
         addNotification({
@@ -292,13 +291,38 @@ export default function LoginForm() {
       console.log("📧 Email:", values.email);
       console.log("🔢 OTP:", values.otp);
       
-      await otpVerifyMutation.mutateAsync({
+      const result = await otpVerifyMutation.mutateAsync({
         email: values.email,
         otp: values.otp,
         userType: userType || undefined,
       });
-      // Clean up stored user type after successful verification
-      localStorage.removeItem("userType");
+      
+      // The OTP verification mutation already returns the extracted data
+      const data = result;
+      console.log("📥 OTP verification data:", data);
+      
+      // Handle successful OTP verification
+      if (data.requires_password_change && data.temporary_token && userType === 'org_admin') {
+        // Only org_admin users with temporary passwords should go to change-password page
+        localStorage.setItem("tempToken", data.temporary_token);
+        localStorage.setItem("tempEmail", values.email);
+        localStorage.setItem("userType", userType);
+        router.push("/change-password");
+      } else if (data.token && data.user) {
+        login(data.token, data.user);
+        addNotification({
+          type: "success",
+          title: "Login Successful",
+          message: `Welcome back, ${data.user.first_name || data.user.email}!`,
+        });
+        redirectUserByRole(data.user, router, addNotification);
+      }
+      
+      // Only clean up userType if NOT requiring password change
+      // If password change is required, userType is preserved for the change-password page
+      if (!data?.requires_password_change) {
+        localStorage.removeItem("userType");
+      }
     } catch (error) {
       // Error handling is done in the mutation
       console.error("❌ OTP verification error:", error);

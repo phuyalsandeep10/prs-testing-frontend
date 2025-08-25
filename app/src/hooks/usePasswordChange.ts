@@ -26,6 +26,7 @@ export const usePasswordChange = () => {
         console.error('No user data available:', { user });
         throw new ApiError(
           'User authentication failed. Please log in again.',
+          401,
           'USER_DATA_UNAVAILABLE'
         );
       }
@@ -43,13 +44,14 @@ export const usePasswordChange = () => {
         console.log('Blocking password change for restricted role:', user.role);
         
         // Log unauthorized attempt (don't await to avoid blocking the error message)
-        logUnauthorizedPasswordChangeAttempt(user.id, user.role, user.org_id).catch(console.warn);
+        logUnauthorizedPasswordChangeAttempt(user.id, user.role, user.organizationId || user.organization || '').catch(console.warn);
         
         // Send notification to org admin (don't await to avoid blocking the error message)
-        notifyOrgAdminOfAttempt(user.id, user.role, user.org_id).catch(console.warn);
+        notifyOrgAdminOfAttempt(user.id, user.role, user.organizationId || user.organization || '').catch(console.warn);
         
         throw new ApiError(
           'You are not allowed to change your password. If you need to change your password, please contact your administrator.',
+          403,
           'PERMISSION_DENIED',
           { 
             role: user.role, 
@@ -78,6 +80,7 @@ export const usePasswordChange = () => {
         // For unknown errors, wrap them
         throw new ApiError(
           'An unexpected error occurred while changing password',
+          500,
           'UNKNOWN_ERROR'
         );
       }

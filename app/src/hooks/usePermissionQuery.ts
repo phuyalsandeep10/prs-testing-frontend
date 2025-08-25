@@ -132,6 +132,11 @@ export const useUpdateRoleMutation = () => {
   return useMutation({
     mutationFn: async (data: { id: number; name?: string; permissions?: number[] }) => {
       const { id, ...updateData } = data;
+      console.log('🔧 Role update request:', {
+        url: `/permissions/roles/${id}/`,
+        method: 'PATCH',
+        data: updateData
+      });
       const response = await apiClient.patch(`/permissions/roles/${id}/`, updateData);
       return response.data;
     },

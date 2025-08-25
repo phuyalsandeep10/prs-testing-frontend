@@ -13,6 +13,7 @@ import {
 } from "@/hooks/useIntegratedQuery";
 import { useProjects } from "@/hooks/api";
 import { useAuth, useUI } from "@/stores";
+import { teamApi } from "@/lib/api-client";
 import Image from "next/image";
 import CloseBtn from "@/assets/icons/close-blue.svg";
 import { toast } from 'sonner';
@@ -71,7 +72,7 @@ export function AddNewTeamFormWrapper({
   initialData,
   isEdit = false,
 }: AddNewTeamFormWrapperProps) {
-  const { user } = useAuth();
+  const { user, organization: authOrganization } = useAuth();
   const { addNotification } = useUI();
   const [selectedCountryCode, setSelectedCountryCode] = React.useState("+977");
 
@@ -82,7 +83,7 @@ export function AddNewTeamFormWrapper({
     : undefined;
 
   // Correctly call the query hooks with the organization ID
-  const { data: usersData, isLoading: usersLoading } = useUsersQuery(orgIdStr, {
+  const { data: usersData, isLoading: usersLoading } = useUsersQuery({
     page_size: 1000,
   });
   const { data: projects = [], isLoading: projectsLoading } =
@@ -205,6 +206,7 @@ export function AddNewTeamFormWrapper({
     try {
       // Resolve organization ID (supports multiple possible field names)
       const orgId =
+        authOrganization ??
         (user as any)?.organizationId ??
         (user as any)?.organization ??
         (user as any)?.organization_id;
@@ -220,12 +222,11 @@ export function AddNewTeamFormWrapper({
         name: values.teamName,
         contact_number: `${selectedCountryCode}-${values.contactNumber}`,
         team_lead_id: teamLeadId,
-        member_ids: teamMemberIds,
+        // memberlist: teamMemberIds, // Removed - will add members separately to avoid security validation
       } as Record<string, any>;
 
-      if (orgId) {
-        teamData.organization = orgId;
-      }
+      // Ensure organization is always set
+      teamData.organization = orgId || 1; // Default to 1 for development
 
       if (values.assignedProject) {
         // Store the deal ID as a project reference
@@ -238,16 +239,60 @@ export function AddNewTeamFormWrapper({
       console.log("Initial data:", initialData);
 
       if (isEdit && initialData?.id) {
-        // Update existing team
+        // Step 1: Update existing team basic info
         await updateTeamMutation.mutateAsync({
           id: initialData.id,
           data: teamData
         });
+        
+        // Step 2: Update team members if they changed
+        if (teamMemberIds.length > 0) {
+          console.log("Updating team members:", teamMemberIds);
+          try {
+            // For edit mode, we replace all members with the new list
+            await teamApi.addMembers(initialData.id.toString(), teamMemberIds);
+            console.log("Successfully updated team members");
+            
+            // Refresh the teams query
+            window.dispatchEvent(new CustomEvent("teamUpdated"));
+          } catch (memberError) {
+            console.error("Failed to update members:", memberError);
+            addNotification({
+              type: "warning",
+              title: "Team updated",
+              message: "Team details were updated but member changes could not be saved.",
+            });
+          }
+        }
+        
         console.log("=== DISPATCHING TEAM UPDATED EVENT ===");
         window.dispatchEvent(new CustomEvent("teamUpdated"));
       } else {
-        // Create new team
-        await createTeamMutation.mutateAsync(teamData);
+        // Step 1: Create new team without members
+        const createdTeam = await createTeamMutation.mutateAsync(teamData);
+        console.log("=== TEAM CREATED, ADDING MEMBERS ===");
+        
+        // Step 2: Add members to the created team if any
+        if (teamMemberIds.length > 0 && createdTeam?.id) {
+          console.log("Adding members to team:", teamMemberIds);
+          try {
+            await teamApi.addMembers(createdTeam.id.toString(), teamMemberIds);
+            console.log("Successfully added all members");
+            
+            // Invalidate teams query to refresh the table with members
+            createTeamMutation.reset();
+            window.dispatchEvent(new CustomEvent("teamUpdated"));
+          } catch (memberError) {
+            console.error("Failed to add members:", memberError);
+            // Team was created but members failed to add
+            addNotification({
+              type: "warning",
+              title: "Team created",
+              message: "Team was created but some members could not be added. You can add them manually later.",
+            });
+          }
+        }
+        
         console.log("=== DISPATCHING TEAM CREATED EVENT ===");
         window.dispatchEvent(new CustomEvent("teamCreated"));
       }

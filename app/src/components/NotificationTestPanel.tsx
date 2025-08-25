@@ -60,7 +60,7 @@ export function NotificationTestPanel() {
         addTestResult('❌ Failed to create test notification');
       }
     } catch (error) {
-      addTestResult(`❌ API Error: ${error}`);
+      addTestResult(`❌ API Error: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 

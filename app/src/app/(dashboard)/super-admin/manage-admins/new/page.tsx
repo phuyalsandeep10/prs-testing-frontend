@@ -28,7 +28,7 @@ const adminSchema = z.object({
     .min(1, "Email is required"),
   organization: z.string()
     .min(1, "Organization is required"),
-  is_active: z.string().default("true"),
+  is_active: z.string(), // Remove default to make it required
 });
 
 type AdminFormData = z.infer<typeof adminSchema>;
@@ -69,18 +69,14 @@ export default function NewAdminPage() {
     toast.info("Form cleared");
   }, [form]);
 
-  const onSubmit = async (values: AdminFormData) => {
+  const onSubmit = async (values: any) => {
     try {
-      // Find the selected organization name from the organizations list
-      const selectedOrg = organizations.find(org => org.id.toString() === values.organization);
-      const organizationName = selectedOrg ? selectedOrg.name : values.organization;
-
       // Create the admin user - the backend will handle role creation automatically
       const adminData = {
         first_name: values.first_name,
         last_name: values.last_name,
         email: values.email,
-        organization: organizationName, // Send name as string
+        organization: parseInt(values.organization), // Convert string ID to integer
         is_active: values.is_active === "true",
         // No need to specify org_role - backend will create/get Org Admin role automatically
       };

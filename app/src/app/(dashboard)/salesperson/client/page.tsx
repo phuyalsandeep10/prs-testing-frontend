@@ -82,10 +82,6 @@ const ClientsPage = React.memo(() => {
   const { data: clients = [], isLoading: loading, error, refetch } = useClients();
   const deleteClientMutation = useDeleteClient();
 
-  // Force a refetch whenever the page is focused or re-mounted
-  useEffect(() => {
-    refetch();
-  }, [refetch]);
 
   // Memoized search function
   const searchAllClientColumns = useCallback((client: Client, query: string): boolean => {
@@ -246,11 +242,33 @@ const ClientsPage = React.memo(() => {
   ] as any, [handleEdit, confirmDelete]);
 
   if (!isAuthInitialized || loading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">
+            {!isAuthInitialized ? 'Initializing...' : 'Loading clients...'}
+          </p>
+        </div>
+      </div>
+    );
   }
 
   if (error) {
-    return <div>Error: {error.message || 'Failed to load clients'}</div>;
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">Failed to load clients</p>
+          <p className="text-gray-600 text-sm">Error: {error.message}</p>
+          <button 
+            onClick={() => refetch()} 
+            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -381,6 +399,8 @@ const ClientsPage = React.memo(() => {
           onClose={() => setShowAddModal(false)}
           onClientAdded={() => {
             setShowAddModal(false);
+            // Force refetch to ensure immediate update
+            refetch();
           }}
         />
       </SlideModal>
@@ -400,6 +420,8 @@ const ClientsPage = React.memo(() => {
             onClientUpdated={() => {
               setShowEditModal(false);
               setSelectedClient(null);
+              // Force refetch to ensure immediate update
+              refetch();
             }}
           />
         )}

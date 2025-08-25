@@ -152,7 +152,7 @@ export const PermissionClient = () => {
 
   const handleGroupPermissionChange = (groupPermissions: Permission[], roleId: number, checked: boolean) => {
     console.log('Group permission change:', { 
-      groupPermissions: groupPermissions.map(p => p.name), 
+      groupPermissions: groupPermissions.map(p => typeof p === 'string' ? p : p.name), 
       roleId, 
       checked 
     });

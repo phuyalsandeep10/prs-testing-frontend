@@ -8,6 +8,7 @@ export { useStoreHydration, useAuthWithHydration, useUIWithHydration } from '../
 
 // Re-export types
 export type { AuthState } from './authStore';
+import { Permission } from '@/lib/types/roles';
 export type { UIState } from './uiStore';
 export type { AppState } from './appStore';
 
@@ -20,16 +21,12 @@ import { useAppStore } from './appStore';
 export const useAuth = () => {
   const store = useAuthStore();
   
-  // Transform the Zustand user format to match old AuthContext format for backward compatibility
+  // Transform the Zustand user format to match updated AuthContext format
   const transformedUser = store.user ? {
-    id: store.user.id,
-    email: store.user.email,
-    role: {
-      name: store.user.role,
-      permissions: store.user.permissions?.map(p => ({ codename: p })) || []
-    },
+    ...store.user,
+    permissions: store.user.permissions || [],
     organization: store.organization?.toString() || '',
-    ...store.user
+    organizationId: store.organization?.toString() || store.user.organizationId || '' // Ensure organizationId is set
   } : null;
 
   return {
@@ -54,14 +51,15 @@ export const useAuth = () => {
     },
     logout: store.logout,
     hasPermission: store.hasPermission,
-    hasAnyPermission: (permissions: any[]) => 
+    hasAnyPermission: (permissions: Permission[]) => 
       permissions.some(p => store.hasPermission(p)),
-    hasAllPermissions: (permissions: any[]) =>
+    hasAllPermissions: (permissions: Permission[]) =>
       permissions.every(p => store.hasPermission(p)),
     
     // Additional Zustand-specific properties for new code
     isHydrated: store.isHydrated,
     token: store.token,
+    organization: store.organization,
     updateUser: store.updateUser,
     getUserRole: store.getUserRole,
     getUserPermissions: store.getUserPermissions,

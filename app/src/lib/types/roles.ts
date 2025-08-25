@@ -1,11 +1,11 @@
 // Core role types for the multi-tenant SaaS platform
 export type UserRole = 
-  | 'super-admin' 
-  | 'org-admin' 
+  | 'super_admin' 
+  | 'org_admin' 
   | 'supervisor' 
   | 'salesperson' 
   | 'verifier' 
-  | 'team-member';
+  | 'team_member';
 
 export type Permission = 
   | 'create:organization' 
@@ -52,6 +52,7 @@ export interface User {
   last_name: string;
   role: UserRole;
   organizationId?: string;
+  organization?: string; // Backend compatibility
   teamId?: string;
   permissions: Permission[];
   isTeamLead?: boolean;
@@ -62,6 +63,10 @@ export interface User {
   avatar?: string;
   address?: string;
   phoneNumber?: string;
+  // Backend compatibility fields
+  user_type?: string;
+  is_superuser?: boolean;
+  full_name?: string;
 }
 
 // Organization structure
@@ -167,6 +172,7 @@ export interface DealTimelineEvent {
 export interface Client {
   id: string;
   client_name: string;
+  name?: string; // Alternative name field
   email: string;
   phone_number: string;
   nationality: string | null;
@@ -175,10 +181,12 @@ export interface Client {
   remarks: string | null;
   satisfaction: 'excellent' | 'good' | 'average' | 'poor' | null;
   status: 'clear' | 'pending' | 'bad_debt' | null;
+  payment_status?: string; // Payment status field
   created_by: number;
   created_by_name?: string;
   organization: number;
   total_value: number | null;
+  createdAt?: string; // Alternative timestamp format
 }
 
 export interface Address {
@@ -258,19 +266,8 @@ export interface RoleBasedRoute {
   children?: RoleBasedRoute[];
 }
 
-// API response types
-export interface ApiResponse<T = any> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  errors?: Record<string, string[]>;
-  meta?: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  };
-}
+// Import API response types from main types module
+export type { ApiResponse } from '@/types';
 
 // Filter and search types for tables
 export interface TableFilters {

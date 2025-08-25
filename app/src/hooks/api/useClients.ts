@@ -6,7 +6,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api-client';
 import { cacheKeys, CacheInvalidator } from '@/lib/cache';
-import type { Client } from '@/lib/types/roles';
+import type { Client } from '@/types';
 import { useAuth } from '@/stores';
 import { toast } from 'sonner';
 
@@ -47,7 +47,7 @@ interface ClientFilters {
  * Fetch all clients with optional filtering
  */
 export const useClients = (filters: ClientFilters = {}) => {
-  const { user } = useAuth();
+  const { user, isAuthenticated, isAuthInitialized } = useAuth();
   const organizationId = (user as any)?.organization;
 
   return useQuery({
@@ -59,19 +59,23 @@ export const useClients = (filters: ClientFilters = {}) => {
       if (filters.status) params.append('status', filters.status);
       if (filters.page) params.append('page', filters.page.toString());
       if (filters.limit) params.append('limit', filters.limit.toString());
-      if (organizationId) params.append('organization', organizationId.toString());
+      if (organizationId && organizationId !== '') {
+        params.append('organization', organizationId.toString());
+      }
 
-      const response = await apiClient.get<ClientsResponse>(`/clients/?${params.toString()}`);
+      const response = await apiClient.get<ClientsResponse>('/clients/', Object.fromEntries(params));
       
-      // Handle both paginated and direct array responses
-      return Array.isArray(response) ? response : response.results || [];
+      // Handle ApiResponse<T> structure
+      const responseData = response.data;
+      return Array.isArray(responseData) ? responseData : responseData.results || [];
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 1 * 60 * 1000, // Reduced to 1 minute for more frequent updates
     gcTime: 8 * 60 * 1000, // Reduced from 10 to 8 minutes for better memory management
-    enabled: !!organizationId,
+    enabled: isAuthInitialized && isAuthenticated,
     // Add memory leak prevention
     structuralSharing: true, // Prevent unnecessary re-renders
-    refetchOnWindowFocus: false, // Prevent excessive refetching
+    refetchOnWindowFocus: true, // Enable refetching for real-time updates
+    refetchInterval: 2 * 60 * 1000, // Refetch every 2 minutes for real-time feel
   });
 };
 
@@ -81,7 +85,10 @@ export const useClients = (filters: ClientFilters = {}) => {
 export const useClient = (clientId: string) => {
   return useQuery({
     queryKey: clientKeys.detail(clientId),
-    queryFn: () => apiClient.get<Client>(`/clients/${clientId}/`),
+    queryFn: async () => {
+      const response = await apiClient.get<Client>(`/clients/${clientId}/`);
+      return response.data;
+    },
     enabled: !!clientId,
     staleTime: 5 * 60 * 1000,
   });
@@ -91,56 +98,41 @@ export const useClient = (clientId: string) => {
  * Fetch clients for dashboard/commission pages
  */
 export const useDashboardClients = () => {
-  const { user } = useAuth();
+  const { user, isAuthenticated, isAuthInitialized } = useAuth();
   const organizationId = (user as any)?.organization;
   
-  // Only log in development to prevent console spam
-  if (process.env.NODE_ENV === 'development') {
-    console.log('🔍 [USE_DASHBOARD_CLIENTS] User:', user);
-    console.log('🔍 [USE_DASHBOARD_CLIENTS] Organization ID:', organizationId);
-  }
   
   return useQuery({
     queryKey: [...clientKeys.all, 'dashboard'],
     queryFn: async (): Promise<Client[]> => {
       const params = new URLSearchParams();
-      if (organizationId) {
+      if (organizationId && organizationId !== '') {
         params.append('organization', organizationId.toString());
       }
       params.append('limit', '10');
       params.append('status_filter', 'all');
       
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 [USE_DASHBOARD_CLIENTS] Making API call with params:', params.toString());
-      }
-      
       const response = await apiClient.get<{
         clients?: Client[];
         results?: Client[];
-      } | Client[]>(`/dashboard/clients/?${params.toString()}`);
+      } | Client[]>('/dashboard/clients/', Object.fromEntries(params));
       
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 [USE_DASHBOARD_CLIENTS] API Response:', response);
-      }
+      // Handle ApiResponse<T> structure
+      const responseData = response.data;
       
       // Handle different response formats
-      if (Array.isArray(response)) {
-        return response;
+      if (Array.isArray(responseData)) {
+        return responseData;
       }
       
-      const clients = (response as any).clients || (response as any).results || [];
-      
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔍 [USE_DASHBOARD_CLIENTS] Extracted clients:', clients);
-      }
-      
+      const clients = (responseData as any).clients || (responseData as any).results || [];
       return clients;
     },
-    staleTime: 2 * 60 * 1000, // 2 minutes for dashboard data
+    staleTime: 1 * 60 * 1000, // 1 minute for dashboard data
     gcTime: 5 * 60 * 1000, // Add shorter garbage collection time
-    enabled: !!organizationId,
+    enabled: isAuthInitialized && isAuthenticated,
     structuralSharing: true, // Prevent unnecessary re-renders
-    refetchOnWindowFocus: false, // Prevent excessive refetching
+    refetchOnWindowFocus: true, // Enable refetching for real-time updates
   });
 };
 
@@ -154,8 +146,10 @@ export const useCreateClient = () => {
   const invalidator = new CacheInvalidator(queryClient);
 
   return useMutation({
-    mutationFn: (data: CreateClientData) => 
-      apiClient.post<Client>('/clients/', data),
+    mutationFn: async (data: CreateClientData) => {
+      const response = await apiClient.post<Client>('/clients/', data);
+      return response.data;
+    },
     
     onSuccess: (newClient) => {
       // Use intelligent cache invalidation
@@ -164,10 +158,9 @@ export const useCreateClient = () => {
       // Optimistically set the new client data
       queryClient.setQueryData(clientKeys.detail(newClient.id.toString()), newClient);
       
-      // Update client lists cache
-      queryClient.setQueryData(clientKeys.lists(), (oldData: Client[] | undefined) => {
-        return oldData ? [newClient, ...oldData] : [newClient];
-      });
+      // Update client lists cache - handle different filter combinations
+      queryClient.invalidateQueries({ queryKey: clientKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: clientKeys.all });
       
       // Invalidate dashboard clients cache to include new clients in commission page
       queryClient.invalidateQueries({ queryKey: [...clientKeys.all, 'dashboard'] });
@@ -188,8 +181,10 @@ export const useUpdateClient = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, ...data }: UpdateClientData) =>
-      apiClient.put<Client>(`/clients/${id}/`, data),
+    mutationFn: async ({ id, ...data }: UpdateClientData) => {
+      const response = await apiClient.put<Client>(`/clients/${id}/`, data);
+      return response.data;
+    },
     
     onSuccess: (updatedClient, variables) => {
       // Update the specific client in cache
@@ -225,7 +220,9 @@ export const useDeleteClient = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (clientId: string) => apiClient.delete(`/clients/${clientId}/`),
+    mutationFn: async (clientId: string) => {
+      await apiClient.delete(`/clients/${clientId}/`);
+    },
 
     onSuccess: (_, clientId) => {
       toast.success(`Client has been deleted successfully.`);
@@ -275,7 +272,10 @@ export const usePrefetchClient = () => {
     if (options?.priority === 'high') {
       queryClient.prefetchQuery({
         queryKey: cacheKeys.deals.byClient(clientId),
-        queryFn: () => apiClient.get(`/deals/?client_id=${clientId}`),
+        queryFn: async () => {
+          const response = await apiClient.get(`/deals/?client_id=${clientId}`);
+          return response.data;
+        },
         staleTime: 5 * 60 * 1000,
       });
     }

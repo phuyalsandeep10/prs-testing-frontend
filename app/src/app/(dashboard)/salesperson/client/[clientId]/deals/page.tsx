@@ -23,8 +23,11 @@ const formatDate = (date: string | undefined) => {
 
 const SalesDetailsPage: React.FC = () => {
   const { clientId } = useParams<{ clientId: string }>();
-  const { data: client, isLoading: clientLoading, error: clientError } = useClient(clientId || '');
+  const { data: clientResponse, isLoading: clientLoading, error: clientError } = useClient(clientId || '');
   const { data: deals = [], isLoading: dealsLoading, error: dealsError } = useClientDeals(clientId || '');
+
+  // Extract client data from API response
+  const client = (clientResponse as any)?.data || clientResponse;
 
   const isLoading = clientLoading || dealsLoading;
   const hasError = clientError || dealsError;
@@ -69,7 +72,7 @@ const SalesDetailsPage: React.FC = () => {
   }
 
   // Use client data even if no deals exist
-  const displayDeal = mainDeal || {};
+  const displayDeal = mainDeal || ({} as any);
 
   return (
     <div className="min-h-screen bg-white">
@@ -94,7 +97,7 @@ const SalesDetailsPage: React.FC = () => {
           {/* Row 1 */}
           <SalesInfoItem 
             label="Client name" 
-            value={client.client_name || client.name || "Abinash Babu Tiwari"} 
+            value={client?.client_name || client?.name || "Abinash Babu Tiwari"} 
           />
           <SalesInfoItem 
             label="Deal Name" 
@@ -104,7 +107,7 @@ const SalesDetailsPage: React.FC = () => {
           {/* Row 2 */}
           <SalesInfoItem 
             label="Current Payment Stage" 
-            value={displayDeal.payment_status === 'clear' || client.status === 'clear' ? 'Clear' : 'Clear'} 
+            value={displayDeal.payment_status === 'clear' || client?.status === 'clear' ? 'Clear' : 'Clear'} 
             valueClassName="text-green-600"
           />
           <SalesInfoItem 

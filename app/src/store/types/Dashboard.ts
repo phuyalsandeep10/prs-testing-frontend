@@ -13,6 +13,8 @@ export interface SalesProgress {
   deals_closed: number;
   deals_pending: number;
   period: string;
+  // Add alias for component compatibility
+  achieved?: string; // Alias for current_sales
 }
 
 export interface StreakInfo {

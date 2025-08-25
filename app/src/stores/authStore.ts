@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { UserRole, Permission, User } from '@/lib/types/roles';
+import { UserRole, User } from '@/types';
+import { Permission } from '@/lib/types/roles';
 import { hasPermission as hasRolePermission } from '@/lib/auth/permissions';
 
 export interface AuthState {
@@ -45,10 +46,22 @@ export const useAuthStore = create<AuthState>()(
         localStorage.removeItem('user');
 
         // Normalize the user role structure
-        const rawRole = (userData as any)?.role?.name || (userData as any)?.role || 'team-member';
+        const rawRole = (userData as any)?.role?.name || (userData as any)?.role || 'team_member';
+        console.log('🔍 [AUTH_STORE_DEBUG] Role normalization:', {
+          rawRole,
+          userDataRole: (userData as any)?.role,
+          userDataRoleName: (userData as any)?.role?.name
+        });
+        
         const normalizedRole = typeof rawRole === 'string'
-          ? rawRole.toLowerCase().replace(/\s+/g, '-')
-          : 'team-member';
+          ? rawRole.toLowerCase().replace(/[\s\-_]+/g, '_')
+          : 'team_member';
+        
+        console.log('🔍 [AUTH_STORE_DEBUG] Normalized role:', {
+          rawRole,
+          normalizedRole,
+          finalRole: normalizedRole as UserRole
+        });
 
         const normalizedUser = {
           ...userData,
@@ -83,8 +96,14 @@ export const useAuthStore = create<AuthState>()(
       updateUser: (updates: Partial<User>) => {
         const currentUser = get().user;
         if (currentUser) {
+          // CRITICAL: Preserve the original role to prevent corruption
+          // Profile updates should not change user roles
+          const safeUpdates = { ...updates };
+          delete safeUpdates.role; // Remove role from updates to prevent corruption
+          
+          console.log('AuthStore - Updating user with safe updates (role preserved):', safeUpdates);
           set({
-            user: { ...currentUser, ...updates },
+            user: { ...currentUser, ...safeUpdates },
           });
         }
       },

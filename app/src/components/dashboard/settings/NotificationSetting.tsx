@@ -44,17 +44,31 @@ const NotificationSettings: React.FC = () => {
 
   // Load preferences when available
   useEffect(() => {
+    console.log('NotificationSettings - Preferences changed:', preferences); // Debug log
+    console.log('NotificationSettings - isLoading:', isLoading); // Debug log
+    
     if (preferences) {
-      setSettings({
+      const newSettings = {
         desktopNotification: preferences.desktopNotification,
         unreadNotificationBadge: preferences.unreadNotificationBadge,
         pushNotificationTimeout: preferences.pushNotificationTimeout,
         communicationEmails: preferences.communicationEmails,
         announcementsUpdates: preferences.announcementsUpdates,
         allNotificationSounds: preferences.allNotificationSounds,
-      });
+      };
+      
+      console.log('NotificationSettings - Setting new settings:', newSettings); // Debug log
+      console.log('NotificationSettings - Current settings before update:', settings); // Debug log
+      setSettings(newSettings);
+      
+      // Log after a brief delay to confirm state was updated
+      setTimeout(() => {
+        console.log('NotificationSettings - Settings after update:', settings); // Debug log
+      }, 100);
+    } else {
+      console.log('NotificationSettings - No preferences data available'); // Debug log
     }
-  }, [preferences]);
+  }, [preferences, isLoading]);
 
   const updateSetting = (
     key: keyof NotificationState,
@@ -71,6 +85,7 @@ const NotificationSettings: React.FC = () => {
   };
 
   const handleConfirmUpdate = () => {
+    console.log('NotificationSettings - Updating with settings:', settings); // Debug log
     updatePreferences(settings);
     setIsUpdateModalOpen(false);
   };

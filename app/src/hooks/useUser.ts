@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { User, UserRole, ApiResponse } from '@/types';
-import { userApi } from '@/lib/api-client';
+import { Permission } from '@/lib/types/roles';
+import { apiClient } from '@/lib/api-client';
 import { USER_ROLES, ERROR_MESSAGES } from '@/lib/constants';
 
 interface UseUserState {
@@ -53,7 +54,7 @@ export function useUser(): UseUserReturn {
           const userId = (session.user as any).id;
           if (userId) {
             try {
-              const response = await userApi.getById(userId);
+              const response = await apiClient.get<User>(`/auth/users/${userId}/`);
               setUser(response.data);
             } catch (apiError) {
               console.warn('Failed to fetch user data from API, using session data:', apiError);
@@ -89,7 +90,7 @@ export function useUser(): UseUserReturn {
     setError(null);
 
     try {
-      const response = await userApi.update({ id: user.id, ...data });
+      const response = await apiClient.put<User>(`/auth/users/${user.id}/`, data);
       setUser(response.data);
       
       // Update session if needed
@@ -116,7 +117,7 @@ export function useUser(): UseUserReturn {
     setError(null);
 
     try {
-      const response = await userApi.getById(user.id);
+      const response = await apiClient.get<User>(`/auth/users/${user.id}/`);
       setUser(response.data);
     } catch (err: any) {
       const errorMessage = err.message || ERROR_MESSAGES.SERVER_ERROR;
@@ -156,11 +157,8 @@ export function useUser(): UseUserReturn {
     // Super admin has all permissions
     if (user.role === USER_ROLES.SUPER_ADMIN) return true;
     
-    // Check if user has the specific permission
-    return user.permissions.some(p => 
-      p.actions.includes(permission.split('.')[1] as any) && 
-      p.resource === permission.split('.')[0]
-    );
+    // Check if user has the specific permission (permissions are strings, not objects)
+    return user.permissions.includes(permission as Permission);
   }, [user]);
 
   /**

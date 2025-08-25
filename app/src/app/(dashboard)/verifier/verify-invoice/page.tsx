@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { Search } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuthenticatedFetch } from "@/hooks/useAuthToken";
 import { UnifiedTable } from "@/components/core";
 import PaymentVerificationModal from "@/components/dashboard/verifier/PaymentVerificationModal";
 import Image from "next/image";
@@ -34,20 +35,8 @@ interface ApiInvoice {
   receipt_file: string | null;
 }
 
-const fetchInvoices = async (token: string): Promise<InvoiceData[]> => {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/verifier/invoices/`,
-    {
-      headers: {
-        Authorization: `Token ${token}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
-
-  if (!res.ok) throw new Error("Failed to fetch invoices");
-
-  const json: ApiInvoice[] = await res.json();
+const fetchInvoices = async (authenticatedFetch: Function): Promise<InvoiceData[]> => {
+  const json: ApiInvoice[] = await authenticatedFetch("/verifier/invoices/");
 
   return json.map((invoice) => ({
     payment_id: invoice.payment_id,
@@ -67,52 +56,90 @@ const fetchInvoices = async (token: string): Promise<InvoiceData[]> => {
 };
 
 const cancelInvoice = async ({
-  token,
+  authenticatedFetch,
   invoiceId,
 }: {
-  token: string;
+  authenticatedFetch: Function;
   invoiceId: string;
 }) => {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/verifier/invoice/${invoiceId}/`,
-    {
-      method: "DELETE",
-      headers: {
-        Authorization: `Token ${token}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
-
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Failed to cancel invoice: ${errorText}`);
-  }
+  await authenticatedFetch(`/verifier/invoice/${invoiceId}/`, {
+    method: "DELETE",
+  });
 
   return invoiceId;
 };
 
 const VerifyInvoice = () => {
-  const [token, setToken] = useState<string | null>(null);
+  const { authenticatedFetch, isAuthenticated } = useAuthenticatedFetch();
   const [activeTab, setActiveTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [dateFilter, setDateFilter] = useState({
+    from: "",
+    to: ""
+  });
   const [modalState, setModalState] = useState({
     isOpen: false,
     mode: "verification" as "verification" | "view" | "edit",
-    paymentId: null as string | null,
+    paymentId: undefined as string | number | undefined,
     invoiceData: null as InvoiceData | null,
   });
 
   const queryClient = useQueryClient();
 
+  // Keyboard shortcuts for better UX
   useEffect(() => {
-    setToken(localStorage.getItem("authToken"));
-  }, []);
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle shortcuts when no modal is open
+      if (modalState.isOpen) return;
+
+      switch (event.key) {
+        case '1':
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            setActiveTab('all');
+          }
+          break;
+        case '2':
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            setActiveTab('pending');
+          }
+          break;
+        case '3':
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            setActiveTab('completed');
+          }
+          break;
+        case '4':
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            setActiveTab('denied');
+          }
+          break;
+        case '/':
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            // Focus search input
+            const searchInput = document.querySelector('input[placeholder="Search invoices..."]') as HTMLInputElement;
+            searchInput?.focus();
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [modalState.isOpen]);
 
   // Callback to handle successful payment verification
   const handleVerificationSuccess = () => {
+    // Refresh invoice data to show updated status
+    queryClient.invalidateQueries({ queryKey: ["invoices"] });
+    
     // Switch to completed tab to show the newly verified payment
     setActiveTab("completed");
+    
     // Show a success message
     toast.success("Payment Verified!", {
       description: "Payment has been successfully verified and moved to completed tab.",
@@ -125,21 +152,21 @@ const VerifyInvoice = () => {
     isLoading,
     isError,
   } = useQuery({
-    queryKey: ["invoices", token],
-    queryFn: () => fetchInvoices(token!),
-    enabled: !!token,
+    queryKey: ["invoices"],
+    queryFn: () => fetchInvoices(authenticatedFetch),
+    enabled: isAuthenticated,
     refetchOnWindowFocus: false,
   });
 
   const cancelMutation = useMutation<
     string,
     Error,
-    { token: string; invoiceId: string }
+    { authenticatedFetch: Function; invoiceId: string }
   >({
     mutationFn: cancelInvoice,
     onSuccess: async () => {
       await new Promise((resolve) => setTimeout(resolve, 300));
-      await queryClient.invalidateQueries({ queryKey: ["invoices", token] });
+      await queryClient.invalidateQueries({ queryKey: ["invoices"] });
       toast.success("Cancelled!", {
         description: "Invoice cancelled successfully.",
         duration: 2000,
@@ -190,8 +217,21 @@ const VerifyInvoice = () => {
       );
     }
 
+    // Date filtering
+    if (dateFilter.from || dateFilter.to) {
+      data = data.filter((invoice) => {
+        const invoiceDate = new Date(invoice["Invoice Date"]);
+        const fromDate = dateFilter.from ? new Date(dateFilter.from) : null;
+        const toDate = dateFilter.to ? new Date(dateFilter.to) : null;
+        
+        if (fromDate && invoiceDate < fromDate) return false;
+        if (toDate && invoiceDate > toDate) return false;
+        return true;
+      });
+    }
+
     return data;
-  }, [invoiceData, activeTab, searchTerm]);
+  }, [invoiceData, activeTab, searchTerm, dateFilter]);
 
   const columns = useMemo(
     () => [
@@ -207,19 +247,32 @@ const VerifyInvoice = () => {
         size: 120,
         cell: ({ row }: any) => {
           const status = row.getValue("Status");
-          const statusStyle =
-            status === "Verified"
-              ? "bg-green-100 text-green-800"
-              : status === "Pending"
-              ? "bg-orange-100 text-orange-800"
-              : status === "Denied"
-              ? "bg-red-100 text-red-800"
-              : "bg-gray-100 text-gray-800";
+          const statusConfig = {
+            "Verified": { 
+              style: "bg-green-100 text-green-800 border border-green-200", 
+              icon: "✓" 
+            },
+            "Pending": { 
+              style: "bg-orange-100 text-orange-800 border border-orange-200", 
+              icon: "⏳" 
+            },
+            "Denied": { 
+              style: "bg-red-100 text-red-800 border border-red-200", 
+              icon: "✗" 
+            },
+            default: { 
+              style: "bg-gray-100 text-gray-800 border border-gray-200", 
+              icon: "?" 
+            }
+          };
+
+          const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.default;
 
           return (
             <span
-              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusStyle}`}
+              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${config.style}`}
             >
+              <span>{config.icon}</span>
               {status}
             </span>
           );
@@ -270,7 +323,7 @@ const VerifyInvoice = () => {
                 activeTab === "denied") && (
                 <button
                   onClick={async () => {
-                    if (!token) {
+                    if (!isAuthenticated) {
                       toast.error("Authentication Required", {
                         description: "User not authenticated.",
                       });
@@ -280,7 +333,7 @@ const VerifyInvoice = () => {
                     const confirmed = window.confirm(`Are you sure you want to cancel invoice ${row.original.id}?`);
                     if (confirmed) {
                       cancelMutation.mutate({
-                        token,
+                        authenticatedFetch,
                         invoiceId: row.original.id,
                       });
                     }
@@ -297,8 +350,25 @@ const VerifyInvoice = () => {
         },
       },
     ],
-    [cancelMutation, token]
+    [cancelMutation, authenticatedFetch, isAuthenticated, activeTab]
   );
+
+  // Show authentication prompt if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Please log in to access invoice verification.</p>
+          <button 
+            onClick={() => window.location.href = '/login'} 
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Go to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -311,6 +381,9 @@ const VerifyInvoice = () => {
             <p className="text-sm text-gray-600 mt-1">
               Review and verify invoice submissions for approval
             </p>
+            <div className="text-xs text-gray-500 mt-1">
+              Shortcuts: Ctrl+1-4 (tabs), Ctrl+/ (search)
+            </div>
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -415,7 +488,7 @@ const VerifyInvoice = () => {
             setModalState({
               isOpen: false,
               mode: "verification",
-              paymentId: null,
+              paymentId: undefined,
               invoiceData: null,
             });
           }

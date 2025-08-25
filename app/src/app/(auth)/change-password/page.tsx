@@ -11,6 +11,8 @@ import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { apiClient } from '@/lib/api-client';
+import { PasswordChangeResponse, ApiResponse } from '@/types';
 
 const passwordChangeSchema = z.object({
   newPassword: z
@@ -30,8 +32,40 @@ export default function ChangePasswordPage() {
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string>('');
+  const [userType, setUserType] = React.useState<string>('');
   const router = useRouter();
 
+  // Check user type and session validity on component mount
+  React.useEffect(() => {
+    const tempToken = localStorage.getItem('tempToken');
+    const tempEmail = localStorage.getItem('tempEmail');
+    const storedUserType = localStorage.getItem('userType');
+
+    console.log('🔍 Debug localStorage values:', {
+      tempToken: tempToken ? 'Present' : 'Missing',
+      tempEmail: tempEmail ? 'Present' : 'Missing', 
+      storedUserType: storedUserType || 'Missing'
+    });
+
+    // Check if user has temporary credentials (required for password change)
+    if (!tempToken || !tempEmail) {
+      console.log('❌ No temporary credentials found - redirecting to login');
+      setError('Session expired. Please login again.');
+      router.push('/login');
+      return;
+    }
+
+    // Set user type (both super_admin and org_admin are allowed)
+    if (storedUserType) {
+      setUserType(storedUserType);
+    } else {
+      // If no userType, set as org_admin since they're the primary users for temporary passwords
+      console.log('⚠️ No userType found - setting as org_admin (default for temp passwords)');
+      setUserType('org_admin');
+    }
+  }, [router]);
+
+  // Always call useForm at the top level (before any conditional returns)
   const form = useForm<z.infer<typeof passwordChangeSchema>>({
     resolver: zodResolver(passwordChangeSchema),
     defaultValues: {
@@ -97,29 +131,25 @@ export default function ChangePasswordPage() {
       };
       
       console.log('📤 Password change request:', requestData);
+      console.log('🔍 Current userType for context:', userType);
       
-      const response = await fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL
-        }/auth/change-password`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestData),
-        });
-        const data = await response.json();
+      // Try different endpoints for first-time password setup
+      console.log('🔄 Trying /auth/password/set/ endpoint first...');
+      let response: ApiResponse<PasswordChangeResponse>;
+      try {
+        response = await apiClient.post<PasswordChangeResponse>('/auth/password/set/', requestData);
+      } catch (setError: any) {
+        console.log('❌ /auth/password/set/ failed, trying /auth/change-password:', setError.message);
+        response = await apiClient.post<PasswordChangeResponse>('/auth/change-password', requestData);
+      }
+      
+      const data = response.data;
+      
+      console.log('📥 Password change response data:', response);
 
-      console.log('📥 Password change response status:', response.status);
-      console.log('📥 Password change response headers:', Object.fromEntries(response.headers.entries()));
-      
-      
-      console.log('📥 Password change response data:', data);
-
-      if (response.ok) {
+      if (data) {
         // Password changed successfully
-        console.log('Password changed successfully');
+        console.log('✅ Password changed successfully');
         
         // Store the new auth token and user data
         localStorage.setItem('authToken', data.token);
@@ -129,24 +159,29 @@ export default function ChangePasswordPage() {
         localStorage.removeItem('tempToken');
         localStorage.removeItem('tempEmail');
         
-        // Redirect based on user role
+        // Redirect based on user role - check both user_type and role fields
+        const userTypeFromResponse = data.user?.user_type;
         const userRoleData = data.user?.role;
         let userRole = '';
         
-        // Handle different role data structures
-        if (typeof userRoleData === 'string') {
+        // First check user_type field (which our backend returns)
+        if (userTypeFromResponse && typeof userTypeFromResponse === 'string') {
+          userRole = userTypeFromResponse.toLowerCase();
+        }
+        // Fallback to role field if user_type is not available
+        else if (typeof userRoleData === 'string') {
           userRole = userRoleData.toLowerCase();
         } else if (userRoleData && typeof userRoleData === 'object') {
-          userRole = (userRoleData.name || '').toLowerCase();
+          userRole = ((userRoleData as any).name || '').toLowerCase();
         }
         
-        console.log('🎭 User role for redirect:', userRole, 'Original:', userRoleData);
+        console.log('🎭 User role for redirect:', userRole, 'From user_type:', userTypeFromResponse, 'From role:', userRoleData);
         
         // Check if user is super admin
         if (data.user?.is_superuser || userRole?.includes('super')) {
           console.log('🔐 Redirecting to super-admin dashboard');
           router.push('/super-admin');
-        } else if (userRole?.includes('admin')) {
+        } else if (userRole === 'org_admin' || userRole?.includes('admin')) {
           console.log('🏢 Redirecting to org-admin dashboard');
           router.push('/org-admin');
         } else if (userRole?.includes('salesperson')) {
@@ -162,30 +197,56 @@ export default function ChangePasswordPage() {
           console.log('👤 Redirecting to team-member dashboard');
           router.push('/team-member');
         } else {
-          console.log('🏠 Default redirect to super-admin');
+          console.log('🏠 Default redirect to super-admin (unrecognized role)');
+          console.log('🔍 Debug - userRole value:', JSON.stringify(userRole));
           router.push('/super-admin');
         }
       } else {
-        console.error('❌ Password change failed:', data);
-        setError(data.error || `Failed to change password. Server returned: ${response.status}`);
+        // This shouldn't happen with apiClient, but just in case
+        console.error('❌ Unexpected response structure:', data);
+        setError('Unexpected response from server. Please try again.');
       }
     } catch (error: any) {
-      console.error('❌ Password change error:', error);
-      console.error('❌ Error details:', {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
+      console.error('❌ Password change error:', {
+        name: error?.name || 'Unknown',
+        message: error?.message || 'Unknown error',
+        code: error?.code,
+        status: error?.status,
+        details: error?.details
       });
       
-      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      if (error?.name === 'TypeError' && error?.message?.includes('fetch')) {
         setError('Cannot connect to server. Please check if the backend is running.');
+      } else if (error?.message) {
+        setError(`Failed to change password: ${error.message}`);
       } else {
-        setError(`Failed to change password: ${error.message || 'Please try again.'}`);
+        setError('Failed to change password. Please try again.');
       }
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Show loading while checking user type - but only briefly for session validation
+  if (!userType) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-white">
+        <div className="mx-auto w-full max-w-md">
+          <div className="mb-6 flex flex-col items-center justify-center space-y-4">
+            <Image src="/PRSlogo.png" alt="PRS Logo" width={100} height={100} />
+            <h1 className="text-lg font-semibold text-gray-700">Payment Receiving System</h1>
+          </div>
+          
+          <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-white">
@@ -202,10 +263,10 @@ export default function ChangePasswordPage() {
               <KeyRound className="w-6 h-6 text-[#4F46E5]" />
             </div>
             <h2 className="text-xl font-semibold text-gray-900">
-              Change Your Password
+              Set Your Password
             </h2>
             <p className="text-sm text-gray-600 mt-1">
-              Please set a new secure password for your account
+              Please set a new secure password for your administrator account
             </p>
           </div>
 

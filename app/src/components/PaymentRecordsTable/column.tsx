@@ -43,8 +43,17 @@ export const scrollableColumns: ColumnDef<Payment>[] = [
   { accessorKey: "accountNo", header: "Account No" },
 ];
 
-const getStatusColor = (status: string) => {
-  switch (status) {
+// Utility function to safely extract status display value
+const getStatusDisplay = (status: any): string => {
+  if (typeof status === 'object' && status !== null) {
+    return status.display || status.value || 'N/A';
+  }
+  return status || 'N/A';
+};
+
+const getStatusColor = (status: string | any) => {
+  const statusText = getStatusDisplay(status);
+  switch (statusText) {
     case "Pending":
       return "text-[#FD8B00]";
     case "Approved":
@@ -104,7 +113,7 @@ export const createRightColumns = (
         if (isSeniorVerifier && updatePaymentStatus) {
           return (
             <Select
-              value={row.original.status}
+              value={getStatusDisplay(row.original.status)}
               onValueChange={(value: string) =>
                 updatePaymentStatus(row.index, value)
               }
@@ -139,12 +148,12 @@ export const createRightColumns = (
         if (isVerifier) {
           return (
             <span className={`text-xs ${getStatusColor(row.original.status)}`}>
-              {row.original.status}
+              {getStatusDisplay(row.original.status)}
             </span>
           );
         }
 
-        return <span>{row.original.status}</span>;
+        return <span>{getStatusDisplay(row.original.status)}</span>;
       },
     },
     { accessorKey: "approvedBy", header: "Approved By" },
@@ -158,7 +167,7 @@ export const createRightColumns = (
           {
             id: "actions",
             header: "Action",
-            cell: ({ row }) => (
+            cell: ({ row }: { row: any }) => (
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="icon" className="h-6 w-6 p-1">
                   <Image src={editicon} alt="Edit" className="w-4 h-4" />

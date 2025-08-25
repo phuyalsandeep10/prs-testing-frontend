@@ -1,18 +1,19 @@
-import { 
-  User, 
-  Client, 
-  Team, 
-  CommissionData, 
-  CreateInput, 
+import {
+  User,
+  Client,
+  Team,
+  CommissionData,
+  CreateInput,
   UpdateInput,
   UserRole,
   PaginatedResponse,
   DashboardStats
 } from '@/types';
-import { 
-  userApi, 
-  clientApi, 
-  teamApi 
+import { Permission } from '@/lib/types/roles';
+import {
+  userApi,
+  clientApi,
+  teamApi
 } from '@/lib/api-client';
 
 // Note: commissionApi and dashboardApi may need to be implemented in api-client
@@ -32,27 +33,35 @@ const dashboardApi = {
 };
 
 // ==================== MOCK DATA (Development Only) ====================
-import { getClients, getClientById } from '@/data/clients';
+// Mock data for development - removed dependency on @/data/clients
 
 // Mock data - should be moved to proper API when available
 const mockUsers: User[] = [
   {
     id: "1",
     name: "Yubesh Koirala",
+    first_name: "Yubesh",
+    last_name: "Koirala",
     email: "yubesh@example.com",
     phoneNumber: "+977-9876543210",
     role: "salesperson",
-    assignedTeam: "Design Wizards",
     status: "active",
+    permissions: ['manage:deals', 'manage:clients', 'view:analytics'] as Permission[],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
   {
     id: "2",
     name: "Jane Smith",
+    first_name: "Jane",
+    last_name: "Smith",
     email: "jane@example.com",
     phoneNumber: "+977-9876543211",
     role: "verifier",
-    assignedTeam: "Team SEO Warriors",
-    status: "invited",
+    status: "pending",
+    permissions: ['verify:invoices', 'approve:deals', 'deny:deals'] as Permission[],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
 ];
 
@@ -109,15 +118,16 @@ function createPaginatedResponse<T>(
 }
 
 async function executeWithFallback<T>(
-  apiCall: () => Promise<T>,
+  apiCall: () => Promise<any>,
   fallback: () => T
 ): Promise<T> {
   if (enableMockData) {
     return fallback();
   }
-  
+
   try {
-    return await apiCall();
+    const result = await apiCall();
+    return result as T;
   } catch (error) {
     console.warn('API call failed, falling back to mock data:', error);
     return fallback();
@@ -139,18 +149,18 @@ export class UserService {
       },
       () => {
         let filteredData = mockUsers;
-        
+
         if (params?.search) {
           filteredData = filteredData.filter(user =>
             user.name.toLowerCase().includes(params.search!.toLowerCase()) ||
             user.email.toLowerCase().includes(params.search!.toLowerCase())
           );
         }
-        
+
         if (params?.role) {
           filteredData = filteredData.filter(user => user.role === params.role);
         }
-        
+
         return createPaginatedResponse(
           filteredData,
           params?.page,
@@ -164,7 +174,11 @@ export class UserService {
     return executeWithFallback(
       async () => {
         const response = await userApi.getById(id);
-        return response.data;
+        // Handle ApiResponse wrapper
+        if (response && typeof response === 'object' && 'data' in response) {
+          return response.data as User;
+        }
+        return response as User;
       },
       () => {
         const user = mockUsers.find(u => u.id === id);
@@ -178,13 +192,20 @@ export class UserService {
     return executeWithFallback(
       async () => {
         const response = await userApi.create(userData);
-        return response.data;
+        // Handle ApiResponse wrapper
+        if (response && typeof response === 'object' && 'data' in response) {
+          return response.data as User;
+        }
+        return response as User;
       },
       () => {
         const newUser: User = {
           ...userData,
           id: `user-${Date.now()}`,
+          name: userData.name || `${userData.first_name || ''} ${userData.last_name || ''}`.trim(),
+          permissions: (userData.permissions || []) as Permission[],
           createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         };
         mockUsers.push(newUser);
         return newUser;
@@ -196,12 +217,16 @@ export class UserService {
     return executeWithFallback(
       async () => {
         const response = await userApi.update(userData);
-        return response.data;
+        // Handle ApiResponse wrapper
+        if (response && typeof response === 'object' && 'data' in response) {
+          return response.data as User;
+        }
+        return response as User;
       },
       () => {
         const index = mockUsers.findIndex(u => u.id === userData.id);
         if (index === -1) throw new Error(`User with id ${userData.id} not found`);
-        
+
         mockUsers[index] = { ...mockUsers[index], ...userData };
         return mockUsers[index];
       }
@@ -225,7 +250,11 @@ export class UserService {
     return executeWithFallback(
       async () => {
         const response = await userApi.changeStatus(id, status);
-        return response.data;
+        // Handle ApiResponse wrapper
+        if (response && typeof response === 'object' && 'data' in response) {
+          return response.data as User;
+        }
+        return response as User;
       },
       () => {
         const user = mockUsers.find(u => u.id === id);
@@ -252,26 +281,9 @@ export class ClientService {
         return response;
       },
       () => {
-        let filteredData = getClients();
-        
-        if (params?.search) {
-          filteredData = filteredData.filter(client =>
-            client.name.toLowerCase().includes(params.search!.toLowerCase()) ||
-            client.email.toLowerCase().includes(params.search!.toLowerCase()) ||
-            client.salesperson.toLowerCase().includes(params.search!.toLowerCase())
-          );
-        }
-        
-        if (params?.category) {
-          filteredData = filteredData.filter(client => client.category === params.category);
-        }
-        
-        if (params?.status) {
-          filteredData = filteredData.filter(client => client.status === params.status);
-        }
-        
+        // Mock implementation - return empty data for now
         return createPaginatedResponse(
-          filteredData,
+          [],
           params?.page,
           params?.limit
         );
@@ -283,12 +295,15 @@ export class ClientService {
     return executeWithFallback(
       async () => {
         const response = await clientApi.getById(id);
-        return response.data;
+        // Handle ApiResponse wrapper
+        if (response && typeof response === 'object' && 'data' in response) {
+          return response.data as Client;
+        }
+        return response as Client;
       },
       () => {
-        const client = getClientById(id);
-        if (!client) throw new Error(`Client with id ${id} not found`);
-        return client;
+        // Mock implementation - would need actual mock data
+        throw new Error(`Client with id ${id} not found`);
       }
     );
   }
@@ -297,16 +312,18 @@ export class ClientService {
     return executeWithFallback(
       async () => {
         const response = await clientApi.create(clientData);
-        return response.data;
+        // Handle ApiResponse wrapper
+        if (response && typeof response === 'object' && 'data' in response) {
+          return response.data as Client;
+        }
+        return response as Client;
       },
       () => {
         const newClient: Client = {
           ...clientData,
           id: `client-${Date.now()}`,
-          createdAt: new Date().toISOString(),
-          activities: [],
-          avatarUrl: '/avatars/default.png',
-          salesLeadsAvatars: [],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         };
         return newClient;
       }
@@ -317,12 +334,15 @@ export class ClientService {
     return executeWithFallback(
       async () => {
         const response = await clientApi.update(clientData);
-        return response.data;
+        // Handle ApiResponse wrapper
+        if (response && typeof response === 'object' && 'data' in response) {
+          return response.data as Client;
+        }
+        return response as Client;
       },
       () => {
-        const client = getClientById(clientData.id!);
-        if (!client) throw new Error(`Client with id ${clientData.id} not found`);
-        return { ...client, ...clientData };
+        // Mock implementation
+        throw new Error(`Client with id ${clientData.id} not found`);
       }
     );
   }
@@ -354,14 +374,14 @@ export class TeamService {
       },
       () => {
         let filteredData = mockTeams;
-        
+
         if (params?.search) {
           filteredData = filteredData.filter(team =>
             team.teamName.toLowerCase().includes(params.search!.toLowerCase()) ||
             team.teamLead.toLowerCase().includes(params.search!.toLowerCase())
           );
         }
-        
+
         return createPaginatedResponse(
           filteredData,
           params?.page,
@@ -375,7 +395,11 @@ export class TeamService {
     return executeWithFallback(
       async () => {
         const response = await teamApi.getById(id);
-        return response.data;
+        // Handle ApiResponse wrapper
+        if (response && typeof response === 'object' && 'data' in response) {
+          return response.data as Team;
+        }
+        return response as Team;
       },
       () => {
         const team = mockTeams.find(t => t.id === id);
@@ -389,13 +413,18 @@ export class TeamService {
     return executeWithFallback(
       async () => {
         const response = await teamApi.create(teamData);
-        return response.data;
+        // Handle ApiResponse wrapper
+        if (response && typeof response === 'object' && 'data' in response) {
+          return response.data as Team;
+        }
+        return response as Team;
       },
       () => {
         const newTeam: Team = {
           ...teamData,
           id: `team-${Date.now()}`,
           createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
           teamMembers: teamData.teamMembers || [],
           extraProjectsCount: 0,
         };
@@ -409,12 +438,16 @@ export class TeamService {
     return executeWithFallback(
       async () => {
         const response = await teamApi.update(teamData);
-        return response.data;
+        // Handle ApiResponse wrapper
+        if (response && typeof response === 'object' && 'data' in response) {
+          return response.data as Team;
+        }
+        return response as Team;
       },
       () => {
         const index = mockTeams.findIndex(t => t.id === teamData.id);
         if (index === -1) throw new Error(`Team with id ${teamData.id} not found`);
-        
+
         mockTeams[index] = { ...mockTeams[index], ...teamData };
         return mockTeams[index];
       }
@@ -440,7 +473,7 @@ export class CommissionService {
   private static calculateCommission(data: Omit<CommissionData, 'convertedAmt' | 'total' | 'totalReceivable'>): CommissionData {
     const convertedAmt = (data.totalSales * data.percentage) / 100;
     const total = convertedAmt + data.bonus - data.penalty;
-    
+
     return {
       ...data,
       convertedAmt,
@@ -462,17 +495,17 @@ export class CommissionService {
       },
       () => {
         let filteredData = mockCommissionData;
-        
+
         if (params?.search) {
           filteredData = filteredData.filter(commission =>
             commission.fullName.toLowerCase().includes(params.search!.toLowerCase())
           );
         }
-        
+
         if (params?.currency) {
           filteredData = filteredData.filter(commission => commission.currency === params.currency);
         }
-        
+
         return createPaginatedResponse(
           filteredData,
           params?.page,
@@ -486,12 +519,16 @@ export class CommissionService {
     return executeWithFallback(
       async () => {
         const response = await commissionApi.update(commissionData);
-        return response.data;
+        // Handle ApiResponse wrapper
+        if (response && typeof response === 'object' && 'data' in response) {
+          return (response as any).data as CommissionData;
+        }
+        return response as CommissionData;
       },
       () => {
         const index = mockCommissionData.findIndex(c => c.id === commissionData.id);
         if (index === -1) throw new Error(`Commission data with id ${commissionData.id} not found`);
-        
+
         const updatedData = { ...mockCommissionData[index], ...commissionData };
         const calculatedData = this.calculateCommission(updatedData);
         mockCommissionData[index] = calculatedData;
@@ -504,7 +541,11 @@ export class CommissionService {
     return executeWithFallback(
       async () => {
         const response = await commissionApi.bulkUpdate(commissionDataArray);
-        return response.data;
+        // Handle ApiResponse wrapper
+        if (response && typeof response === 'object' && 'data' in response && (response as any).data) {
+          return (response as any).data as CommissionData[];
+        }
+        return [] as CommissionData[];
       },
       () => {
         return commissionDataArray.map(commissionData => {
@@ -525,7 +566,11 @@ export class CommissionService {
     return executeWithFallback(
       async () => {
         const response = await commissionApi.export(format, filters);
-        return response.data;
+        // Handle ApiResponse wrapper
+        if (response && typeof response === 'object' && 'data' in response && (response as any).data) {
+          return (response as any).data as Blob;
+        }
+        throw new Error('Invalid response format');
       },
       () => {
         // Mock export - create a simple blob
@@ -542,18 +587,19 @@ export class DashboardService {
     return executeWithFallback(
       async () => {
         const response = await dashboardApi.getStats(role);
-        return response.data;
+        // Handle ApiResponse wrapper
+        if (response && typeof response === 'object' && 'data' in response && (response as any).data) {
+          return (response as any).data as DashboardStats;
+        }
+        throw new Error('Invalid response format');
       },
       () => {
         // Mock dashboard stats based on role
         return {
           totalUsers: mockUsers.length,
-          activeUsers: mockUsers.filter(u => u.status === 'active').length,
-          totalClients: getClients().length,
+          totalClients: 0, // Remove dependency on getClients()
           totalTeams: mockTeams.length,
-          totalRevenue: mockCommissionData.reduce((sum, c) => sum + c.totalSales, 0),
           totalCommission: mockCommissionData.reduce((sum, c) => sum + c.totalReceivable, 0),
-          monthlyGrowth: 12.5,
           recentActivities: [],
           notifications: [],
         };

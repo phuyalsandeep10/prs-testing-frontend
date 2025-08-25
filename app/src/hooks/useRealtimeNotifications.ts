@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/stores';
 import { notificationWebSocket } from '@/lib/realtime/notifications';
 import { useQueryClient } from '@tanstack/react-query';
@@ -9,16 +9,38 @@ export const useRealtimeNotifications = () => {
   const { user, token } = useAuth();
   const queryClient = useQueryClient();
   const listenerId = useRef<string | null>(null);
+  const invalidationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Throttled query invalidation to prevent rate limiting
+  const throttledInvalidateNotifications = useCallback(() => {
+    // Clear any existing timeout
+    if (invalidationTimeoutRef.current) {
+      clearTimeout(invalidationTimeoutRef.current);
+    }
+
+    // Set a new timeout to batch invalidations
+    invalidationTimeoutRef.current = setTimeout(() => {
+      try {
+        console.log('🔄 Throttled invalidation: refreshing notification queries...');
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
+        queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
+        queryClient.invalidateQueries({ queryKey: ['unread-count'] });
+      } catch (error) {
+        console.error('Error during throttled invalidation:', error);
+      }
+    }, 2000); // Wait 2 seconds before invalidating to batch multiple rapid notifications
+  }, [queryClient]);
 
   useEffect(() => {
     if (!user || !token) return;
 
-    try {
-      // Connect to WebSocket
-      notificationWebSocket.connect(token);
+    const setupWebSocket = async () => {
+      try {
+        // Connect to WebSocket (now async)
+        await notificationWebSocket.connect(token);
 
-      // Subscribe to notifications
-      listenerId.current = notificationWebSocket.subscribe((notification: Notification) => {
+        // Subscribe to notifications
+        listenerId.current = notificationWebSocket.subscribe((notification: Notification) => {
         try {
           // Normalize backend fields to frontend fields consistently
           const mappedNotification = {
@@ -34,10 +56,8 @@ export const useRealtimeNotifications = () => {
             organizationName: (notification as any).organization_name || notification.organizationName,
           };
 
-          // Invalidate notifications cache to trigger refetch
-          queryClient.invalidateQueries({ queryKey: ['notifications'] });
-          queryClient.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
-          queryClient.invalidateQueries({ queryKey: ['unread-count'] });
+          // Use throttled invalidation to prevent rate limiting
+          throttledInvalidateNotifications();
           
           // Show toast notification with error handling
           const priority = mappedNotification.priority || 'medium';
@@ -78,12 +98,21 @@ export const useRealtimeNotifications = () => {
           console.error('Error processing notification:', processingError, notification);
         }
       });
-    } catch (connectionError) {
-      console.error('Error setting up real-time notifications:', connectionError);
-    }
+      } catch (connectionError) {
+        console.error('Error setting up real-time notifications:', connectionError);
+      }
+    };
+
+    setupWebSocket();
 
     return () => {
       try {
+        // Clear any pending invalidation timeout
+        if (invalidationTimeoutRef.current) {
+          clearTimeout(invalidationTimeoutRef.current);
+          invalidationTimeoutRef.current = null;
+        }
+        
         if (listenerId.current) {
           notificationWebSocket.unsubscribe(listenerId.current);
         }
@@ -92,7 +121,7 @@ export const useRealtimeNotifications = () => {
         console.error('Error cleaning up notifications:', cleanupError);
       }
     };
-  }, [user, token, queryClient]);
+  }, [user, token, queryClient, throttledInvalidateNotifications]);
 
   return {
     isConnected: notificationWebSocket.isConnected(),

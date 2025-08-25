@@ -6,7 +6,7 @@ type AuditQueue = {
   verifier: string;
   actions: string;
   status: string;
-  txnid: string;
+  transaction_id: string;
 };
 
 type AuditComponentProps = {
@@ -31,7 +31,7 @@ const AuditComponents: React.FC<AuditComponentProps> = ({ data }) => {
               <td className="py-3 px-4 break-words">{row.timestamp}</td>
               <td className="py-3 px-4 break-words">{row.verifier}</td>
               <td className="py-3 px-4 break-words">
-                {row.actions} {row.txnid}{" "}
+                {row.actions} {row.transaction_id}{" "}
                 <span
                   className={
                     row.status === "Pending"
@@ -45,7 +45,7 @@ const AuditComponents: React.FC<AuditComponentProps> = ({ data }) => {
                 </span>
               </td>
               <td className="py-3 px-4 pr-6 text-[#465FFF] break-words">
-                {row.txnid}
+                {row.transaction_id}
               </td>
             </tr>
           ))}

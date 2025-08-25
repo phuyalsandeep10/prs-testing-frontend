@@ -117,6 +117,8 @@ const DealsTable: React.FC<DealsTableProps> = ({
   }, [dealsResponse]);
   
   console.log('🔍 [ORG_ADMIN_DEALS_TABLE_DEBUG] Final deals array length:', deals.length);
+  console.log('🔍 [ORG_ADMIN_DEALS_TABLE_DEBUG] First deal structure:', deals[0]);
+  console.log('🔍 [ORG_ADMIN_DEALS_TABLE_DEBUG] Deal IDs:', deals.map(d => ({ id: d.id, deal_id: d.deal_id })));
 
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const roleConfig = useRoleConfig();
@@ -124,7 +126,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
   // Add state for nested data
   const [nestedData, setNestedData] = useState<Record<string, any[]>>({});
   const [nestedLoading, setNestedLoading] = useState<Record<string, boolean>>({});
-  const [nestedError, setNestedError] = useState<Record<string, string>>({});
+  const [nestedError, setNestedError] = useState<Record<string, string | undefined>>({});
 
   // Function to fetch nested payments for a deal
   const fetchNestedPayments = useCallback(async (dealId: string) => {
@@ -220,7 +222,16 @@ const DealsTable: React.FC<DealsTableProps> = ({
         accessorKey: "payment_serial",
         header: "Payment",
         cell: ({ row }) => {
-          return <div>{row.original.payment_serial}</div>;
+          const serial = row.original.payment_serial;
+          if (!serial) return <div>N/A</div>;
+          
+          // Safety check: ensure serial is not an object
+          if (typeof serial === 'object' && serial !== null) {
+            console.warn('Payment serial is an object:', serial);
+            return <div className="text-red-500">Invalid data</div>;
+          }
+          
+          return <div>{serial.toString()}</div>;
         },
       },
       {
@@ -228,15 +239,28 @@ const DealsTable: React.FC<DealsTableProps> = ({
         header: "Payment Date",
         cell: ({ row }) => {
           const paymentDate = row.original.payment_date;
-          const formattedDate = new Date(paymentDate).toLocaleDateString(
-            "en-US",
-            {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            }
-          );
-          return <span>{formattedDate}</span>;
+          if (!paymentDate) return <span>N/A</span>;
+          
+          // Safety check: ensure paymentDate is not an object
+          if (typeof paymentDate === 'object' && paymentDate !== null) {
+            console.warn('Payment date is an object:', paymentDate);
+            return <span className="text-red-500">Invalid</span>;
+          }
+          
+          try {
+            const formattedDate = new Date(paymentDate.toString()).toLocaleDateString(
+              "en-US",
+              {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              }
+            );
+            return <span>{formattedDate}</span>;
+          } catch (error) {
+            console.error('Error formatting payment date:', paymentDate, error);
+            return <span className="text-red-500">Invalid</span>;
+          }
         },
       },
       {
@@ -244,15 +268,28 @@ const DealsTable: React.FC<DealsTableProps> = ({
         header: "Payment Created",
         cell: ({ row }) => {
           const createdDate = row.original.created_at;
-          const formattedDate = new Date(createdDate).toLocaleDateString(
-            "en-US",
-            {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            }
-          );
-          return <span>{formattedDate}</span>;
+          if (!createdDate) return <span>N/A</span>;
+          
+          // Safety check: ensure createdDate is not an object
+          if (typeof createdDate === 'object' && createdDate !== null) {
+            console.warn('Created date is an object:', createdDate);
+            return <span className="text-red-500">Invalid</span>;
+          }
+          
+          try {
+            const formattedDate = new Date(createdDate.toString()).toLocaleDateString(
+              "en-US",
+              {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              }
+            );
+            return <span>{formattedDate}</span>;
+          } catch (error) {
+            console.error('Error formatting created date:', createdDate, error);
+            return <span className="text-red-500">Invalid</span>;
+          }
         },
       },
       {
@@ -260,17 +297,39 @@ const DealsTable: React.FC<DealsTableProps> = ({
         header: "Payment Value",
         cell: ({ row }) => {
           const paymentValue = row.original.payment_value;
+          if (!paymentValue) return <div>N/A</div>;
+          
+          // Safety check: ensure paymentValue is not an object
+          if (typeof paymentValue === 'object' && paymentValue !== null) {
+            console.warn('Payment value is an object:', paymentValue);
+            return <div className="text-red-500">Invalid</div>;
+          }
+          
           const currency = row.original.deal?.currency || 'USD';
-          return <div>{formatCurrency(paymentValue, currency)}</div>;
+          try {
+            return <div>{formatCurrency(paymentValue.toString(), currency)}</div>;
+          } catch (error) {
+            console.error('Error formatting payment value:', paymentValue, error);
+            return <div className="text-red-500">Invalid</div>;
+          }
         },
       },
       {
         accessorKey: "payment_version",
         header: "Payment Version",
         cell: ({ row }) => {
+          const version = row.original.payment_version;
+          if (!version) return <span className="px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-600">N/A</span>;
+          
+          // Safety check: ensure version is not an object
+          if (typeof version === 'object' && version !== null) {
+            console.warn('Payment version is an object:', version);
+            return <span className="px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-600">Invalid</span>;
+          }
+          
           return (
             <span className="px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-600">
-              {row.original.payment_version}
+              {version.toString()}
             </span>
           );
         },
@@ -280,9 +339,17 @@ const DealsTable: React.FC<DealsTableProps> = ({
         header: "Payment Status",
         cell: ({ row }) => {
           const status = row.original.verification_status;
+          if (!status) return <span className="px-2 py-1 text-xs font-medium rounded bg-gray-100 text-gray-600">N/A</span>;
+          
+          // Safety check: ensure status is not an object
+          if (typeof status === 'object' && status !== null) {
+            console.warn('Verification status is an object:', status);
+            return <span className="px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-600">Invalid</span>;
+          }
+          
           let statusClasses = "";
           
-          switch (status) {
+          switch (status.toString()) {
             case "verified":
               statusClasses = "bg-green-100 text-green-800";
               break;
@@ -298,7 +365,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
           
           return (
             <span className={`px-2 py-1 text-xs font-medium rounded ${statusClasses}`}>
-              {status}
+              {status.toString()}
             </span>
           );
         },
@@ -356,9 +423,31 @@ const DealsTable: React.FC<DealsTableProps> = ({
             textClass += " text-gray-500";
           }
           
+          // Safety check: ensure verifiedBy is not an object
+          if (!verifiedBy) {
+            return (
+              <div className={textClass}>
+                Not verified yet
+              </div>
+            );
+          }
+          
+          // If verifiedBy is an object, extract the name property
+          if (typeof verifiedBy === 'object' && verifiedBy !== null) {
+            const name = verifiedBy.name || verifiedBy.full_name || 'Unknown';
+            const email = verifiedBy.email || '';
+            return (
+              <div className={textClass}>
+                <div className="font-medium">{name}</div>
+                {email && <div className="text-xs text-gray-500">{email}</div>}
+              </div>
+            );
+          }
+          
+          // If verifiedBy is a string, display it directly
           return (
             <div className={textClass}>
-              {verifiedBy || 'Not verified yet'}
+              {verifiedBy.toString()}
             </div>
           );
         },
@@ -367,7 +456,16 @@ const DealsTable: React.FC<DealsTableProps> = ({
         accessorKey: "deal_remarks",
         header: "Remarks",
         cell: ({ row }) => {
-          return <div>{row.original.deal_remarks || "N/A"}</div>;
+          const remarks = row.original.deal_remarks;
+          if (!remarks) return <div>N/A</div>;
+          
+          // Safety check: ensure remarks is not an object
+          if (typeof remarks === 'object' && remarks !== null) {
+            console.warn('Deal remarks is an object:', remarks);
+            return <div className="text-red-500">Invalid data</div>;
+          }
+          
+          return <div>{remarks.toString()}</div>;
         },
       },
       {
@@ -376,6 +474,17 @@ const DealsTable: React.FC<DealsTableProps> = ({
         cell: ({ row }) => {
           const remarkStatus = row.original.verifier_remark_status;
           const status = row.original.verification_status;
+          
+          // Safety check: ensure both values are not objects
+          if (typeof remarkStatus === 'object' && remarkStatus !== null) {
+            console.warn('Verifier remark status is an object:', remarkStatus);
+            return <span className="px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-600 border border-red-200">Invalid</span>;
+          }
+          
+          if (typeof status === 'object' && status !== null) {
+            console.warn('Verification status is an object:', status);
+            return <span className="px-2 py-1 text-xs font-medium rounded bg-red-100 text-red-600 border border-red-200">Invalid</span>;
+          }
           
           let badgeClass = "px-2 py-1 text-xs font-medium rounded";
           if (remarkStatus === 'yes' || status === 'verified') {
@@ -405,6 +514,12 @@ const DealsTable: React.FC<DealsTableProps> = ({
     (row: Row<unknown>) => {
       const deal = row.original as Deal;
       const dealId = deal.deal_id || deal.id;
+      
+      console.log("🔍 [ORG-ADMIN] renderExpandedContent called for row:", row.id, "dealId:", dealId);
+      console.log("🔍 [ORG-ADMIN] expandedRows state:", expandedRows);
+      console.log("🔍 [ORG-ADMIN] tableExpandedRows state:", tableExpandedRows);
+      console.log("🔍 [ORG-ADMIN] is this dealId expanded?", !!expandedRows[dealId]);
+      console.log("🔍 [ORG-ADMIN] is this row.id expanded?", !!tableExpandedRows[row.id]);
 
       if (nestedLoading[dealId]) {
         return (
@@ -440,6 +555,31 @@ const DealsTable: React.FC<DealsTableProps> = ({
         return <div className="text-red-500 p-4">{nestedError[dealId]}</div>;
 
       const tableData = nestedData[dealId] || [];
+      
+      // Debug: Log the nested data to identify any issues
+      console.log(`🔍 [ORG-ADMIN] Nested data for deal ${dealId}:`, tableData);
+      if (tableData.length > 0) {
+        console.log(`🔍 [ORG-ADMIN] First nested row:`, tableData[0]);
+        console.log(`🔍 [ORG-ADMIN] Nested row keys:`, tableData.map((row: any, index: number) => ({
+          index,
+          deal_id: row.deal_id,
+          id: row.id,
+          payment_serial: row.payment_serial
+        })));
+        
+        // Safety check: ensure all nested rows have valid data
+        const invalidRows = tableData.filter((row: any) => {
+          if (!row || typeof row !== 'object') return true;
+          if (typeof row.verified_by === 'object' && row.verified_by !== null) {
+            console.warn(`🔍 [ORG-ADMIN] Row has object verified_by:`, row.verified_by);
+          }
+          return false;
+        });
+        
+        if (invalidRows.length > 0) {
+          console.warn(`🔍 [ORG-ADMIN] Found ${invalidRows.length} invalid nested rows`);
+        }
+      }
 
       return (
         <div className="bg-gray-50 p-4 w-full transition-all duration-500 ease-in-out">
@@ -469,6 +609,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
 
   const columns: ColumnDef<Deal>[] = useMemo(
     () => [
+
       {
         id: "deal_name",
         header: "Deal Name",
@@ -637,7 +778,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
             <div className="flex items-center justify-center gap-1">
               {roleConfig.allowedActions.includes('edit') && (
                 <button
-                  onClick={() => onEditDeal?.(row.original.id)}
+                  onClick={() => onEditDeal?.(row.original.deal_id || row.original.id)}
                   className="w-5 h-5 rounded-full text-[#4F46E5] flex items-center justify-center transition-colors hover:bg-gray-100"
                   title="Edit Deal"
                 >
@@ -691,15 +832,32 @@ const DealsTable: React.FC<DealsTableProps> = ({
                 </AlertDialog>
               )}
             </div>
-          ), [row.original.id, row.original.deal_name, roleConfig.allowedActions, onEditDeal, onAddPayment, deleteDealMutation]);
+          ), [row.original.id, row.original.deal_id, row.original.deal_name, roleConfig.allowedActions, onEditDeal, onAddPayment, deleteDealMutation]);
 
-          // Render expand button separately to prevent it from affecting other buttons
+          // Return main action buttons with expand button
           return (
             <div className="flex items-center justify-center gap-1">
               {MainActionButtons}
               <ExpandButton
-                isExpanded={!!expandedRows[row.id]}
-                onToggle={() => handleExpand(row)}
+                isExpanded={tableExpandedRows[row.id] || false}
+                onToggle={() => {
+                  const deal = row.original as Deal;
+                  const dealId = deal.deal_id || deal.id;
+                  console.log("🔍 ExpandButton clicked for row:", row.id, "dealId:", dealId);
+                  
+                  // Toggle the expanded state for this dealId
+                  const currentExpanded = expandedRows[dealId] || false;
+                  const newExpanded = !currentExpanded;
+                  
+                  if (newExpanded) {
+                    fetchNestedPayments(dealId);
+                  }
+                  
+                  setExpandedRows(prev => ({
+                    ...prev,
+                    [dealId]: newExpanded
+                  }));
+                }}
               />
             </div>
           );
@@ -731,12 +889,13 @@ const DealsTable: React.FC<DealsTableProps> = ({
   };
 
   // Export function for deals
-  const handleExport = useCallback((data: Deal[]) => {
+  const handleExport = useCallback((data: Deal[] | unknown[]) => {
+    const dealsData = data as Deal[];
     const csvContent = [
       // CSV Header
       ['Deal ID', 'Deal Name', 'Client Name', 'Deal Value', 'Currency', 'Deal Date', 'Due Date', 'Payment Status', 'Verification Status', 'Sales Person', 'Remarks'].join(','),
       // CSV Data
-      ...data.map(deal => [
+      ...dealsData.map(deal => [
         deal.deal_id,
         `"${deal.deal_name}"`,
         `"${deal.client_name}"`,
@@ -762,6 +921,43 @@ const DealsTable: React.FC<DealsTableProps> = ({
     document.body.removeChild(link);
   }, []);
 
+  // Convert dealId-based expandedRows to row.id-based for UnifiedTable
+  const tableExpandedRows = useMemo(() => {
+    const result: Record<string, boolean> = {};
+    deals.forEach((deal, index) => {
+      const dealId = deal.deal_id || deal.id;
+      // UnifiedTable uses ${dealId}-${index} as row.id
+      const rowId = `${dealId}-${index}`;
+      if (expandedRows[dealId]) {
+        result[rowId] = true;
+      }
+    });
+    return result;
+  }, [expandedRows, deals]);
+
+  const handleExpandedRowsChange = useCallback((newExpandedRows: Record<string, boolean>) => {
+    const newDealExpandedRows: Record<string, boolean> = {};
+    Object.entries(newExpandedRows).forEach(([rowId, isExpanded]) => {
+      // Extract dealId from rowId format: ${dealId}-${index}
+      const dealId = rowId.split('-').slice(0, -1).join('-'); // Remove last part (index)
+      if (dealId) {
+        newDealExpandedRows[dealId] = isExpanded;
+      }
+    });
+    setExpandedRows(newDealExpandedRows);
+  }, [deals]);
+
+  console.log("🔍 [ORG-ADMIN] About to render UnifiedTable with expansion props:", {
+    hasExpandedContent: !!renderExpandedContent,
+    expandedRowsCount: Object.keys(expandedRows).length,
+    expandedRowsKeys: Object.keys(expandedRows),
+    tableExpandedRowsCount: Object.keys(tableExpandedRows).length,
+    tableExpandedRowsKeys: Object.keys(tableExpandedRows),
+    hasOnExpandedRowsChange: !!handleExpandedRowsChange,
+    dealsCount: deals.length,
+    firstDealId: deals[0]?.deal_id || deals[0]?.id
+  });
+  
   return (
     <UnifiedTable
       key={`org-admin-deals-${deals.length}`}
@@ -770,8 +966,8 @@ const DealsTable: React.FC<DealsTableProps> = ({
       loading={isLoading}
       error={error ? "Failed to load deals" : undefined}
       expandedContent={renderExpandedContent}
-      expandedRows={expandedRows}
-      onExpandedRowsChange={setExpandedRows}
+      expandedRows={tableExpandedRows}
+      onExpandedRowsChange={handleExpandedRowsChange}
       onExport={handleExport}
       getRowProps={(row) => ({
         className: getRowClassName(row as Row<Deal>),

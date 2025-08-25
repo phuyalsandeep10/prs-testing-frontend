@@ -198,7 +198,9 @@ export class OfflineActionQueue {
       }
 
       // Invalidate related cache
-      this.invalidator.invalidateRelated(action.entityType, action.entityId);
+      if (['client', 'deal', 'payment'].includes(action.entityType)) {
+        this.invalidator.invalidateRelated(action.entityType as 'client' | 'deal' | 'payment', action.entityId);
+      }
 
       toast.success(`${action.type} ${action.entityType} synced successfully`);
       return result;
@@ -580,11 +582,16 @@ export const useNetworkStatus = () => {
  * Hook for offline action queue management
  */
 export const useOfflineQueue = (queryClient: QueryClient) => {
-  const [queueStatus, setQueueStatus] = useState({
+  const [queueStatus, setQueueStatus] = useState<{
+    totalActions: number;
+    pendingActions: number;
+    failedActions: number;
+    oldestAction?: OfflineAction;
+  }>({
     totalActions: 0,
     pendingActions: 0,
     failedActions: 0,
-    oldestAction: undefined as OfflineAction | undefined,
+    oldestAction: undefined,
   });
   
   const queueRef = useRef<OfflineActionQueue | null>(null);

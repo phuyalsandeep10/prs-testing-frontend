@@ -205,7 +205,7 @@ const Sessions = () => {
                         </div>
                         <div className="text-sm text-gray-600 space-x-4">
                           <span>IP: {session.ip_address || 'Unknown'}</span>
-                          <span>Last active: {formatDate(session.createdAt || session.created_at || '')}</span>
+                          <span>Last active: {formatDate(session.createdAt || '')}</span>
                         </div>
                       </div>
                     </div>

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { type Client } from "@/lib/types/roles";
 import { useRouter } from "next/navigation";
+import { useMemo } from "react";
 
 interface ClientKanbanViewProps {
   clients: Client[];
@@ -33,14 +34,16 @@ const statusConfig = {
 
 export function ClientKanbanView({ clients, onViewDetails }: ClientKanbanViewProps) {
   // Group clients by status instead of category
-  const clientsByStatus = clients.reduce((acc, client) => {
-    const status = client.status || "pending"; // Default to pending if status is null
-    if (!acc[status]) {
-      acc[status] = [];
-    }
-    acc[status].push(client);
-    return acc;
-  }, {} as Record<"clear" | "pending" | "bad_debt", Client[]>);
+  const clientsByStatus = useMemo(() => {
+    return clients.reduce((acc, client) => {
+      const status = client.status || "pending"; // Default to pending if status is null
+      if (!acc[status]) {
+        acc[status] = [];
+      }
+      acc[status].push(client);
+      return acc;
+    }, {} as Record<"clear" | "pending" | "bad_debt", Client[]>);
+  }, [clients]);
 
   // Ensure all statuses are represented even if empty
   const statuses: ("clear" | "pending" | "bad_debt")[] = ["clear", "pending", "bad_debt"];
@@ -62,7 +65,7 @@ export function ClientKanbanView({ clients, onViewDetails }: ClientKanbanViewPro
             {/* Client Cards */}
             <div className="space-y-4">
               {statusClients.map((client) => (
-                <KanbanCard key={client.id} client={client} />
+                <KanbanCard key={client.id} client={client} onViewDetails={onViewDetails} />
               ))}
               {statusClients.length === 0 && (
                 <div className="text-center py-8 text-gray-500 text-[14px]">
@@ -77,7 +80,7 @@ export function ClientKanbanView({ clients, onViewDetails }: ClientKanbanViewPro
   );
 }
 
-function KanbanCard({ client }: { client: Client; onViewDetails?: (client: Client) => void }) {
+function KanbanCard({ client, onViewDetails }: { client: Client; onViewDetails?: (client: Client) => void }) {
   const router = useRouter();
 
   const handleCardClick = () => {
@@ -114,6 +117,10 @@ function KanbanCard({ client }: { client: Client; onViewDetails?: (client: Clien
         <CardFooter className="pt-0">
           <Button 
             className="w-full bg-[#4F46E5] hover:bg-[#4338CA] text-white font-medium text-[14px] h-10 rounded-lg transition-colors"
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent card click from triggering parent
+              onViewDetails?.(client);
+            }}
           >
             View Details
           </Button>

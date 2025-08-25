@@ -10,6 +10,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Plus, Search, Filter } from 'lucide-react';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+import { Permission } from '@/lib/types/roles';
 
 export default function UsersManagementExample() {
   const { user } = useAuth();
@@ -134,11 +135,11 @@ export default function UsersManagementExample() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md"
               >
                 <option value="">All Roles</option>
-                <option value="org-admin">Org Admin</option>
+                <option value="org_admin">Org Admin</option>
                 <option value="supervisor">Supervisor</option>
                 <option value="salesperson">Salesperson</option>
                 <option value="verifier">Verifier</option>
-                <option value="team-member">Team Member</option>
+                <option value="team_member">Team Member</option>
               </select>
             </div>
             
@@ -308,8 +309,10 @@ function CreateUserModal({ onSuccess, onClose }: { onSuccess?: () => void; onClo
       name: 'New User',
       email: 'newuser@example.com',
       role: 'salesperson' as const,
-      permissions: [],
+      permissions: ['manage:deals', 'manage:clients'] as Permission[],
       status: 'active' as const,
+      first_name: 'New',
+      last_name: 'User',
     };
     
     createUserMutation.mutate(userData, {

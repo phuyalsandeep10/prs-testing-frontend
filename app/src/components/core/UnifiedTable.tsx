@@ -124,7 +124,7 @@ export interface UnifiedTableProps<TData> {
   error?: string | null;
   onRowClick?: (row: Row<TData>) => void;
   onRowSelect?: (selectedRows: TData[]) => void;
-  onExport?: (data: TData[]) => void;
+  onExport?: (data: TData[] | unknown[]) => void;
   onRefresh?: () => void;
   className?: string;
   expandedContent?: (row: Row<TData>) => React.ReactNode;
@@ -353,10 +353,29 @@ const SplitTable = <TData,>({
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className={styles.cell}>
                       <div className="flex items-center min-h-[24px]">
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
+                        {(() => {
+                          try {
+                            const rendered = flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            );
+                            
+                            // Safety check: ensure we're not rendering objects directly
+                            if (rendered && typeof rendered === 'object' && !React.isValidElement(rendered)) {
+                              console.warn('SplitTable: Attempting to render object directly:', rendered);
+                              console.warn('Column definition:', cell.column.columnDef);
+                              console.warn('Row data:', row.original);
+                              return <span className="text-red-500">Invalid data</span>;
+                            }
+                            
+                            return rendered;
+                          } catch (error) {
+                            console.error('SplitTable: Error rendering cell:', error);
+                            console.error('Column definition:', cell.column.columnDef);
+                            console.error('Row data:', row.original);
+                            return <span className="text-red-500">Error</span>;
+                          }
+                        })()}
                       </div>
                     </td>
                   ))}
@@ -395,10 +414,29 @@ const SplitTable = <TData,>({
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className={styles.cell}>
                       <div className="flex items-center min-h-[24px]">
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
+                        {(() => {
+                          try {
+                            const rendered = flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            );
+                            
+                            // Safety check: ensure we're not rendering objects directly
+                            if (rendered && typeof rendered === 'object' && !React.isValidElement(rendered)) {
+                              console.warn('SplitTable: Attempting to render object directly:', rendered);
+                              console.warn('Column definition:', cell.column.columnDef);
+                              console.warn('Row data:', row.original);
+                              return <span className="text-red-500">Invalid data</span>;
+                            }
+                            
+                            return rendered;
+                          } catch (error) {
+                            console.error('SplitTable: Error rendering cell:', error);
+                            console.error('Column definition:', cell.column.columnDef);
+                            console.error('Row data:', row.original);
+                            return <span className="text-red-500">Error</span>;
+                          }
+                        })()}
                       </div>
                     </td>
                   ))}
@@ -750,7 +788,11 @@ export const UnifiedTable = React.memo(
   }: UnifiedTableProps<TData>) => {
     // Memoize configurations to prevent unnecessary re-calculations
     const features = React.useMemo(
-      () => ({ ...defaultFeatures, ...config.features }),
+      () => {
+        const merged = { ...defaultFeatures, ...config.features };
+        console.log('🔍 [UNIFIED_TABLE] Features merged:', merged);
+        return merged;
+      },
       [config.features]
     );
     const styling = React.useMemo(
@@ -846,9 +888,15 @@ export const UnifiedTable = React.memo(
     // Table instance
     const table = useReactTable({
       ...tableConfig,
-      getRowId: (row) => {
+      getRowId: (row, index) => {
         // Use deal_id if available, otherwise fall back to index
-        return (row as any).deal_id || `row-${Math.random()}`;
+        const dealId = (row as any).deal_id;
+        if (dealId) {
+          // If deal_id exists, combine it with index to ensure uniqueness
+          return `${dealId}-${index}`;
+        }
+        // Fall back to index-based ID
+        return `row-${index}`;
       },
     });
 
@@ -914,7 +962,7 @@ export const UnifiedTable = React.memo(
           <div className="flex items-center justify-center h-64 bg-white rounded-lg border border-red-200">
             <div className="text-center">
               <div className="text-red-500 mb-2">⚠️</div>
-              <p className="text-red-600">{error}</p>
+              <p className="text-red-600">{error || 'An error occurred'}</p>
               {onRefresh && (
                 <Button
                   variant="outline"
@@ -1052,10 +1100,29 @@ export const UnifiedTable = React.memo(
                     >
                       {row.getVisibleCells().map((cell) => (
                         <TableCell key={cell.id} className={styles.cell}>
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext()
-                          )}
+                          {(() => {
+                            try {
+                              const rendered = flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext()
+                              );
+                              
+                              // Safety check: ensure we're not rendering objects directly
+                              if (rendered && typeof rendered === 'object' && !React.isValidElement(rendered)) {
+                                console.warn('UnifiedTable: Attempting to render object directly:', rendered);
+                                console.warn('Column definition:', cell.column.columnDef);
+                                console.warn('Row data:', row.original);
+                                return <span className="text-red-500">Invalid data</span>;
+                              }
+                              
+                              return rendered;
+                            } catch (error) {
+                              console.error('UnifiedTable: Error rendering cell:', error);
+                              console.error('Column definition:', cell.column.columnDef);
+                              console.error('Row data:', row.original);
+                              return <span className="text-red-500">Error</span>;
+                            }
+                          })()}
                         </TableCell>
                       ))}
                     </TableRow>

@@ -66,7 +66,8 @@ export function useProjects(organizationId?: number) {
       const response = await apiClient.get<Project[]>(`/project/`, {
         params: { organization: orgId }
       });
-      return response; // The API client returns the data directly
+      // Handle ApiResponse wrapper
+      return response.data || [];
     },
     enabled: !!orgId,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -81,7 +82,10 @@ export function useProjects(organizationId?: number) {
 export const useProject = (projectId: string) => {
   return useQuery({
     queryKey: projectKeys.detail(projectId),
-    queryFn: () => apiClient.get<Project>(`/projects/${projectId}/`),
+    queryFn: async () => {
+      const response = await apiClient.get<Project>(`/projects/${projectId}/`);
+      return response.data;
+    },
     enabled: !!projectId,
     staleTime: 5 * 60 * 1000,
   });
@@ -95,7 +99,11 @@ export const useOrganizationProjects = (organizationId: string) => {
     queryKey: projectKeys.list(JSON.stringify({ organization: organizationId })),
     queryFn: async (): Promise<Project[]> => {
       const response = await apiClient.get<ProjectsResponse>(`/projects/?organization=${organizationId}`);
-      return Array.isArray(response) ? response : response.results || [];
+      // Handle ApiResponse wrapper
+      if (response.data) {
+        return Array.isArray(response.data) ? response.data : response.data.results || [];
+      }
+      return [];
     },
     enabled: !!organizationId,
     staleTime: 3 * 60 * 1000,
@@ -111,8 +119,10 @@ export const useCreateProject = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateProjectData) => 
-      apiClient.post<Project>('/projects/', data),
+    mutationFn: async (data: CreateProjectData) => {
+      const response = await apiClient.post<Project>('/projects/', data);
+      return response.data;
+    },
     
     onSuccess: (newProject) => {
       // Invalidate projects list
@@ -125,7 +135,7 @@ export const useCreateProject = () => {
       );
       
       // Invalidate organization-specific projects if applicable
-      if (newProject.organization) {
+      if (newProject && typeof newProject === 'object' && 'organization' in newProject && newProject.organization) {
         queryClient.invalidateQueries({ 
           queryKey: projectKeys.list(JSON.stringify({ organization: newProject.organization }))
         });
@@ -145,8 +155,10 @@ export const useUpdateProject = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, ...data }: UpdateProjectData) =>
-      apiClient.put<Project>(`/projects/${id}/`, data),
+    mutationFn: async ({ id, ...data }: UpdateProjectData) => {
+      const response = await apiClient.put<Project>(`/projects/${id}/`, data);
+      return response.data;
+    },
     
     onSuccess: (updatedProject, variables) => {
       // Update the specific project in cache

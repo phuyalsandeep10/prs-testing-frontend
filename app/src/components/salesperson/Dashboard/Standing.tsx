@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useMemo, useCallback, memo } from "react";
+import React, { useState, useEffect, useMemo, useCallback, memo } from "react";
 import FirstPlace from "@/components/svg/standing/FirstPlace";
 import SecondPlace from "@/components/svg/standing/SecondPlace";
 import ThirdPlace from "@/components/svg/standing/ThirdPlace";
@@ -105,10 +105,12 @@ const StandingItem = memo(({ team, index, view, tab }: {
 
 StandingItem.displayName = 'StandingItem';
 
+// Type definitions moved to top level
+type ViewType = "team" | "individual";
+type TabType = "top" | "bottom";
+type PeriodType = "daily" | "weekly" | "monthly";
+
 export default function Standing() {
-  type ViewType = "team" | "individual";
-  type TabType = "top" | "bottom";
-  type PeriodType = "daily" | "weekly" | "monthly";
 
   const [view, setView] = useState<ViewType>("individual");
   const [tab, setTab] = useState<TabType>("top");
@@ -331,7 +333,7 @@ export default function Standing() {
                 }`}
               >
                 <div className="relative">
-                  <PodiumComponent image={image} alt={name} />
+                  <PodiumComponent image={image || ''} alt={name} />
                 </div>
               </div>
             );

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { UserRole } from '@/lib/types/roles';
+import { UserRole } from '@/types';
 
 interface TableState {
   page: number;

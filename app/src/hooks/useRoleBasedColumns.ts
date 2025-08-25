@@ -1,8 +1,7 @@
 import { useMemo } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { useAuth } from '@/stores';
-
-type UserRole = 'salesperson' | 'org-admin' | 'verifier' | 'super-admin' | 'supervisor' | 'team-member';
+import { UserRole } from '@/types';
 
 interface UseRoleBasedColumnsProps<T> {
   columns: ColumnDef<T>[];
@@ -69,15 +68,20 @@ export function useRoleConfig(): RoleUIConfig {
 
   // Default to salesperson settings when user is not yet loaded
   const role = (user?.role || 'salesperson') as UserRole;
+  
+  // Debug logging to help identify role issues
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🎭 [useRoleConfig] User:', user, 'Role:', role);
+  }
 
   const configMap: Record<UserRole, RoleUIConfig> = {
-    'super-admin': {
+    'super_admin': {
       shouldShowSalesperson: true,
       allowedActions: ['edit', 'addPayment', 'delete', 'verify'],
     },
-    'org-admin': {
+    'org_admin': {
       shouldShowSalesperson: true,
-      allowedActions: ['edit', 'addPayment', 'delete'],
+      allowedActions: ['edit', 'addPayment', 'delete', 'verify'],
     },
     supervisor: {
       shouldShowSalesperson: true,
@@ -91,11 +95,12 @@ export function useRoleConfig(): RoleUIConfig {
       shouldShowSalesperson: true,
       allowedActions: ['verify'],
     },
-    'team-member': {
+    'team_member': {
       shouldShowSalesperson: false,
-      allowedActions: [],
+      allowedActions: ['view'],
     },
   };
 
-  return configMap[role];
+  // Always return a valid config, fallback to salesperson if role not found
+  return configMap[role] || configMap['salesperson'];
 } 

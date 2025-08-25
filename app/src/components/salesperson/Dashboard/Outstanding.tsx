@@ -10,13 +10,17 @@ import Image from "next/image";
 const Outstanding: React.FC = () => {
   const { data, isLoading, error, refetch } = useDashboard();
 
-  const deals = useMemo(() => {
-    return data?.outstanding_deals
-      ? [...data.outstanding_deals]
-          .sort((a, b) => b.deal_value - a.deal_value)
-          .slice(0, 5)
-      : [];
-  }, [data?.outstanding_deals]);
+  const outstandingDeals = useMemo(() => {
+    if (!data) return [];
+    
+    // Handle different response structures
+    if ('outstanding_deals' in data && Array.isArray(data.outstanding_deals)) {
+      return [...data.outstanding_deals];
+    }
+    
+    // Fallback to empty array if property doesn't exist
+    return [];
+  }, [data]);
 
   const formatAmount = (amount: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -95,7 +99,7 @@ const Outstanding: React.FC = () => {
         )}
 
         <div className="overflow-y-auto max-h-[300px]">
-          {deals.map((deal, index) => (
+          {outstandingDeals.map((deal, index) => (
             <div
               key={deal.id}
               className="px-4 sm:px-5 py-2 hover:bg-gray-50 transition-colors duration-150"
@@ -129,7 +133,7 @@ const Outstanding: React.FC = () => {
           ))}
         </div>
 
-        {deals.length === 0 && !isLoading && (
+        {outstandingDeals.length === 0 && !isLoading && (
           <div className="px-4 sm:px-6 py-8 text-center text-gray-500">
             <User className="w-8 h-8 mx-auto mb-2 text-gray-300" />
             <p className="text-sm">No outstanding payments found</p>

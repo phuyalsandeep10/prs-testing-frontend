@@ -36,7 +36,8 @@ export default function AccountForm() {
     updateError, 
     isUpdateError,
     isUpdateSuccess,
-    resetUpdate 
+    resetUpdate,
+    refetch
   } = useProfileManagement();
   const [fileName, setFileName] = useState("Profile.Pic.jpg");
   const [photoURL, setPhotoURL] = useState<string | null>(null);
@@ -68,11 +69,36 @@ export default function AccountForm() {
   useEffect(() => {
     if (profile) {
       console.log('Profile data loaded:', profile); // Debug log
-      setValue("first_name", profile.first_name || "");
-      setValue("last_name", profile.last_name || "");
-      setValue("email", profile.email || "");
-      setValue("phoneNumber", profile.phoneNumber || "");
-      setValue("address", profile.address || "");
+      
+      // Force form reset with new data
+      let phoneNumber = profile.phoneNumber || profile.contact_number || "";
+      
+      // Handle phone number extraction (remove country code prefix if it exists)
+      if (phoneNumber && phoneNumber.includes('-')) {
+        const parts = phoneNumber.split('-');
+        if (parts.length >= 2) {
+          // Extract the country code and phone number
+          setSelectedCountryCode(parts[0]);
+          phoneNumber = parts.slice(1).join('-'); // Join remaining parts in case of multiple dashes
+        }
+      }
+      
+      const formData = {
+        first_name: profile.first_name || "",
+        last_name: profile.last_name || "",
+        email: profile.email || "",
+        phoneNumber: phoneNumber,
+        address: profile.address || "",
+      };
+      
+      console.log('Setting form values:', formData); // Debug log
+      console.log('Address value specifically:', formData.address); // Debug address
+      
+      // Reset form with new values
+      Object.entries(formData).forEach(([key, value]) => {
+        setValue(key as keyof typeof formData, value);
+        console.log(`Set ${key} = ${value}`); // Debug each field
+      });
       
       // Set avatar if available and no local file is selected
       const avatarUrl = profile.avatar || (profile as any)?.profile?.profile_picture;
@@ -87,10 +113,21 @@ export default function AccountForm() {
   useEffect(() => {
     if (isUpdateSuccess && profile) {
       console.log('Success! Reloading form with updated profile:', profile); // Debug log
+      
+      // Handle phone number extraction for success state
+      let phoneNumber = profile.phoneNumber || profile.contact_number || "";
+      if (phoneNumber && phoneNumber.includes('-')) {
+        const parts = phoneNumber.split('-');
+        if (parts.length >= 2) {
+          setSelectedCountryCode(parts[0]);
+          phoneNumber = parts.slice(1).join('-');
+        }
+      }
+      
       setValue("first_name", profile.first_name || "");
       setValue("last_name", profile.last_name || "");
       setValue("email", profile.email || "");
-      setValue("phoneNumber", profile.phoneNumber || "");
+      setValue("phoneNumber", phoneNumber);
       setValue("address", profile.address || "");
       
       // Update avatar after successful update
@@ -100,19 +137,25 @@ export default function AccountForm() {
         setPhotoURL(avatarUrl);
         setFileName("Profile.Pic.jpg"); // Reset filename
       }
+      
+      // Clear selected file after successful update
+      setSelectedFile(null);
     }
   }, [isUpdateSuccess, profile, setValue]);
 
   // Handle success state
   useEffect(() => {
     if (isUpdateSuccess) {
+      // Force a fresh fetch of profile data
+      refetch();
+      
       // Reset the success state after 3 seconds
       const timer = setTimeout(() => {
         resetUpdate();
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [isUpdateSuccess, resetUpdate]);
+  }, [isUpdateSuccess, resetUpdate, refetch]);
 
   // Cleanup URL objects on unmount
   useEffect(() => {
@@ -148,19 +191,24 @@ export default function AccountForm() {
 
   const handleConfirmUpdate = () => {
     if (formData) {
-      const updateData = { 
+      const updateData: Partial<User> = { 
         ...formData,
-        phoneNumber: `${selectedCountryCode}-${formData.phoneNumber}`
-      } as Partial<User> & { avatar?: File };
+        phoneNumber: formData.phoneNumber?.startsWith(selectedCountryCode) 
+          ? formData.phoneNumber 
+          : `${selectedCountryCode}-${formData.phoneNumber}`
+      };
+      
+      // Add the selected file to updateData for API client to handle
       if (selectedFile) {
-        console.log('Adding selected file to update:', selectedFile.name, selectedFile.size);
-        updateData.avatar = selectedFile;
+        console.log('Adding selected file to update data:', selectedFile.name, selectedFile.size);
+        (updateData as any).avatar = selectedFile;
       }
-      console.log('Updating profile with data:', updateData);
+      
+      console.log('Updating profile with data (including file):', updateData);
       updateProfile(updateData);
       setIsUpdateModalOpen(false);
       setFormData(null);
-      setSelectedFile(null);
+      // Don't clear selectedFile yet - wait for success to reset it
     }
   };
 
@@ -191,7 +239,9 @@ export default function AccountForm() {
                 className="cursor-pointer w-[65px] h-[65px] rounded-full overflow-hidden border-2 border-gray-200 hover:border-[#4F46E5] transition-colors"
               >
                 <Image
-                  src={photoURL || defaultPhoto}
+                  src={photoURL?.startsWith('/media/') 
+                    ? `${process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8001'}${photoURL}` 
+                    : photoURL || defaultPhoto}
                   width={65}
                   height={65}
                   alt="Profile"

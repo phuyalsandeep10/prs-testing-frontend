@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { UserRole, Permission } from '@/lib/types/roles';
-import { hasPermission, hasAnyPermission, canAccessRoute } from '@/lib/auth/permissions';
+import { hasPermission, hasAnyPermission, hasAllPermissions, canAccessRoute } from '@/lib/auth/permissions';
 import { useAuth } from '@/stores';
 import { permissionService } from '@/lib/services/PermissionService';
 import { Lock } from 'lucide-react';
@@ -28,7 +28,7 @@ interface PermissionGateProps {
  *   <AddUserButton />
  * </PermissionGate>
  * 
- * <PermissionGate allowedRoles={['org-admin', 'super-admin']}>
+ * <PermissionGate allowedRoles={['org_admin', 'super_admin']}>
  *   <AdminPanel />
  * </PermissionGate>
  * ```
@@ -136,7 +136,7 @@ export function usePermissionGate() {
 
   const checkAllPermissions = React.useCallback((permissions: Permission[]): boolean => {
     if (!user || !isHydrated) return false;
-    return permissions.every(permission => hasPermission(user.role, permission));
+    return hasAllPermissions(user.role, permissions);
   }, [user?.role, isHydrated]);
 
   const checkRole = React.useCallback((role: UserRole): boolean => {
@@ -242,7 +242,7 @@ export function withPermissions<P extends object>(
  */
 export const SuperAdminOnly = React.memo(function SuperAdminOnly({ children, fallback = null }: { children: React.ReactNode; fallback?: React.ReactNode }) {
   return (
-    <PermissionGate allowedRoles={['super-admin']} fallback={fallback}>
+    <PermissionGate allowedRoles={['super_admin']} fallback={fallback}>
       {children}
     </PermissionGate>
   );
@@ -250,7 +250,7 @@ export const SuperAdminOnly = React.memo(function SuperAdminOnly({ children, fal
 
 export const OrgAdminOnly = React.memo(function OrgAdminOnly({ children, fallback = null }: { children: React.ReactNode; fallback?: React.ReactNode }) {
   return (
-    <PermissionGate allowedRoles={['org-admin']} fallback={fallback}>
+    <PermissionGate allowedRoles={['org_admin']} fallback={fallback}>
       {children}
     </PermissionGate>
   );
@@ -282,7 +282,7 @@ export const VerifierOnly = React.memo(function VerifierOnly({ children, fallbac
 
 export const AdminOrSuperAdmin = React.memo(function AdminOrSuperAdmin({ children, fallback = null }: { children: React.ReactNode; fallback?: React.ReactNode }) {
   return (
-    <PermissionGate allowedRoles={['super-admin', 'org-admin']} fallback={fallback}>
+    <PermissionGate allowedRoles={['super_admin', 'org_admin']} fallback={fallback}>
       {children}
     </PermissionGate>
   );
@@ -290,7 +290,7 @@ export const AdminOrSuperAdmin = React.memo(function AdminOrSuperAdmin({ childre
 
 export const ManagementRoles = React.memo(function ManagementRoles({ children, fallback = null }: { children: React.ReactNode; fallback?: React.ReactNode }) {
   return (
-    <PermissionGate allowedRoles={['super-admin', 'org-admin', 'supervisor']} fallback={fallback}>
+    <PermissionGate allowedRoles={['super_admin', 'org_admin', 'supervisor']} fallback={fallback}>
       {children}
     </PermissionGate>
   );

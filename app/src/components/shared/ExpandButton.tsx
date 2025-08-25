@@ -6,7 +6,7 @@ import expand from "@/assets/icons/expand.svg";
 interface ExpandButtonProps {
   onToggle: () => void;
   isExpanded?: boolean;
-  variant?: 'org-admin' | 'verifier' | 'salesperson';
+  variant?: 'org_admin' | 'verifier' | 'salesperson';
 }
 
 export default function ExpandButton({

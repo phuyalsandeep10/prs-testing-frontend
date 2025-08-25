@@ -80,7 +80,7 @@ const DealDetailPage: React.FC = () => {
           <h2 className="text-2xl font-bold text-gray-800 mb-4">Reviews</h2>
           <div className="space-y-4">
             {deal.timeline && deal.timeline.length > 0 ? (
-              deal.timeline.map((event) => (
+              deal.timeline.map((event: any) => (
                 <div key={event.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                   <p className="font-semibold text-gray-700">{event.timestamp}</p>
                   <p className="text-gray-600">{event.description}</p>

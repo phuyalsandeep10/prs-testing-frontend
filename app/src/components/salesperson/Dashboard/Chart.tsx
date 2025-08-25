@@ -66,7 +66,9 @@ function ChartDashboard() {
   // Use standardized hook instead of createApiStore
   const { data, isLoading, error } = useChartData(selectedRange);
   const apiData: ChartDataPoint[] =
-    data?.data?.map(item => ({ label: item.date, value: item.sales })) || [];
+    Array.isArray(data) 
+      ? data.map(item => ({ label: item.date, value: item.sales })) 
+      : [];
 
   const { labels, values } = useMemo(() => {
     let labels: string[] = [];
@@ -162,7 +164,9 @@ function ChartDashboard() {
       y: {
         beginAtZero: true,
         ticks: {
-          callback: (value: number) => `${value / 1000}k`,
+          callback: function(this: any, tickValue: string | number) {
+            return `${Number(tickValue) / 1000}k`;
+          },
         },
       },
       x: {

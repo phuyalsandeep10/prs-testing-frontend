@@ -4,7 +4,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/api-client';
+import { apiClient, ApiResponse } from '@/lib/api-client';
 
 // ==================== QUERY KEYS ====================
 export const organizationKeys = {
@@ -56,12 +56,46 @@ export const useOrganizations = () => {
     queryFn: async (): Promise<Organization[]> => {
       const response = await apiClient.get<OrganizationsResponse | Organization[]>('/organizations/');
       
-      // Handle both paginated and direct array responses
+      console.log('🔍 useOrganizations - Raw API response:', response);
+      
+      // Handle ApiResponse wrapper structure (response has data property)
+      if (response && typeof response === 'object' && 'data' in response && response.data) {
+        const data = response.data;
+        console.log('🔍 useOrganizations - Extracted data:', data);
+        
+        // If data is an array, return it directly
+        if (Array.isArray(data)) {
+          console.log('✅ useOrganizations - Returning array of organizations:', data.length);
+          return data;
+        }
+        
+        // If data is a paginated response, extract results
+        if (data && typeof data === 'object' && 'results' in data) {
+          console.log('✅ useOrganizations - Returning paginated results:', data.results?.length || 0);
+          return (data as OrganizationsResponse).results || [];
+        }
+        
+        // If data is a single organization object, wrap in array
+        if (data && typeof data === 'object' && 'id' in data) {
+          console.log('✅ useOrganizations - Returning single organization as array');
+          return [data as Organization];
+        }
+      }
+      
+      // Fallback: Handle direct array responses (legacy)
       if (Array.isArray(response)) {
+        console.log('✅ useOrganizations - Returning direct array response');
         return response;
       }
       
-      return (response as OrganizationsResponse).results || [];
+      // Fallback: Handle direct paginated responses (legacy)
+      if (response && typeof response === 'object' && 'results' in response) {
+        console.log('✅ useOrganizations - Returning direct paginated response');
+        return (response as OrganizationsResponse).results || [];
+      }
+      
+      console.error('❌ useOrganizations - Unexpected response structure:', response);
+      return [];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000,
@@ -74,7 +108,20 @@ export const useOrganizations = () => {
 export const useOrganization = (organizationId: string) => {
   return useQuery({
     queryKey: organizationKeys.detail(organizationId),
-    queryFn: () => apiClient.get<Organization>(`/organizations/${organizationId}/`),
+    queryFn: async (): Promise<Organization> => {
+      const response = await apiClient.get<Organization>(`/organizations/${organizationId}/`);
+      console.log('🔍 useOrganization - API response:', response);
+      
+      // Handle ApiResponse wrapper structure
+      if (response && typeof response === 'object' && 'data' in response && response.data) {
+        console.log('✅ useOrganization - Extracted data:', response.data);
+        return response.data;
+      }
+      
+      // Fallback for direct response
+      console.log('✅ useOrganization - Using direct response');
+      return response.data || response;
+    },
     enabled: !!organizationId,
     staleTime: 5 * 60 * 1000,
   });
@@ -89,8 +136,20 @@ export const useCreateOrganization = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateOrganizationData) => 
-      apiClient.post<Organization>('/organizations/', data),
+    mutationFn: async (data: CreateOrganizationData) => {
+      const response = await apiClient.post<Organization>('/organizations/', data);
+      console.log('🔍 useCreateOrganization - API response:', response);
+      
+      // Handle ApiResponse wrapper structure
+      if (response && typeof response === 'object' && 'data' in response && response.data) {
+        console.log('✅ useCreateOrganization - Extracted data:', response.data);
+        return response.data;
+      }
+      
+      // Fallback for direct response
+      console.log('✅ useCreateOrganization - Using direct response');
+      return response.data || response;
+    },
     
     onSuccess: (newOrganization) => {
       // Invalidate organizations list
@@ -123,8 +182,20 @@ export const useUpdateOrganization = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, ...data }: UpdateOrganizationData) =>
-      apiClient.put<Organization>(`/organizations/${id}/`, data),
+    mutationFn: async ({ id, ...data }: UpdateOrganizationData) => {
+      const response = await apiClient.put<Organization>(`/organizations/${id}/`, data);
+      console.log('🔍 useUpdateOrganization - API response:', response);
+      
+      // Handle ApiResponse wrapper structure
+      if (response && typeof response === 'object' && 'data' in response && response.data) {
+        console.log('✅ useUpdateOrganization - Extracted data:', response.data);
+        return response.data;
+      }
+      
+      // Fallback for direct response
+      console.log('✅ useUpdateOrganization - Using direct response');
+      return response.data || response;
+    },
     
     onSuccess: (updatedOrganization, variables) => {
       // Update the specific organization in cache
@@ -183,7 +254,10 @@ export const usePrefetchOrganization = () => {
   return (organizationId: string) => {
     queryClient.prefetchQuery({
       queryKey: organizationKeys.detail(organizationId),
-      queryFn: () => apiClient.get<Organization>(`/organizations/${organizationId}/`),
+      queryFn: async () => {
+        const response = await apiClient.get<Organization>(`/organizations/${organizationId}/`);
+        return response.data;
+      },
       staleTime: 5 * 60 * 1000,
     });
   };

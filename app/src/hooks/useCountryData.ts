@@ -32,14 +32,14 @@ export const useCountryCodes = () => {
         console.log('Country codes API response:', response);
         
         // Handle different response formats
-        let data = response;
+        let data = response as any;
         if (response && typeof response === 'object') {
           // If response has a data property, use it
-          if (response.data && Array.isArray(response.data)) {
+          if ('data' in response && response.data && Array.isArray(response.data)) {
             data = response.data;
           }
           // If response has results property (paginated), use it
-          else if (response.results && Array.isArray(response.results)) {
+          else if ('results' in response && response.results && Array.isArray(response.results)) {
             data = response.results;
           }
           // If response is directly an array
@@ -105,14 +105,14 @@ export const useNationalities = () => {
         console.log('Nationalities API response:', response);
         
         // Handle different response formats
-        let data = response;
+        let data = response as any;
         if (response && typeof response === 'object') {
           // If response has a data property, use it
-          if (response.data && Array.isArray(response.data)) {
+          if ('data' in response && response.data && Array.isArray(response.data)) {
             data = response.data;
           }
           // If response has results property (paginated), use it
-          else if (response.results && Array.isArray(response.results)) {
+          else if ('results' in response && response.results && Array.isArray(response.results)) {
             data = response.results;
           }
           // If response is directly an array

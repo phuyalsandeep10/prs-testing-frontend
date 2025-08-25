@@ -1,5 +1,6 @@
 import { type AppRouterInstance } from 'next/dist/shared/lib/app-router-context.shared-runtime';
-import { UserRole, User } from '@/lib/types/roles';
+import { UserRole, User } from '@/types';
+import { toUserRole } from '@/lib/auth/permissions';
 
 /**
  * Redirects the user to the correct dashboard based on their role.
@@ -12,40 +13,54 @@ export const redirectUserByRole = (
   router: AppRouterInstance,
   addNotification?: (notification: { type: 'warning'; title: string; message: string }) => void
 ) => {
-  const rawRole = user?.role?.name || user?.role || 'unknown';
-  const userRole = (typeof rawRole === 'string' ? rawRole : 'unknown').toLowerCase().replace(/\s+/g, '-') as UserRole;
+  // Handle undefined or null user
+  if (!user) {
+    if (addNotification) {
+      addNotification({
+        type: 'warning',
+        title: 'User Not Found',
+        message: 'User information is not available. Redirecting to default dashboard.',
+      });
+    }
+    router.push('/dashboard');
+    return;
+  }
+
+  const rawRole = user?.role?.name || user?.role;
+  const userRole = toUserRole(rawRole);
 
   let path = '/dashboard'; // Default path
 
-  switch (userRole) {
-    case 'super-admin':
-      path = '/super-admin';
-      break;
-    case 'org-admin':
-      path = '/org-admin';
-      break;
-    case 'salesperson':
-      path = '/salesperson';
-      break;
-    case 'supervisor':
-      path = '/supervisor';
-      break;
-    case 'team-member':
-      path = '/team-member';
-      break;
-    case 'verifier':
-      path = '/verifier';
-      break;
-    default:
-      if (addNotification) {
-        addNotification({
-          type: 'warning',
-          title: 'Unknown Role',
-          message: `Your role is not recognized. Redirecting to a default dashboard.`,
-        });
-      }
-      // The default path is already '/dashboard'
-      break;
+  if (userRole) {
+    switch (userRole) {
+      case 'super_admin':
+        path = '/super-admin';
+        break;
+      case 'org_admin':
+        path = '/org-admin';
+        break;
+      case 'salesperson':
+        path = '/salesperson';
+        break;
+      case 'supervisor':
+        path = '/supervisor';
+        break;
+      case 'team_member':
+        path = '/team_member';
+        break;
+      case 'verifier':
+        path = '/verifier';
+        break;
+    }
+  } else {
+    if (addNotification) {
+      addNotification({
+        type: 'warning',
+        title: 'Unknown Role',
+        message: `Your role "${rawRole}" is not recognized. Redirecting to a default dashboard.`,
+      });
+    }
+    // The default path is already '/dashboard'
   }
   
   router.push(path);

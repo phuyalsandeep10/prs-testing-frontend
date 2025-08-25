@@ -8,12 +8,24 @@ import { Monitor, Smartphone, Tablet, Globe, Calendar, Trash2 } from "lucide-rea
 import { useSessionManagement } from "@/hooks/useSessions";
 import { UserSession } from "@/types";
 
-const getDeviceIcon = (device: string) => {
-  if (device.toLowerCase().includes('mobile') || device.toLowerCase().includes('android') || device.toLowerCase().includes('ios')) {
+const getDeviceIcon = (device: string | any) => {
+  // Handle case where device might be an object or null/undefined
+  let deviceString = '';
+  if (typeof device === 'string') {
+    deviceString = device;
+  } else if (device && typeof device === 'object') {
+    // If device is an object, try to extract meaningful info
+    deviceString = `${device.browser || ''} ${device.os || ''} ${device.device || ''}`.trim();
+  } else {
+    deviceString = String(device || '');
+  }
+  
+  const lowerDevice = deviceString.toLowerCase();
+  if (lowerDevice.includes('mobile') || lowerDevice.includes('android') || lowerDevice.includes('ios')) {
     return <Smartphone className="w-5 h-5" />;
-  } else if (device.toLowerCase().includes('tablet') || device.toLowerCase().includes('ipad')) {
+  } else if (lowerDevice.includes('tablet') || lowerDevice.includes('ipad')) {
     return <Tablet className="w-5 h-5" />;
-  } else if (device.toLowerCase().includes('chrome') || device.toLowerCase().includes('firefox') || device.toLowerCase().includes('safari')) {
+  } else if (lowerDevice.includes('chrome') || lowerDevice.includes('firefox') || lowerDevice.includes('safari')) {
     return <Monitor className="w-5 h-5" />;
   }
   return <Globe className="w-5 h-5" />;
@@ -36,6 +48,9 @@ const formatDate = (dateString: string) => {
 export default function SessionsSettings() {
   const { sessions, isLoading, revokeSession, isRevoking, error } = useSessionManagement();
   const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
+
+  // Debug: Log the sessions data structure
+  console.log('SessionsSettings - Sessions data:', sessions); // Debug log
 
   const handleRevokeSession = async (sessionId: string) => {
     setRevokingSessionId(sessionId);
@@ -93,7 +108,12 @@ export default function SessionsSettings() {
                     <div className="flex-1">
                       <div className="flex items-center space-x-2">
                         <h3 className="font-medium text-gray-900">
-                          {session.device}
+                          {typeof session.device === 'string' 
+                            ? session.device 
+                            : session.device && typeof session.device === 'object'
+                            ? `${(session.device as any)?.browser || ''} ${(session.device as any)?.os || ''}`.trim() || 'Unknown Device'
+                            : 'Unknown Device'
+                          }
                         </h3>
                         {session.is_current_session && (
                           <Badge variant="secondary" className="bg-green-100 text-green-800">

@@ -1,4 +1,5 @@
 import type { Notification } from '@/types';
+import { apiClient } from '@/lib/api-client';
 
 class NotificationWebSocketService {
   private socket: WebSocket | null = null;
@@ -18,7 +19,7 @@ class NotificationWebSocketService {
     }
   }
 
-  connect(token: string) {
+  async connect(authToken: string) {
     if (this.socket?.readyState === WebSocket.OPEN || this.isConnecting) return;
 
     this.isConnecting = true;
@@ -38,8 +39,18 @@ class NotificationWebSocketService {
         this.socket = null;
       }
 
-      // Fix: Use correct WebSocket path that matches backend routing
-      this.socket = new WebSocket(`${wsUrl}/ws/notifications/?token=${token}`);
+      // Get WebSocket token from backend
+      console.log('🔑 Getting WebSocket token...');
+      const tokenResponse = await apiClient.getWebSocketToken();
+      const wsToken = tokenResponse.data?.ws_token || tokenResponse.ws_token;
+      
+      if (!wsToken) {
+        throw new Error('Failed to get WebSocket token');
+      }
+
+      console.log('🔑 WebSocket token obtained, connecting...');
+      // Use WebSocket token instead of auth token
+      this.socket = new WebSocket(`${wsUrl}/ws/notifications/?ws_token=${wsToken}`);
       
       this.socket.onopen = () => {
         this.isConnecting = false;
@@ -71,9 +82,9 @@ class NotificationWebSocketService {
         if (!event.wasClean && this.reconnectAttempts < this.maxReconnectAttempts && wsUrl) {
           const delay = Math.min(Math.pow(2, this.reconnectAttempts) * 1000, 30000);
           
-          this.reconnectTimeout = setTimeout(() => {
+          this.reconnectTimeout = setTimeout(async () => {
             this.reconnectAttempts++;
-            this.connect(token);
+            await this.connect(authToken);
           }, delay);
         }
       };

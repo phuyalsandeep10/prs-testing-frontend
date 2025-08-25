@@ -12,10 +12,8 @@ import { useAuth } from '@/stores';
 interface UserData {
   id: string;
   email: string;
-  role: {
-    name: UserRole;
-    permissions?: { codename: Permission }[];
-  };
+  role: UserRole;
+  permissions: Permission[];
   organization: string;
   // Add other user properties as needed
 }

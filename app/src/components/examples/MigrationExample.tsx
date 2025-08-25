@@ -13,9 +13,9 @@ import { toast } from 'sonner';
 
 // ❌ OLD PATTERN - Before Migration
 const UserManagementOLD = () => {
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -29,7 +29,7 @@ const UserManagementOLD = () => {
         const data = await response.json();
         setUsers(data.users || []);
       } catch (err) {
-        setError(err.message);
+        setError(err instanceof Error ? err.message : 'Unknown error');
         toast.error('Failed to load users');
       } finally {
         setLoading(false);
@@ -40,7 +40,7 @@ const UserManagementOLD = () => {
   }, []);
 
   // Manual form submission
-  const handleCreateUser = async (userData) => {
+  const handleCreateUser = async (userData: any) => {
     setLoading(true);
     try {
       const response = await fetch('/api/users', {
@@ -52,7 +52,7 @@ const UserManagementOLD = () => {
       if (!response.ok) throw new Error('Failed to create user');
       
       const newUser = await response.json();
-      setUsers(prev => [newUser, ...prev]);
+      setUsers((prev: any[]) => [newUser, ...prev]);
       setIsModalOpen(false);
       toast.success('User created successfully');
     } catch (err) {
@@ -63,7 +63,7 @@ const UserManagementOLD = () => {
   };
 
   // Manual filtering
-  const filteredUsers = users.filter(user => 
+  const filteredUsers = users.filter((user: any) => 
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -96,7 +96,7 @@ const UserManagementOLD = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.map(user => (
+              {filteredUsers.map((user: any) => (
                 <tr key={user.id}>
                   <td>{user.name}</td>
                   <td>{user.email}</td>
@@ -195,11 +195,10 @@ const UserManagementNEW = () => {
   // Event handlers
   const handleCreateUser = () => {
     openModal({
-      title: 'Create New User',
       component: UserForm,
       props: {
         onSuccess: () => {
-          closeModal();
+          // The modal will be closed automatically by the component
           refetch();
           addNotification({
             type: 'success',
@@ -211,14 +210,13 @@ const UserManagementNEW = () => {
     });
   };
 
-  const handleEditUser = (userData) => {
+  const handleEditUser = (userData: any) => {
     openModal({
-      title: 'Edit User',
       component: UserForm,
       props: {
         initialData: userData,
         onSuccess: () => {
-          closeModal();
+          // The modal will be closed automatically by the component
           refetch();
           addNotification({
             type: 'success',
@@ -277,7 +275,7 @@ const UserManagementNEW = () => {
         <CardContent className="p-0">
           <UnifiedTable
             data={usersData?.data || []}
-            columns={columns}
+            columns={columns as ColumnDef<unknown>[]}
             loading={isLoading}
             error={error?.message}
             onRefresh={refetch}
@@ -314,7 +312,7 @@ const UserManagementNEW = () => {
 };
 
 // Simple form component for the modal
-const UserForm = ({ initialData, onSuccess }) => {
+const UserForm = ({ initialData, onSuccess }: { initialData?: any; onSuccess: () => void }) => {
   const [name, setName] = useState(initialData?.name || '');
   const [email, setEmail] = useState(initialData?.email || '');
   const [role, setRole] = useState(initialData?.role || 'user');
@@ -322,7 +320,7 @@ const UserForm = ({ initialData, onSuccess }) => {
   const createMutation = useCreateUserMutation();
   const { addNotification } = useUI();
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     try {
@@ -330,6 +328,10 @@ const UserForm = ({ initialData, onSuccess }) => {
         name,
         email,
         role,
+        status: 'active',
+        first_name: name.split(' ')[0] || name,
+        last_name: name.split(' ').slice(1).join(' ') || '',
+        permissions: [],
       });
       
       onSuccess();

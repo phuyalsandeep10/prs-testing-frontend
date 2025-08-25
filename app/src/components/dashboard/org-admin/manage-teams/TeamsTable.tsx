@@ -41,11 +41,18 @@ export function TeamsTable({ data, onView, onEdit, onDelete, pagination, deletin
   }>({ key: 'teamName', direction: null });
 
   const sortedData = useMemo(() => {
-    if (sortConfig.direction === null) return data;
+    if (!sortConfig.key || !sortConfig.direction) {
+      return data;
+    }
 
     return [...data].sort((a, b) => {
-      const aValue = a[sortConfig.key];
-      const bValue = b[sortConfig.key];
+      const aValue = a[sortConfig.key!];
+      const bValue = b[sortConfig.key!];
+      
+      // Handle undefined values
+      if (aValue === undefined && bValue === undefined) return 0;
+      if (aValue === undefined) return 1;
+      if (bValue === undefined) return -1;
       
       if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
       if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;

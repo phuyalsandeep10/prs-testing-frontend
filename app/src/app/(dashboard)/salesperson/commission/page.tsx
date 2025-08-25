@@ -1,14 +1,21 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import RegularClientSection from "./_components/RegularClientSection";
 import TopClientSection from "./_components/TopClientSection";
 import ClientDetailsSection from "./_components/ClientDetailsSection";
 import CommissionSection from "./_components/CommisionSection";
+import { CommissionPeriodProvider, type CommissionPeriod } from "./_components/CommissionPeriodProvider";
+import { CommissionErrorBoundary } from "./_components/CommissionErrorBoundary";
+import { CommissionDataProvider } from "./_components/CommissionDataProvider";
 
 const CommissionPage = () => {
+  const [searchQuery, setSearchQuery] = useState("");
+  
   return (
-    <div className="min-h-screen bg-gray-50">
+    <CommissionPeriodProvider defaultPeriod="monthly">
+      <CommissionDataProvider>
+        <div className="min-h-screen bg-gray-50">
       {/* Use 10px padding for consistent margin */}
       <div className="px-[10px] py-6">
         {/* Header section with title and search */}
@@ -36,7 +43,9 @@ const CommissionPage = () => {
             </svg>
             <input
               type="text"
-              placeholder="Search"
+              placeholder="Search clients..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
             />
           </div>
@@ -45,24 +54,34 @@ const CommissionPage = () => {
         {/* Main grid container with fixed height */}
         <div className="h-[322px] grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-[10px] mb-10 mr-5 ml-4">
           <section className="h-full">
-            <CommissionSection />
+            <CommissionErrorBoundary>
+              <CommissionSection />
+            </CommissionErrorBoundary>
           </section>
 
           <section className="h-full mt-2">
-            <TopClientSection />
+            <CommissionErrorBoundary>
+              <TopClientSection />
+            </CommissionErrorBoundary>
           </section>
 
           <section className="h-full">
-            <RegularClientSection />
+            <CommissionErrorBoundary>
+              <RegularClientSection />
+            </CommissionErrorBoundary>
           </section>
         </div>
 
         {/* Bottom full-width section */}
         <div className="mt-6">
-          <ClientDetailsSection />
+          <CommissionErrorBoundary>
+            <ClientDetailsSection searchQuery={searchQuery} />
+          </CommissionErrorBoundary>
         </div>
-      </div>
-    </div>
+        </div>
+        </div>
+      </CommissionDataProvider>
+    </CommissionPeriodProvider>
   );
 };
 

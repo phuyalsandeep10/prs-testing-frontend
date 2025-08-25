@@ -34,8 +34,14 @@ const createSchema = (action: "verify" | "deny" | "refund") =>
                 files &&
                 files.length > 0 &&
                 typeof files[0].name === "string" &&
-                files[0].name.toLowerCase().endsWith(".pdf"),
-              { message: "Only PDF files are allowed" }
+                (() => {
+                  const fileName = files[0].name.toLowerCase();
+                  return fileName.endsWith(".pdf") || 
+                         fileName.endsWith(".png") || 
+                         fileName.endsWith(".jpg") || 
+                         fileName.endsWith(".jpeg");
+                })(),
+              { message: "Only PDF, PNG, JPG, and JPEG files are allowed" }
             )
         : z.instanceof(FileList).optional(),
     amountInInvoice:
@@ -131,18 +137,36 @@ function getErrorMessage(error: any): string | null {
   // Populate form when payment data is loaded
   useEffect(() => {
     if (paymentData && !isLoadingPayment) {
-      const deal = paymentData.deal;
-      const payment = paymentData.payment;
+      const deal = paymentData.data?.deal;
+      const payment = paymentData.data?.payment;
+      
+      const paymentMethod = payment?.payment_method || payment?.payment_type || deal?.payment_method || '';
       
       reset({
         dealId: deal?.deal_id || '',
         clientName: deal?.client?.client_name || '',
         dealName: deal?.deal_name || '',
-        payMethod: payment?.payment_method || '',
+        payMethod: paymentMethod,
         paymentReceiptLink: payment?.receipt_file || '',
         paymentValue: payment?.received_amount?.toString() || '',
         chequeNumber: payment?.cheque_number || '',
-        paymentDate: payment?.payment_date ? new Date(payment.payment_date).toISOString().split('T')[0] : '',
+        paymentDate: payment?.payment_date ? (() => {
+          try {
+            // Handle both string and object formats
+            let dateValue;
+            if (typeof payment.payment_date === 'object' && payment.payment_date !== null) {
+              // If it's an object, try to get the date field or iso field
+              dateValue = payment.payment_date.date || payment.payment_date.iso || payment.payment_date;
+            } else {
+              dateValue = payment.payment_date;
+            }
+            
+            const date = new Date(dateValue);
+            return isNaN(date.getTime()) ? '' : date.toISOString().split('T')[0];
+          } catch (error) {
+            return '';
+          }
+        })() : '',
         requestedBy: deal?.created_by?.full_name || '',
         salesPersonRemarks: payment?.payment_remarks || '',
         amountInInvoice: payment?.received_amount?.toString() || '',
@@ -162,117 +186,73 @@ function getErrorMessage(error: any): string | null {
   // Separate submit function that doesn't go through form handleSubmit
   const submitPayment = async (data: PaymentVerificationData, action: "verify" | "deny" | "refund") => {
     try {
-      console.log('🔍 [DEBUG] submitPayment called with action:', action);
+      // Debug logging removed for production
       setIsSubmitting(true);
-      const paymentId = paymentData?.payment?.id || invoiceId;
+      const paymentId = paymentData?.data?.payment?.id || invoiceId;
       
       if (!paymentId) {
-        console.error("No payment ID available for submission");
+        // Error: No payment ID available for submission
         return;
       }
       
       // Create FormData for the backend
       const formData = new FormData();
-      formData.append('invoice_status', action === "verify" ? "verified" : "rejected");
-      formData.append('verifier_remarks', data.verifierRemarks || '');
-      formData.append('amount_in_invoice', data.amountInInvoice || '0');
+      formData.append('approval_status', action === "verify" ? "approved" : "rejected");
+      formData.append('approval_remarks', data.verifierRemarks || '');
+      formData.append('verified_amount', data.amountInInvoice || '0');
       
       // Add failure_remarks for denied payments
-      if (action === "deny" && data.refundReason) {
-        formData.append('failure_remarks', data.refundReason);
+      if (action === "deny") {
+        formData.append('failure_remarks', data.refundReason || 'rejected');
       }
       
-      console.log('🔍 [DEBUG] Submitting with action:', action);
-      console.log('🔍 [DEBUG] FormData invoice_status:', action === "verify" ? "verified" : "rejected");
+      // Add file upload if provided (use invoice_file field name from PaymentApproval model)
+      if (data.uploadInvoice && data.uploadInvoice.length > 0) {
+        formData.append('invoice_file', data.uploadInvoice[0]);
+      }
       
-      const response = await apiClient.upload<any>(`/verifier/verifier-form/${paymentId}/`, formData);
-      console.log('🔍 [DEBUG] Backend response:', response);
+      // Debug: Log what we're sending
+      console.log('🔍 [SUBMIT_DEBUG] Payment ID:', paymentId);
+      console.log('🔍 [SUBMIT_DEBUG] Action:', action);
+      console.log('🔍 [SUBMIT_DEBUG] FormData contents:');
+      for (let [key, value] of formData.entries()) {
+        console.log(`  ${key}:`, value);
+      }
+      
+      // Submitting payment verification with action
+      const response = await apiClient.postMultipart<any>(`/verifier/verifier-form/${paymentId}/`, formData);
+      // Payment verification response received
       
       reset();
       
-      // Show success notification based on the backend response
-      const actualStatus = response?.status || action === "verify" ? "verified" : "rejected";
-      const actionText = actualStatus === "verified" ? "verified" : "rejected";
+      // Show success notification based on the action taken
+      const actionText = action === "verify" ? "verified" : "rejected";
       toast.success(`Payment ${actionText.charAt(0).toUpperCase() + actionText.slice(1)}!`, {
         description: `Payment has been ${actionText} successfully.`,
         duration: 2000,
       });
       
-      // Invalidate and refetch relevant queries to update the UI
+      // Optimized cache invalidation - target specific queries that need updating
       await Promise.all([
+        // Core verifier dashboard queries
         queryClient.invalidateQueries({ queryKey: ['invoices'] }),
-        queryClient.invalidateQueries({ queryKey: ['verification-queue'] }),
+        queryClient.invalidateQueries({ queryKey: ['verifier-overview'] }),
+        queryClient.invalidateQueries({ queryKey: ['verifier-verification-queue'] }),
+        queryClient.invalidateQueries({ queryKey: ['verifier-payment-distribution'] }),
         queryClient.invalidateQueries({ queryKey: ['payment-verifier-form', invoiceId] }),
         
-        // Invalidate all deals-related queries with different patterns
+        // Deals and payments related queries
         queryClient.invalidateQueries({ queryKey: ['deals'] }),
-        queryClient.invalidateQueries({ predicate: (query) => 
-          Array.isArray(query.queryKey) && 
-          query.queryKey[0] === 'deals'
-        }),
+        queryClient.invalidateQueries({ queryKey: ['payments'] }),
+        queryClient.invalidateQueries({ queryKey: ['payment-invoices'] }),
         
-        // Invalidate specific deals query patterns used by different tables
+        // Generic deals-related queries
         queryClient.invalidateQueries({ predicate: (query) => 
           Array.isArray(query.queryKey) && 
-          query.queryKey.length >= 2 && 
-          query.queryKey[0] === 'deals' && 
-          typeof query.queryKey[1] === 'string'
+          (query.queryKey[0] === 'deals' || query.queryKey.includes('deals') || 
+           query.queryKey[0] === 'payments' || query.queryKey.includes('payments'))
         }),
-        
-        queryClient.invalidateQueries({ predicate: (query) => 
-          Array.isArray(query.queryKey) && 
-          query.queryKey.length >= 2 && 
-          query.queryKey[0] === 'deals' && 
-          typeof query.queryKey[1] === 'object'
-        }),
-        
-        // Invalidate any query that includes 'deals' in the key
-        queryClient.invalidateQueries({ predicate: (query) => 
-          Array.isArray(query.queryKey) && 
-          query.queryKey.includes('deals')
-        }),
-        
-        // Invalidate any cached data for the specific deal's expand endpoint
-        queryClient.invalidateQueries({ predicate: (query) => 
-          Array.isArray(query.queryKey) && 
-          query.queryKey.some(key => 
-            typeof key === 'string' && 
-            key.includes('expand')
-          )
-        }),
-        
-        // Invalidate React Query keys for expanded deal data
-        queryClient.invalidateQueries({ predicate: (query) => 
-          Array.isArray(query.queryKey) && 
-          query.queryKey.length >= 3 && 
-          query.queryKey[0] === 'deals' && 
-          query.queryKey[1] === 'detail' && 
-          query.queryKey[3] === 'expanded'
-        }),
-              ]);
-      
-      // Force refetch all deals queries to ensure immediate update
-      await Promise.all([
-        queryClient.refetchQueries({ predicate: (query) => 
-          Array.isArray(query.queryKey) && 
-          query.queryKey[0] === 'deals'
-        }),
-        queryClient.refetchQueries({ predicate: (query) => 
-          Array.isArray(query.queryKey) && 
-          query.queryKey.includes('deals')
-        }),
-              ]);
-      
-      // Dispatch custom event to notify all deals tables to clear their nested data cache
-      const paymentUpdateEvent = new CustomEvent('paymentStatusUpdated', {
-        detail: {
-          paymentId: paymentId,
-          dealId: paymentData?.deal?.id,
-          action: action,
-          status: action === "verify" ? "verified" : "rejected"
-        }
-      });
-      window.dispatchEvent(paymentUpdateEvent);
+      ]);
       
       if (onSave) {
         onSave({
@@ -282,10 +262,29 @@ function getErrorMessage(error: any): string | null {
           paymentId: paymentId
         });
       }
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "An error occurred during verification."
-      );
+    } catch (error: any) {
+      console.error('🔍 [SUBMIT_ERROR] Full error object:', error);
+      console.error('🔍 [SUBMIT_ERROR] Error response:', error.response);
+      console.error('🔍 [SUBMIT_ERROR] Error response data:', error.response?.data);
+      console.error('🔍 [SUBMIT_ERROR] Error data from ApiError:', error.data);
+      console.error('🔍 [SUBMIT_ERROR] Error message:', error.message);
+      
+      // Show specific validation errors if available
+      let errorMessage = "An error occurred during verification.";
+      if (error.response?.data?.errors) {
+        const errors = error.response.data.errors;
+        errorMessage = Object.entries(errors).map(([field, msgs]: [string, any]) => 
+          `${field}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`
+        ).join('\n');
+      } else if (error.response?.data?.error?.message) {
+        errorMessage = error.response.data.error.message;
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -402,9 +401,11 @@ function getErrorMessage(error: any): string | null {
                   wrapperClassName={verificationWrapperClass}
                   disabled
                   options={[
-                    { value: "Full Pay", label: "Full Pay" },
-                    { value: "Partial Pay", label: "Partial Pay" },
-                    { value: "Installment", label: "Installment" },
+                    { value: "wallet", label: "Mobile Wallet" },
+                    { value: "bank", label: "Bank Transfer" },
+                    { value: "cheque", label: "Cheque" },
+                    { value: "cash", label: "Cash" },
+                    { value: "other", label: "Other" },
                   ]}
                 />
               </div>
@@ -421,13 +422,13 @@ function getErrorMessage(error: any): string | null {
                           const receiptLink = watch("paymentReceiptLink");
                           // Fix relative URLs by making them absolute with backend URL
                           const backendUrl = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000';
-                          return receiptLink?.startsWith('http') ? receiptLink : `${backendUrl}/media/${receiptLink}`;
+                          return receiptLink?.startsWith('http') ? receiptLink : `${backendUrl}/${receiptLink}`;
                         })()}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-600 hover:text-blue-800 underline text-sm block p-3 border border-[#C3C3CB] rounded bg-white w-full h-[48px] flex items-center"
                         onClick={() => {
-                          console.log("📎 [VERIFICATION-FORM] Clicking receipt link:", watch("paymentReceiptLink"));
+                          // Opening receipt link
                         }}
                       >
                         Receipt Link
@@ -608,7 +609,7 @@ function getErrorMessage(error: any): string | null {
                   <input
                     id="uploadInvoice"
                     type="file"
-                    accept=".pdf"
+                    accept=".pdf,.png,.jpg,.jpeg"
                     {...register("uploadInvoice")}
                     className="hidden"
                     disabled={isViewMode}
@@ -618,7 +619,7 @@ function getErrorMessage(error: any): string | null {
                     className={`mt-1 flex items-center justify-between w-full h-[48px] p-2 text-[12px] font-normal border rounded-[6px] border-[#C3C3CB] cursor-pointer bg-white ${verificationInputClass}`}
                   >
                     <span className="underline">
-                      {watch("uploadInvoice")?.[0]?.name || "Invoice.pdf"}
+                      {watch("uploadInvoice")?.[0]?.name || "Upload Invoice (PDF, PNG, JPG)"}
                     </span>
                     <svg
                       width="13"
@@ -728,19 +729,18 @@ function getErrorMessage(error: any): string | null {
           <Button
             variant="destructive"
             onClick={async () => {
-              console.log('🔍 [DEBUG] Deny button clicked, setting currentAction to "deny"');
+              // Setting action to deny
               setCurrentAction("deny");
-              console.log('🔍 [DEBUG] After setCurrentAction("deny"), currentAction should be "deny"');
               
               // Add a small delay to ensure state update
               await new Promise(resolve => setTimeout(resolve, 0));
               
-              console.log('🔍 [DEBUG] After delay, currentAction is:', currentAction);
+              // Action state updated
               setIsSubmitting(true);
               
               try {
                 const formValues = getValues();
-                console.log('🔍 [DEBUG] Form values:', formValues);
+                // Validating form values
                 
                 // Check if required fields are filled
                 if (!formValues.verifierRemarks) {
@@ -761,9 +761,18 @@ function getErrorMessage(error: any): string | null {
                   return;
                 }
                 
-                console.log('🔍 [DEBUG] About to call submitPayment with action: deny');
+                // Check if invoice upload is required and provided
+                if (!formValues.uploadInvoice || formValues.uploadInvoice.length === 0) {
+                  setError("uploadInvoice", { message: "Invoice upload is required for denial" });
+                  setIsSubmitting(false);
+                  return;
+                }
+                
+                // Submitting denial
                 await submitPayment(formValues, "deny");
               } catch (error) {
+                console.error('Error during denial:', error);
+                toast.error("Failed to deny payment. Please try again.");
                 setIsSubmitting(false);
               }
             }}
@@ -795,8 +804,17 @@ function getErrorMessage(error: any): string | null {
                   return;
                 }
                 
+                // Check if invoice upload is required and provided for verification
+                if (!formValues.uploadInvoice || formValues.uploadInvoice.length === 0) {
+                  setError("uploadInvoice", { message: "Invoice upload is required for verification" });
+                  setIsSubmitting(false);
+                  return;
+                }
+                
                 await submitPayment(formValues, "verify");
               } catch (error) {
+                console.error('Error during verification:', error);
+                toast.error("Failed to verify payment. Please try again.");
                 setIsSubmitting(false);
               }
             }}

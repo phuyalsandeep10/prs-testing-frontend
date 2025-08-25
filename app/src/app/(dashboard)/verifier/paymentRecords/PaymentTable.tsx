@@ -173,8 +173,8 @@ const PaymentTable: React.FC<PaymentTableProps> = ({ role }) => {
     </div>
   );
 
-  if (isError) {
-    return <div>Error loading payments: {error.message}</div>;
+  if (isError && error) {
+    return <div>Error loading payments: {String(error)}</div>;
   }
 
   return (
@@ -209,7 +209,7 @@ const PaymentTable: React.FC<PaymentTableProps> = ({ role }) => {
         }}
         loading={isLoading}
         customLoadingComponent={customLoadingComponent}
-        error={isError ? error.message : null}
+        error={isError && error ? String(error) : null}
       />
     </div>
   );

@@ -101,14 +101,14 @@ export default function ManageUsersPage() {
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [deletingTeamId, setDeletingTeamId] = useState<string | null>(null);
   
-  // Get the current user's organization ID (supports multiple field names)
-  const { user: currentUser } = useAuth();
-  const organizationId =
-    (currentUser as any)?.organizationId ??
-    (currentUser as any)?.organization ??
-    (currentUser as any)?.organization_id ?? '';
-
-  const orgIdStr = organizationId ? String(organizationId) : '';
+  // Get authentication state - no organization ID needed (backend handles filtering)
+  const { user: currentUser, isAuthInitialized, isHydrated } = useAuth();
+  
+  console.log('🔍 [USER_TABLE_DEBUG] Auth state:', {
+    isAuthInitialized,
+    isHydrated,
+    currentUser: currentUser ? { id: currentUser.id, email: currentUser.email, role: currentUser.role } : null
+  });
 
   // Pagination state
   const [usersPagination, setUsersPagination] = useState({
@@ -122,13 +122,33 @@ export default function ManageUsersPage() {
     total: 0,
   });
 
-  // API Hooks - React Query will handle loading, error states, and caching
+  // API Hooks - React Query will handle loading, error states, and caching  
+  // Works like teams query - no organization ID needed, backend handles filtering
+  console.log('🔍 [USER_TABLE_DEBUG] Using same pattern as teams query (no org ID required)');
+  
   const { 
     data: usersResponse, 
     isLoading: usersLoading, 
     error: usersError,
     refetch: refetchUsers 
-  } = useUsersQuery(orgIdStr);
+  } = useUsersQuery();
+  
+  // Auto-refetch when switching to users tab to ensure fresh data
+  useEffect(() => {
+    if (activeTab === "users" && isAuthInitialized && isHydrated) {
+      console.log('🔄 [USER_TABLE_DEBUG] Users tab active, triggering refetch for fresh data');
+      refetchUsers();
+    }
+  }, [activeTab, isAuthInitialized, isHydrated, refetchUsers]);
+  
+  // Additional effect to ensure data loads after hydration completes
+  useEffect(() => {
+    const users = Array.isArray(usersResponse) ? usersResponse : (usersResponse?.data || []);
+    if (isAuthInitialized && isHydrated && !usersLoading && (!usersResponse || users.length === 0)) {
+      console.log('🔄 [USER_TABLE_DEBUG] Hydration complete but no data, forcing refetch');
+      refetchUsers();
+    }
+  }, [isAuthInitialized, isHydrated, usersLoading, usersResponse, refetchUsers]);
   
   const { 
     data: teamsResponse, 
@@ -147,9 +167,6 @@ export default function ManageUsersPage() {
   const projects: Project[] = []; // This seems unused in the original, keeping for compatibility
 
   // Debug logging removed for production
-  // console.log('📊 [USER_TABLE_DEBUG] ManageUsersPage rendered');
-  // console.log('📊 [USER_TABLE_DEBUG] Users count:', users.length);
-  // console.log('📊 [USER_TABLE_DEBUG] Users loading:', usersLoading);
   
   // Manual refresh function for debugging
   const handleManualRefresh = () => {
@@ -162,15 +179,44 @@ export default function ManageUsersPage() {
   const filteredUsers = useMemo(() => {
     if (!users) return [];
     
-    // First, filter out Organization Admin users
+    // Debug: Log all users before filtering
+    console.log('🔍 [USER_TABLE_DEBUG] All users before filtering:', users.map(u => ({
+      id: u.id,
+      name: `${u.first_name} ${u.last_name}`,
+      email: u.email,
+      role: typeof u.role === 'string' ? u.role : (u.role as any)?.name || 'NO_ROLE',
+      is_active: u.is_active
+    })));
+    
+    // First, filter out Organization Admin users and the current logged-in user
     const nonOrgAdminUsers = users.filter(user => {
       const userRole = typeof user.role === 'string' 
         ? user.role 
         : (user.role as any)?.name || '';
       
-      // Exclude users with Organization Admin role
-      return userRole !== 'Organization Admin' && userRole !== 'org-admin';
+      // Normalize role for comparison
+      const normalizedRole = userRole.toLowerCase().replace(/[\s-_]+/g, '_');
+      
+      // Exclude users with Organization Admin role (various formats)
+      const isOrgAdmin = normalizedRole === 'organization_admin' || 
+                        normalizedRole === 'org_admin' ||
+                        userRole === 'Organization Admin' ||
+                        userRole === 'org_admin';
+      
+      // Also exclude the current logged-in user from the list
+      const isCurrentUser = currentUser && user.id === currentUser.id;
+      
+      const shouldInclude = !isOrgAdmin && !isCurrentUser;
+      
+      if (!shouldInclude) {
+        console.log('🚫 [USER_TABLE_DEBUG] Excluding user:', user.email, 'with role:', userRole, 
+                   isOrgAdmin ? '(org admin)' : '(current user)');
+      }
+      
+      return shouldInclude;
     });
+    
+    console.log('👥 [USER_TABLE_DEBUG] After org admin filter:', nonOrgAdminUsers.length, 'users');
     
     // Then apply search filter
     const filtered = nonOrgAdminUsers.filter(user => {
@@ -180,7 +226,14 @@ export default function ManageUsersPage() {
       return fullName.includes(searchLower) || email.includes(searchLower);
     });
     
-    // console.log('🔍 [USER_TABLE_DEBUG] Filtered users:', filtered.length, 'of', nonOrgAdminUsers.length, '(excluded org admins)');
+    console.log('🔍 [USER_TABLE_DEBUG] Final filtered users:', filtered.length, 'of', nonOrgAdminUsers.length, '(after search filter)');
+    console.log('🔍 [USER_TABLE_DEBUG] Final filtered users details:', filtered.map(u => ({
+      id: u.id,
+      name: `${u.first_name} ${u.last_name}`,
+      email: u.email,
+      role: typeof u.role === 'string' ? u.role : (u.role as any)?.name || 'NO_ROLE'
+    })));
+    
     return filtered;
   }, [users, searchTerm]);
 
@@ -286,9 +339,46 @@ export default function ManageUsersPage() {
   // Transform API data to table format
   const transformUsersForTable = useCallback((users: ApiUser[]): UserTableData[] => {
     const transformed = users.map((user) => {
-      const teamNames = Array.isArray(user.teams) && user.teams.length > 0
-        ? user.teams.map((t) => typeof t === 'object' && t !== null ? t.name : t).join(", ")
-        : "Not Assigned";
+      // Debug team data structure (only for users with teams)
+      if (Array.isArray(user.teams) && user.teams.length > 0) {
+        console.log('👥 [TEAM_DEBUG] User with teams:', user.email, 'teams:', user.teams);
+      }
+      
+      // Handle different team data structures
+      let teamNames = "Not Assigned";
+      
+      if (Array.isArray(user.teams) && user.teams.length > 0) {
+        // Handle array of team objects or IDs
+        teamNames = user.teams.map((t) => {
+          if (typeof t === 'object' && t !== null) {
+            // Team object with name property
+            return (t as any).name || `Team ${(t as any).id || 'Unknown'}`;
+          } else if (typeof t === 'number') {
+            // Team ID - try to find team name from teams list
+            const teamObj = teams.find(team => team.id === t);
+            return teamObj ? teamObj.name : `Team ${t}`;
+          } else {
+            // Fallback for other formats
+            return String(t);
+          }
+        }).join(", ");
+      } else if ((user as any).team) {
+        // Check for single team field
+        const singleTeam = (user as any).team;
+        if (typeof singleTeam === 'object' && singleTeam !== null) {
+          teamNames = singleTeam.name || `Team ${singleTeam.id || 'Unknown'}`;
+        } else {
+          teamNames = String(singleTeam);
+        }
+      } else if ((user as any).team_name) {
+        // Direct team name field
+        teamNames = (user as any).team_name;
+      }
+      
+      // Only log final assignment if user has teams
+      if (teamNames !== "Not Assigned") {
+        console.log('✅ [TEAM_DEBUG] Team assignment for', user.email, ':', teamNames);
+      }
 
       const transformedUser = {
         id: user.id.toString(),
@@ -329,7 +419,7 @@ export default function ManageUsersPage() {
         id: team.id.toString(),
         teamName: team.name,
         teamLead: team.team_lead 
-          ? team.team_lead.full_name || team.team_lead.username || "Unknown Lead"
+          ? (team.team_lead as any).full_name || team.team_lead.username || "Unknown Lead"
           : "No Lead",
         contactNumber: team.contact_number || "N/A",
         teamMembers:
@@ -398,9 +488,15 @@ export default function ManageUsersPage() {
 
   // DELETE handlers
   const handleDeleteUser = async (userData: any) => {
+    console.log('🗑️ [DELETE_USER_DEBUG] Starting user deletion for:', userData);
     setDeletingUserId(userData.id);
     try {
       await deleteUserMutation.mutateAsync(userData.id);
+      
+      // Force manual refetch as backup to ensure UI updates
+      console.log('🔄 [DELETE_USER_DEBUG] Forcing manual refetch after deletion');
+      await refetchUsers();
+      
       // Success notification is handled by the mutation
     } catch (error) {
       // Error notification is handled by the mutation
@@ -449,17 +545,6 @@ export default function ManageUsersPage() {
                 className="pl-12 pr-4 py-3 w-[320px] h-[44px] text-[14px] bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
               />
             </div>
-            {/* Debug: Manual Refetch Button */}
-            <Button
-              onClick={() => {
-                // console.log('[ManageUsersPage] Manual refetch triggered');
-                refetchUsers();
-              }}
-              variant="outline"
-              className="h-[44px] px-4 text-[14px]"
-            >
-              🔄 Refresh
-            </Button>
             {/* Create Button - RIGHT SIDE as per Figma */}
             <Button
               onClick={() =>
@@ -518,12 +603,14 @@ export default function ManageUsersPage() {
         )}
 
         <ErrorBoundary>
-          {(usersLoading || teamsLoading) ? (
+          {(!isHydrated || !isAuthInitialized || usersLoading || teamsLoading) ? (
             <div className="flex items-center justify-center py-12">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4F46E5] mx-auto mb-4"></div>
                 <p className="text-gray-600">
-                  Loading {activeTab === "users" ? "users" : "teams"}...
+                  {!isHydrated ? 'Initializing...' : 
+                   !isAuthInitialized ? 'Loading authentication...' :
+                   `Loading ${activeTab === "users" ? "users" : "teams"}...`}
                 </p>
               </div>
             </div>

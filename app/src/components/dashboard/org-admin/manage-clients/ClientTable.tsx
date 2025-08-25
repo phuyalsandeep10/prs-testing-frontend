@@ -84,14 +84,14 @@ const createColumns = (deleteClientMutation: any): ColumnDef<Client>[] => [
     accessorKey: "payment_status",
     header: "Status",
     cell: ({ row }) => {
-      const status = row.getValue("payment_status") as Client["payment_status"];
+      const status = row.getValue("payment_status") as "clear" | "pending" | "bad_debt";
       if (!status) return 'N/A';
       const statusConfig = {
         clear: { label: "Clear", className: "text-green-600" },
         pending: { label: "Pending", className: "text-orange-500" },
         bad_debt: { label: "Bad Debt", className: "text-red-600" },
       };
-      const config = status ? statusConfig[status] : null;
+      const config = statusConfig[status];
       return config ? <span className={config.className}>{config.label}</span> : 'N/A';
     },
   },
@@ -171,8 +171,8 @@ interface ClientTableProps {
   loading?: boolean;
   error?: string | null;
   onRefresh?: () => void;
-  onExport?: (data: Client[]) => void;
-  onRowClick?: (row: Row<Client>) => void;
+  onExport?: (data: Client[] | unknown[]) => void;
+  onRowClick?: (row: Row<unknown>) => void;
 }
 
 export function ClientTable({

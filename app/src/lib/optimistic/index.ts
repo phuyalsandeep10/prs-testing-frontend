@@ -4,7 +4,7 @@
  */
 
 import { QueryClient, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, useEffect } from 'react';
 import { toast } from 'sonner';
 
 // ==================== TYPES ====================
@@ -327,7 +327,7 @@ export const useOptimisticUpdateMonitor = () => {
   }, []);
 
   // Update status periodically
-  React.useEffect(() => {
+  useEffect(() => {
     const interval = setInterval(updateStatus, 1000);
     return () => clearInterval(interval);
   }, [updateStatus]);

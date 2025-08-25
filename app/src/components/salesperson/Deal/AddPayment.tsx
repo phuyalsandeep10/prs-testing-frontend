@@ -8,11 +8,26 @@ import { apiClient } from "@/lib/api-client";
 import { toast } from "sonner";
 
 const AddPaymentSchema = z.object({
-  paymentDate: z.string().min(1, "Payment date is required"),
-  receivedAmount: z.string().min(1, "Received amount is required"),
-  chequeNo: z.string().min(1, "Cheque number is required"),
-  paymentType: z.string().min(1, "Payment type is required"),
-  remarks: z.string().min(1, "Remarks is required"),
+  paymentDate: z.string()
+    .min(1, "📅 Payment date is required")
+    .refine((date) => {
+      const selectedDate = new Date(date);
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      return selectedDate <= today;
+    }, {
+      message: "📅 Payment date cannot be in the future. Please select today's date or earlier."
+    }),
+  receivedAmount: z.string()
+    .min(1, "💰 Received amount is required")
+    .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
+      message: "💰 Received amount must be a positive number (e.g., 1000.50)",
+    }),
+  chequeNo: z.string()
+    .min(6, "📝 Cheque number must be at least 6 characters long")
+    .max(20, "📝 Cheque number must not exceed 20 characters"),
+  paymentType: z.string().min(1, "💳 Please select a payment type"),
+  remarks: z.string().min(1, "📝 Payment remarks are required"),
 });
 
 type AddPaymentData = z.infer<typeof AddPaymentSchema>;
@@ -53,6 +68,87 @@ const AddPayment: React.FC<AddPaymentProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string>("");
 
+  const formatFieldError = (fieldName: string, message: string, fieldKey: string): string => {
+    // Create user-friendly error messages based on field and error type
+    const errorPatterns = {
+      'required': `${fieldName} is required`,
+      'invalid': `${fieldName} format is invalid`,
+      'max_length': `${fieldName} is too long`,
+      'min_length': `${fieldName} is too short`,
+      'invalid_choice': `Invalid ${fieldName} selection`,
+      'unique': `This ${fieldName} already exists`,
+      'future_date': `${fieldName} cannot be in the future`,
+      'past_date': `${fieldName} cannot be in the past`,
+      'file_size': `${fieldName} file size is too large`,
+      'file_type': `${fieldName} file type is not supported`,
+      'decimal': `${fieldName} must be a valid number`,
+      'positive': `${fieldName} must be a positive number`,
+    };
+
+    // Check for specific field-based custom messages
+    if (fieldKey === 'receipt_file') {
+      if (message.includes('malicious') || message.includes('suspicious')) {
+        return "📄 Receipt file appears to be corrupted or invalid. Please try a different image (PNG, JPG) or PDF file.";
+      }
+      if (message.includes('size') || message.includes('large')) {
+        return "📄 Receipt file is too large. Please use a file smaller than 10MB.";
+      }
+      if (message.includes('type') || message.includes('extension')) {
+        return "📄 Receipt file type not supported. Please upload PNG, JPG, JPEG, or PDF files only.";
+      }
+    }
+
+    if (fieldKey === 'payment_date') {
+      if (message.includes('future')) {
+        return "📅 Payment date cannot be in the future. Please select today's date or earlier.";
+      }
+      if (message.includes('invalid') || message.includes('format')) {
+        return "📅 Invalid payment date format. Please select a valid date.";
+      }
+    }
+
+    if (fieldKey === 'received_amount') {
+      if (message.includes('positive') || message.includes('greater')) {
+        return "💰 Received amount must be greater than zero.";
+      }
+      if (message.includes('decimal') || message.includes('number')) {
+        return "💰 Received amount must be a valid number (e.g., 1000.50).";
+      }
+      if (message.includes('exceed') || message.includes('maximum')) {
+        return "💰 Received amount exceeds the maximum allowed limit.";
+      }
+    }
+
+    if (fieldKey === 'cheque_number') {
+      if (message.includes('unique') || message.includes('exists')) {
+        return "📝 This cheque number has already been used. Please enter a different cheque number.";
+      }
+      if (message.includes('length') || message.includes('character')) {
+        return "📝 Cheque number must be between 6 and 20 characters long.";
+      }
+    }
+
+    if (fieldKey === 'deal_id') {
+      if (message.includes('required')) {
+        return "🏷️ Deal ID is missing. Please refresh the page and try again.";
+      }
+      if (message.includes('not exist') || message.includes('not found')) {
+        return "🏷️ Deal not found. Please refresh the page and try again.";
+      }
+    }
+
+    // Try to match common error patterns
+    const lowerMessage = message.toLowerCase();
+    for (const [pattern, friendlyMessage] of Object.entries(errorPatterns)) {
+      if (lowerMessage.includes(pattern)) {
+        return friendlyMessage;
+      }
+    }
+
+    // If no pattern matches, return the original message with field name
+    return `${fieldName}: ${message}`;
+  };
+
   const paymentTypes = [
     { value: "advance", label: "Advance Payment" },
     { value: "partial", label: "Partial Payment" },
@@ -66,21 +162,64 @@ const AddPayment: React.FC<AddPaymentProps> = ({
     }
 
     if (!selectedFile) {
+      toast.error("📄 Please upload a receipt file (PNG, JPG, JPEG, or PDF)", {
+        duration: 4000,
+        position: 'top-right',
+      });
       setFileError("Receipt is required");
+      return;
+    }
+
+    // Validate payment date is not in the future
+    const selectedDate = new Date(data.paymentDate);
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // End of today
+    
+    if (selectedDate > today) {
+      toast.error("📅 Payment date cannot be in the future. Please select today's date or earlier.", {
+        duration: 5000,
+        position: 'top-right',
+      });
+      return;
+    }
+
+    // Validate file type
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf'];
+    if (!allowedTypes.includes(selectedFile.type)) {
+      toast.error("📄 Only PNG, JPG, JPEG, and PDF files are allowed. Please select a different file.", {
+        duration: 5000,
+        position: 'top-right',
+      });
+      setFileError("Only PNG, JPG, JPEG, and PDF files are allowed");
+      return;
+    }
+
+    // Validate file size (10MB max)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (selectedFile.size > maxSize) {
+      const fileSizeMB = (selectedFile.size / (1024 * 1024)).toFixed(1);
+      toast.error(`📄 File size (${fileSizeMB}MB) is too large. Please use a file smaller than 10MB.`, {
+        duration: 5000,
+        position: 'top-right',
+      });
+      setFileError("File size must be less than 10MB");
       return;
     }
 
     setIsSubmitting(true);
     try {
       const formData = new FormData();
+      
+      // Use deal_id as expected by the backend serializer
       formData.append("deal_id", dealId.toString());
+      
+      // Format date for Django DateField (YYYY-MM-DD format)
       formData.append("payment_date", data.paymentDate);
+      
       formData.append("received_amount", data.receivedAmount);
       formData.append("cheque_number", data.chequeNo);
-      formData.append(
-        "payment_category",
-        data.paymentType
-      );
+      formData.append("payment_category", data.paymentType);
+      formData.append("payment_type", "cheque"); // Payment method
       formData.append("payment_remarks", data.remarks);
 
       if (selectedFile) {
@@ -89,54 +228,106 @@ const AddPayment: React.FC<AddPaymentProps> = ({
 
       await apiClient.postMultipart("/deals/payments/", formData);
 
-      toast.success("Payment added successfully!");
+      toast.success("✅ Payment added successfully! The deal has been updated.", {
+        duration: 4000,
+        position: 'top-right',
+      });
       onSave(data);
       onCancel();
     } catch (error: any) {
       console.log("Payment submission error:", error);
       
-      // Handle different types of errors
+      // Handle different types of errors with specific user-friendly messages
       if (error.code === '400' || error.message?.includes('400')) {
-        // Extract validation error messages from the backend
-        let errorMessage = "Invalid data format";
+        // Map backend field names to user-friendly names
+        const fieldNameMap: { [key: string]: string } = {
+          'deal_id': 'Deal ID',
+          'payment_date': 'Payment Date',
+          'received_amount': 'Received Amount',
+          'cheque_number': 'Cheque Number',
+          'payment_category': 'Payment Type',
+          'payment_type': 'Payment Method',
+          'payment_remarks': 'Remarks',
+          'receipt_file': 'Receipt File',
+          'non_field_errors': 'General Error'
+        };
+
+        let errorMessages: string[] = [];
         
-        if (error.details) {
-          // Django REST Framework returns validation errors in this format
-          if (typeof error.details === 'object') {
-            const errorMessages: string[] = [];
+        if (error.details && typeof error.details === 'object') {
+          // Process each field error with specific messages
+          Object.entries(error.details).forEach(([field, messages]) => {
+            const fieldDisplayName = fieldNameMap[field] || field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
             
-            // Extract error messages from the details object
-            Object.entries(error.details).forEach(([field, messages]) => {
-              if (Array.isArray(messages)) {
-                errorMessages.push(...messages);
-              } else if (typeof messages === 'string') {
-                errorMessages.push(messages);
-              }
-            });
-            
-            if (errorMessages.length > 0) {
-              errorMessage = errorMessages.join('. ');
+            if (messages && Array.isArray(messages)) {
+              messages.forEach((message: string) => {
+                if (message) {
+                  errorMessages.push(formatFieldError(fieldDisplayName, message, field));
+                }
+              });
+            } else if (messages && typeof messages === 'string') {
+              errorMessages.push(formatFieldError(fieldDisplayName, messages, field));
             }
-          } else if (typeof error.details === 'string') {
-            errorMessage = error.details;
-          }
+          });
+        } else if (error.details && typeof error.details === 'string') {
+          errorMessages.push(error.details);
         } else if (error.message && !error.message.includes('400')) {
-          errorMessage = error.message;
+          errorMessages.push(error.message);
         }
-        
-        toast.error(errorMessage);
+
+        // Show multiple error messages as separate toasts for better visibility
+        if (errorMessages.length === 0) {
+          errorMessages = ["Invalid data format. Please check your inputs."];
+        }
+
+        // Show the first 3 errors as separate toasts to avoid overwhelming the user
+        errorMessages.slice(0, 3).forEach((message, index) => {
+          setTimeout(() => {
+            toast.error(message, {
+              duration: 6000, // Longer duration for error messages
+              position: 'top-right',
+            });
+          }, index * 100); // Slight delay between messages
+        });
+
+        // If there are more than 3 errors, show a summary
+        if (errorMessages.length > 3) {
+          setTimeout(() => {
+            toast.error(`And ${errorMessages.length - 3} more validation error(s). Please review all fields.`, {
+              duration: 4000,
+              position: 'top-right',
+            });
+          }, 300);
+        }
+
       } else if (error.code === 'TIMEOUT' || error.message?.includes('timeout')) {
-        toast.error("Request timed out. Please try again.");
+        toast.error("⏰ Request timed out. Please check your connection and try again.", {
+          duration: 5000,
+        });
       } else if (error.code === '401' || error.message?.includes('401')) {
-        toast.error("Authentication failed. Please log in again.");
+        toast.error("🔐 Authentication failed. Please log in again.", {
+          duration: 5000,
+        });
       } else if (error.code === '403' || error.message?.includes('403')) {
-        toast.error("You don't have permission to perform this action.");
+        toast.error("🚫 You don't have permission to add payments to this deal.", {
+          duration: 5000,
+        });
       } else if (error.code === '404' || error.message?.includes('404')) {
-        toast.error("Resource not found. Please check the deal ID.");
+        toast.error("❓ Deal not found. Please refresh the page and try again.", {
+          duration: 5000,
+        });
       } else if (error.code === '500' || error.message?.includes('500')) {
-        toast.error("Server error. Please try again later.");
+        toast.error("🔧 Server error occurred. Please try again in a few moments.", {
+          duration: 6000,
+        });
+      } else if (error.message?.includes('Network Error') || error.message?.includes('fetch')) {
+        toast.error("🌐 Network connection issue. Please check your internet and try again.", {
+          duration: 5000,
+        });
       } else {
-        toast.error(error.message || "Failed to add payment. Please try again.");
+        toast.error(error.message || "❌ Failed to add payment. Please try again.", {
+          duration: 4000,
+        });
       }
     } finally {
       setIsSubmitting(false);
@@ -164,8 +355,46 @@ const AddPayment: React.FC<AddPaymentProps> = ({
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
-      setSelectedFileName(files[0].name);
-      setSelectedFile(files[0]);
+      const file = files[0];
+      
+      // Validate file type
+      const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf'];
+      if (!allowedTypes.includes(file.type)) {
+        setFileError("Only PNG, JPG, JPEG, and PDF files are allowed");
+        setSelectedFileName("Receipt.png");
+        setSelectedFile(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        return;
+      }
+
+      // Validate file size (10MB max)
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      if (file.size > maxSize) {
+        setFileError("File size must be less than 10MB");
+        setSelectedFileName("Receipt.png");
+        setSelectedFile(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        return;
+      }
+
+      // Validate file name (no suspicious patterns)
+      const suspiciousPatterns = /<[%?]|<script|javascript:|data:/i;
+      if (suspiciousPatterns.test(file.name)) {
+        setFileError("Invalid file name. Please rename your file.");
+        setSelectedFileName("Receipt.png");
+        setSelectedFile(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        return;
+      }
+
+      setSelectedFileName(file.name);
+      setSelectedFile(file);
       setFileError("");
     } else {
       setSelectedFileName("Receipt.png");
@@ -238,6 +467,11 @@ const AddPayment: React.FC<AddPaymentProps> = ({
                 {fileError && (
                   <p className="text-red-500 text-sm mt-1">{fileError}</p>
                 )}
+                <p className="text-xs text-gray-500 mt-1">
+                  Supported: PNG, JPG, JPEG, PDF files (max 10MB). 
+                  <br />
+                  ⚠️ File names must not contain: &lt;%, &lt;script, or special characters.
+                </p>
               </div>
             </div>
 

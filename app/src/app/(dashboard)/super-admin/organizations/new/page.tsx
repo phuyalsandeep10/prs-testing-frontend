@@ -18,7 +18,7 @@ const organizationSchema = z.object({
   name: z.string()
     .min(2, "Organization name must be at least 2 characters")
     .max(255, "Organization name must not exceed 255 characters"),
-  is_active: z.string().default("true"),
+  is_active: z.string(), // Remove default to make it required
 });
 
 type OrganizationFormData = z.infer<typeof organizationSchema>;
@@ -48,7 +48,7 @@ export default function NewOrganizationPage() {
     toast.info("Form cleared");
   }, [form]);
 
-  const onSubmit = async (values: OrganizationFormData) => {
+  const onSubmit = async (values: any) => {
     try {
       // Prepare data for API
       const organizationData = {

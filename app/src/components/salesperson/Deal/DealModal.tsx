@@ -17,7 +17,7 @@ interface DealModalProps {
   onOpenChange: (open: boolean) => void;
   anchorRef?: React.RefObject<HTMLElement>;
   mode: "add" | "edit" | "payment";
-  dealId?: string;
+  dealId?: string | null;
   dealData?: any;
 }
 
@@ -33,6 +33,7 @@ const DealModal: React.FC<DealModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const dealFormRef = useRef<{ resetForm: () => void }>(null);
   const queryClient = useQueryClient();
+
 
   useEffect(() => {
     if (isOpen) {
@@ -173,7 +174,7 @@ const DealModal: React.FC<DealModalProps> = ({
     }
   };
 
-  const getModalWidth = () => {
+  const getModalWidth = (): "sm" | "md" | "lg" | "xl" | "full" => {
     if (mode === "payment") {
       return "xl";
     }
@@ -198,7 +199,7 @@ const DealModal: React.FC<DealModalProps> = ({
       >
         <div className="flex-1">
           <AddPayment
-            dealId={dealId}
+            dealId={dealId || undefined}
             dealData={dealData ? {
               deal_value: parseFloat(dealData.deal_value) || 0,
               currency: dealData.currency || 'USD',
@@ -226,7 +227,7 @@ const DealModal: React.FC<DealModalProps> = ({
           <DealForm
             ref={dealFormRef}
             mode={mode}
-            dealId={dealId}
+            dealId={dealId || undefined}
             onSave={handleSave}
             onCancel={handleCancel}
             isSubmitting={isSubmitting}

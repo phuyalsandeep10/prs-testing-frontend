@@ -38,8 +38,19 @@ export default function ManageAdminsPage() {
     try {
       const response = await apiClient.get<any>('/auth/users/', { role: 'Org Admin' });
 
-      const adminsData = Array.isArray(response) ? response : response?.results || [];
-      setAdmins(adminsData);
+      // Handle paginated response from DRF
+      if (response && response.data && response.data.results && Array.isArray(response.data.results)) {
+        setAdmins(response.data.results);
+      } else if (response && response.data && Array.isArray(response.data)) {
+        // Fallback for non-paginated response
+        setAdmins(response.data);
+      } else if (Array.isArray(response)) {
+        // Direct array response
+        setAdmins(response);
+      } else {
+        console.warn('Unexpected response format:', response);
+        setAdmins([]);
+      }
     } catch (error: any) {
       console.error('Error loading admins:', error);
       if (error instanceof ApiError) {
@@ -63,7 +74,7 @@ export default function ManageAdminsPage() {
     try {
       console.log(`Attempting to delete admin ${adminId}: ${adminName} (${adminEmail})`);
 
-      await apiClient.delete<void>(`/auth/users/${adminId}/`);
+      await apiClient.delete(`/auth/users/${adminId}/`);
 
       toast.success(`Admin "${adminName}" has been deleted successfully`);
       // Remove from local state

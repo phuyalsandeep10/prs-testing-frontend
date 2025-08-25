@@ -80,8 +80,22 @@ export function UserTable({
       ),
     },
     {
+      accessorKey: "role", 
+      header: "Role",
+      cell: ({ row }) => {
+        const role = row.getValue("role") as string;
+        return (
+          <div className="text-[14px] text-gray-700">
+            <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-50 text-blue-800">
+              {role.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+            </span>
+          </div>
+        );
+      },
+    },
+    {
       accessorKey: "assignedTeam",
-      header: "Assigned Team",
+      header: "Assigned Team", 
       cell: ({ row }) => (
         <div className="text-[14px] text-gray-700">
           {row.getValue("assignedTeam") || "Not Assigned"}

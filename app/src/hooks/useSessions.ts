@@ -13,14 +13,27 @@ export const useSessions = () => {
   return useQuery({
     queryKey: SESSIONS_QUERY_KEY,
     queryFn: async (): Promise<UserSession[]> => {
+      console.log('Sessions hook - Fetching sessions...'); // Debug log
       const response = await apiClient.getSessions();
+      console.log('Sessions hook - Raw API response:', response); // Debug log
 
       // The backend returns a paginated response, so we need to extract the 'results' array.
       // If the response is already an array, use it directly for backward compatibility.
-      if (Array.isArray(response.data)) {
-        return response.data;
+      let sessionsData = [];
+      
+      if (Array.isArray(response?.data)) {
+        sessionsData = response.data;
+      } else if (Array.isArray(response?.data?.results)) {
+        sessionsData = response.data.results;
+      } else if (Array.isArray(response)) {
+        sessionsData = response;
+      } else {
+        console.warn('Sessions - Unexpected response structure:', response);
+        sessionsData = [];
       }
-      return response.data?.results || [];
+      
+      console.log('Sessions hook - Final sessions data:', sessionsData); // Debug log
+      return sessionsData;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,

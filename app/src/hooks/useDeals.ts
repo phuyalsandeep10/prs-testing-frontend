@@ -26,30 +26,32 @@ export const useDealsQuery = (filters?: Record<string, any>) => {
     queryKey: dealQueryKeys.list(filters),
     queryFn: async () => {
       const allFilters = { ...filters };
-      // Don't add organization filter - backend handles this based on user authentication
-      // Use apiClient directly to get deals data
-      const response = await apiClient.get<any>('/deals/deals/', { params: allFilters });
+      // Use apiClient.get which returns ApiResponse<T>
+      const response = await apiClient.get<any>('/deals/deals/', allFilters);
+      
+      // response is now ApiResponse<any>, so we access response.data
+      const responseData = response.data;
       
       // Handle Django REST Framework pagination format
-      if (response.data && typeof response.data === 'object' && 'results' in response.data) {
+      if (responseData && typeof responseData === 'object' && 'results' in responseData) {
         // Paginated response from Django REST Framework
         return {
-          data: response.data.results || [],
+          data: responseData.results || [],
           pagination: {
-            page: response.data.page || 1,
-            limit: response.data.page_size || 25,
-            total: response.data.count || 0,
-            totalPages: Math.ceil((response.data.count || 0) / (response.data.page_size || 25)),
+            page: responseData.page || 1,
+            limit: responseData.page_size || 25,
+            total: responseData.count || 0,
+            totalPages: Math.ceil((responseData.count || 0) / (responseData.page_size || 25)),
           },
         };
-      } else if (Array.isArray(response.data)) {
+      } else if (Array.isArray(responseData)) {
         // Flat array response (fallback)
         return {
-          data: response.data || [],
+          data: responseData || [],
           pagination: {
             page: 1,
-            limit: response.data?.length || 0,
-            total: response.data?.length || 0,
+            limit: responseData?.length || 0,
+            total: responseData?.length || 0,
             totalPages: 1,
           },
         };
@@ -84,8 +86,8 @@ export const useDealQuery = (id: string, enabled = true) => {
   const query = useQuery<Deal, Error>({
     queryKey: dealQueryKeys.detail(id),
     queryFn: async () => {
-      const response = await dealApi.getById(id);
-      return response.data as Deal;
+      const response = await apiClient.get<Deal>(`/deals/deals/${id}/`);
+      return response.data;
     },
     enabled,
     staleTime: 2 * 60 * 1000,
@@ -115,7 +117,10 @@ export const useCreateDeal = () => {
   const { addRecentItem } = useApp();
 
   return useMutation<Deal, Error, CreateInput<Deal>>({
-    mutationFn: (data) => dealApi.create(data).then((res) => res.data as Deal),
+    mutationFn: async (data) => {
+      const response = await apiClient.post<Deal>('/deals/deals/', data);
+      return response.data;
+    },
     ...mutationCommonOptions,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: dealQueryKeys.all });
@@ -138,7 +143,10 @@ export const useUpdateDeal = () => {
   const { addNotification } = useUI();
 
   return useMutation<Deal, Error, UpdateInput<Deal>>({
-    mutationFn: (data) => dealApi.update(data).then((res) => res.data as Deal),
+    mutationFn: async (data) => {
+      const response = await apiClient.put<Deal>(`/deals/deals/${data.id}/`, data);
+      return response.data;
+    },
     ...mutationCommonOptions,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: dealQueryKeys.all });
@@ -156,7 +164,9 @@ export const useDeleteDeal = () => {
   const { addNotification } = useUI();
 
   return useMutation<void, Error, string>({
-    mutationFn: (id) => dealApi.delete(id).then(() => undefined),
+    mutationFn: async (id) => {
+      await apiClient.delete(`/deals/deals/${id}/`);
+    },
     ...mutationCommonOptions,
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: dealQueryKeys.all });

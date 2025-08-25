@@ -22,39 +22,47 @@ const VerificationComponent: React.FC<VerificationComponentProps> = ({
     {
       accessorKey: "ID",
       header: "ID",
-      cell: ({ row }) => (
-        <div className="truncate max-w-[80px]">{row.getValue("ID")}</div>
-      ),
+      cell: ({ row }) => {
+        const value = row.getValue("ID");
+        const displayValue = typeof value === 'object' ? JSON.stringify(value) : String(value || '');
+        return <div className="truncate max-w-[80px]">{displayValue}</div>;
+      },
     },
     {
       accessorKey: "client",
       header: "Client",
-      cell: ({ row }) => (
-        <div className="truncate max-w-[150px]">{row.getValue("client")}</div>
-      ),
+      cell: ({ row }) => {
+        const value = row.getValue("client");
+        const displayValue = typeof value === 'object' ? JSON.stringify(value) : String(value || '');
+        return <div className="truncate max-w-[150px]">{displayValue}</div>;
+      },
     },
     {
       accessorKey: "amount",
       header: "Amount",
-      cell: ({ row }) => (
-        <div className="truncate max-w-[100px]">{row.getValue("amount")}</div>
-      ),
+      cell: ({ row }) => {
+        const value = row.getValue("amount");
+        const displayValue = typeof value === 'object' ? JSON.stringify(value) : String(value || '');
+        return <div className="truncate max-w-[100px]">{displayValue}</div>;
+      },
     },
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => (
-        <div className="text-[#C86F04] truncate max-w-[100px]">
-          {row.getValue("status")}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const value = row.getValue("status");
+        const displayValue = typeof value === 'object' ? JSON.stringify(value) : String(value || '');
+        return <div className="text-[#C86F04] truncate max-w-[100px]">{displayValue}</div>;
+      },
     },
     {
       accessorKey: "actions",
       header: "Actions",
-      cell: ({ row }) => (
-        <div className="truncate max-w-[150px]">{row.getValue("actions")}</div>
-      ),
+      cell: ({ row }) => {
+        const value = row.getValue("actions");
+        const displayValue = typeof value === 'object' ? JSON.stringify(value) : String(value || '');
+        return <div className="truncate max-w-[150px]">{displayValue}</div>;
+      },
     },
   ], []);
 

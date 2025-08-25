@@ -63,8 +63,8 @@ const PersonalGoal: React.FC<PersonalGoalProps> = ({
       { sales_target: Number(goalAmount) },
       undefined,
       undefined,
-      (res: { message?: string }) => ({
-        message: res?.message ?? "Goal set successfully.",
+      (res: unknown) => ({
+        message: (res as any)?.message ?? "Goal set successfully.",
       })
     );
 

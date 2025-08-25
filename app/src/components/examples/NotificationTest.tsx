@@ -56,7 +56,7 @@ const NotificationTest: React.FC = () => {
             <div className="p-4 border rounded-lg">
               <h3 className="font-semibold mb-2">Total Notifications</h3>
               <p className="text-2xl font-bold text-gray-600">
-                {notifications?.length || 0}
+                {notifications?.results?.length || notifications?.count || 0}
               </p>
             </div>
           </div>

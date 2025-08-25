@@ -70,7 +70,7 @@ export default function AddNewClientForm({
         email: values.email,
         nationality: values.nationality,
         remarks: values.remarks || "",
-        phone_number: `${selectedCountryCode}-${values.phone_number.trim()}`,
+        phone_number: `${selectedCountryCode}${values.phone_number.trim()}`,
       };
       const newClient = await createClientMutation.mutateAsync(payload);
       toast.success("Client created successfully!");

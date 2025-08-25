@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth, useUI, useApp, usePermissions } from '@/stores';
-import { PaginatedResponse, CreateInput, UpdateInput } from '@/types';
-import { User } from '@/lib/types/roles';
+import { PaginatedResponse, CreateInput, UpdateInput, User } from '@/types';
 import { apiClient } from '@/lib/api-client';
 import { useCallback, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -9,6 +8,9 @@ import { hasPermission as hasRolePermission } from '@/lib/auth/permissions';
 import { redirectUserByRole } from '@/lib/utils/routing';
 import { toast } from 'sonner';
 // (no external ApiResponse type)
+
+// Import standardized types from API client
+import type { ApiResponse, PaginatedResponse as ApiPaginatedResponse } from '@/lib/api-client';
 
 // Types
 interface PaginatedApiResponse<T> {
@@ -111,53 +113,77 @@ export const queryKeys = {
   userCommission: (userId: string) => ['users', userId, 'commission'] as const,
 } as const;
 
-// Users Management
-export const useUsersQuery = (orgId: string, filters?: Record<string, any>) => {
-  const { user, isAuthInitialized } = useAuth();
+// Users Management  
+export const useUsersQuery = (filters?: Record<string, any>) => {
+  const { user, isAuthInitialized, isHydrated } = useAuth();
   const { addNotification } = useUI();
 
   const canManageUsers = user ? hasRolePermission(user.role, 'manage:users') : false;
+  
+  console.log('🔍 [useUsersQuery] Hook state:', {
+    isAuthInitialized,
+    isHydrated,
+    hasUser: !!user,
+    canManageUsers,
+    userRole: user?.role
+  });
 
-  const query = useQuery({
-    queryKey: [...queryKeys.users, orgId, filters],
+  const query = useQuery<PaginatedResponse<User>, Error>({
+    queryKey: [...queryKeys.users, filters],
     queryFn: async (): Promise<PaginatedResponse<User>> => {
-      // console.log('🔍 [USER_TABLE_DEBUG] Fetching users from API for orgId:', orgId);
+      console.log('🔍 [USER_TABLE_DEBUG] Fetching users from API (no org filter - like teams)');
+      console.log('🔍 [USER_TABLE_DEBUG] API filters:', filters);
       
       try {
-        const response = await apiClient.get<any>('/auth/users/', { ...filters, organization: orgId });
+        const response = await apiClient.get<User[]>('/auth/users/', filters);
+        
+        console.log('📡 [USER_TABLE_DEBUG] Raw API response:', response);
+        console.log('📡 [USER_TABLE_DEBUG] Response type:', typeof response);
+        console.log('📡 [USER_TABLE_DEBUG] Response keys:', Object.keys(response || {}));
+        
+        // Handle ApiResponse wrapper
+        const responseData = response.data as any;
         
         // Handle DRF pagination format
-        if (response.data && typeof response.data === 'object' && 'results' in response.data) {
+        if (responseData && typeof responseData === 'object' && 'results' in responseData) {
           // DRF paginated response
+          console.log('📄 [USER_TABLE_DEBUG] DRF paginated response - count:', responseData.count, 'results:', responseData.results?.length);
           const result = {
-            data: response.data.results || [],
+            data: responseData.results || [],
             pagination: {
               page: 1,
-              limit: response.data.results?.length || 0,
-              total: response.data.count || 0,
-              totalPages: Math.ceil((response.data.count || 0) / (response.data.results?.length || 1)),
+              limit: (responseData.results && Array.isArray(responseData.results)) ? responseData.results.length : 0,
+              total: responseData.count || 0,
+              totalPages: Math.ceil((responseData.count || 0) / ((responseData.results && Array.isArray(responseData.results)) ? responseData.results.length : 1)),
             },
           };
-          // console.log('✅ [USER_TABLE_DEBUG] API returned', result.data.length, 'users');
-          // console.log('👥 [USER_TABLE_DEBUG] Fetched user IDs:', result.data.map(u => u.id));
+          console.log('✅ [USER_TABLE_DEBUG] API returned', result.data.length, 'users');
+          console.log('✅ [USER_TABLE_DEBUG] Users details:', result.data.map((u: any) => ({
+            id: u.id,
+            email: u.email,
+            name: `${u.first_name} ${u.last_name}`,
+            role: u.role,
+            is_active: u.is_active,
+            organization: u.organization
+          })));
           return result;
-        } else if (Array.isArray(response.data)) {
+        } else if (Array.isArray(responseData)) {
           // Direct array response
+          console.log('📄 [USER_TABLE_DEBUG] Direct array response');
           const result = {
-            data: response.data,
+            data: responseData,
             pagination: {
               page: 1,
-              limit: response.data.length,
-              total: response.data.length,
+              limit: responseData.length,
+              total: responseData.length,
               totalPages: 1,
             },
           };
-          // console.log('✅ [USER_TABLE_DEBUG] API returned', result.data.length, 'users (direct array)');
-          // console.log('👥 [USER_TABLE_DEBUG] Fetched user IDs:', result.data.map(u => u.id));
+          console.log('✅ [USER_TABLE_DEBUG] API returned', result.data.length, 'users (direct array)');
           return result;
         } else {
           // Fallback for unexpected format
-          // console.warn('⚠️ [USER_TABLE_DEBUG] Unexpected response format:', response.data);
+          console.warn('⚠️ [USER_TABLE_DEBUG] Unexpected response format:', responseData);
           return {
             data: [],
             pagination: {
@@ -173,10 +199,12 @@ export const useUsersQuery = (orgId: string, filters?: Record<string, any>) => {
         throw error;
       }
     },
-    enabled: isAuthInitialized && hasRolePermission(user?.role, 'view_user'),
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: isAuthInitialized && isHydrated && !!user?.role && hasRolePermission(user.role, 'view_user'),
+    staleTime: 0, // Always consider data stale for fresh fetches
+    gcTime: 2 * 60 * 1000, // Keep in cache for 2 minutes  
     refetchOnWindowFocus: true,
-    refetchOnMount: true,
+    refetchOnMount: 'always', // Always refetch when component mounts
+    refetchInterval: false, // Disable automatic polling
     retry: (failureCount, error) => {
       return failureCount < 3; // Retry up to 3 times
     },
@@ -200,26 +228,21 @@ export const useCreateUserMutation = () => {
   const { addNotification } = useUI();
   const { addRecentItem } = useApp();
   
-  return useMutation({
+  return useMutation<User, Error, CreateInput<User>>({
     mutationFn: async (userData: CreateInput<User>): Promise<User> => {
       // console.log('🚀 [USER_TABLE_DEBUG] Creating user with data:', userData);
       const response = await apiClient.post<User>('/auth/users/', userData);
-      // Support both direct payloads and axios-like { data }
-      const payload = (response as any)?.data ?? response;
-      if (!payload) {
-        throw new Error('Invalid response data from server');
+      // Handle ApiResponse wrapper
+      if (response.data) {
+        return response.data;
       }
-      return payload as User;
+      throw new Error('Invalid response data from server');
     },
     onMutate: async (newUser) => {
-      const rawOrg = (newUser as any).organization;
-      if (!rawOrg && rawOrg !== 0) return;
-      const orgId = String(rawOrg);
-
-      // console.log('🔄 [USER_TABLE_DEBUG] Optimistic update for orgId:', orgId);
+      // console.log('🔄 [USER_TABLE_DEBUG] Optimistic update for user creation');
       
-      // Match the exact query key used by useUsersQuery (includes filters parameter)
-      const queryKey = [...queryKeys.users, orgId, undefined];
+      // Match the exact query key used by useUsersQuery (no orgId needed)
+      const queryKey = [...queryKeys.users, undefined];
 
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey });
@@ -268,9 +291,8 @@ export const useCreateUserMutation = () => {
       // console.log('❌ [USER_TABLE_DEBUG] User creation failed, rolling back optimistic update');
       
       // Rollback on error
-      const orgId = String((newUser as any).organization ?? '');
-      if (context?.previousUsers && orgId) {
-        queryClient.setQueryData([...queryKeys.users, orgId, undefined], context.previousUsers);
+      if (context && typeof context === 'object' && 'previousUsers' in context && context.previousUsers) {
+        queryClient.setQueryData([...queryKeys.users, undefined], context.previousUsers);
       }
       
       addNotification({
@@ -280,30 +302,23 @@ export const useCreateUserMutation = () => {
       });
     },
     onSuccess: (data, variables) => {
-      // console.log('👤 [USER_TABLE_DEBUG] Created user details:', data);
-      // console.log('🎉 [USER_TABLE_DEBUG] User creation succeeded! Starting cache invalidation...');
-      // console.log('🔑 [USER_TABLE_DEBUG] Query key to invalidate:', [...queryKeys.users, String((data as any).organization ?? ''), undefined]);
+      // Invalidate ALL user queries (broader approach, no org filtering)
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const queryKey = query.queryKey;
+          return Array.isArray(queryKey) && 
+                 queryKey[0] === 'users';
+        }
+      });
       
-      // Check current cache state before invalidation
-      const currentCache = queryClient.getQueryData([...queryKeys.users, String((data as any).organization ?? ''), undefined]);
-      // console.log('💾 [USER_TABLE_DEBUG] Current cache before invalidation:', currentCache);
-      
-      if(String((data as any).organization ?? '')) {
-        // Invalidate and refetch the exact query
-        queryClient.invalidateQueries({ 
-          queryKey: [...queryKeys.users, String((data as any).organization ?? ''), undefined],
-          exact: true 
-        });
-        
-        queryClient.refetchQueries({ 
-          queryKey: [...queryKeys.users, String((data as any).organization ?? ''), undefined],
-          exact: true 
-        });
-        
-        // console.log('🔄 [USER_TABLE_DEBUG] Cache invalidation and refetch triggered');
-        
-        // React Query will handle the cache updates automatically
-      }
+      // Force refetch for current user queries
+      queryClient.refetchQueries({ 
+        predicate: (query) => {
+          const queryKey = query.queryKey;
+          return Array.isArray(queryKey) && 
+                 queryKey[0] === 'users';
+        }
+      });
       
       toast.success('User created successfully', { description: `${data.first_name} ${data.last_name} has been added to the system.` });
       
@@ -312,7 +327,7 @@ export const useCreateUserMutation = () => {
         id: data.id,
         type: 'user',
         name: `${data.first_name} ${data.last_name}`,
-        url: `/org-admin/manage-users/${data.id}`,
+        url: `/org_admin/manage-users/${data.id}`,
       });
     },
     // Ensure no automatic retries of POST (prevents accidental duplicates)
@@ -324,11 +339,14 @@ export const useUpdateUserMutation = () => {
   const queryClient = useQueryClient();
   const { addNotification } = useUI();
   
-  return useMutation({
+  return useMutation<User, Error, UpdateInput<User>>({
     mutationFn: async (userData: UpdateInput<User>): Promise<User> => {
       const { id, ...data } = userData;
       const response = await apiClient.patch<User>(`/auth/users/${id}/`, data);
-      return ((response as any)?.data ?? response) as User;
+      if (response.data) {
+        return response.data;
+      }
+      throw new Error('Invalid response data from server');
     },
     onSuccess: (data, variables) => {
       addNotification({
@@ -336,9 +354,17 @@ export const useUpdateUserMutation = () => {
         title: 'User updated',
         message: `User ${data.name} has been successfully updated.`,
       });
-      // Invalidate the specific user and the user list
+      
+      // Invalidate user queries broadly to ensure table updates
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const queryKey = query.queryKey;
+          return Array.isArray(queryKey) && queryKey[0] === 'users';
+        }
+      });
+      
+      // Also invalidate specific user query
       queryClient.invalidateQueries({ queryKey: queryKeys.user(variables.id) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.users });
     },
     onError: (err: any, variables) => {
       addNotification({
@@ -354,16 +380,96 @@ export const useDeleteUserMutation = () => {
   const queryClient = useQueryClient();
   const { addNotification } = useUI();
   
-  return useMutation({
+  return useMutation<void, Error, string>({
     mutationFn: async (userId: string): Promise<void> => {
+      console.log('🗑️ [DELETE_USER_DEBUG] Deleting user:', userId);
       await apiClient.delete(`/auth/users/${userId}/`);
+      // Delete returns ApiResponse<void>, no need to extract data
+    },
+    onMutate: async (userId: string) => {
+      console.log('🔄 [DELETE_USER_DEBUG] Optimistic update - removing user:', userId);
+      
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ 
+        predicate: (query) => {
+          const queryKey = query.queryKey;
+          return Array.isArray(queryKey) && queryKey[0] === 'users';
+        }
+      });
+      
+      // Snapshot the previous values
+      const previousQueries = new Map();
+      queryClient.getQueriesData({ 
+        predicate: (query) => {
+          const queryKey = query.queryKey;
+          return Array.isArray(queryKey) && queryKey[0] === 'users';
+        }
+      }).forEach(([queryKey, data]) => {
+        previousQueries.set(JSON.stringify(queryKey), data);
+      });
+      
+      // Optimistically update all user queries to remove the deleted user
+      queryClient.setQueriesData({ 
+        predicate: (query) => {
+          const queryKey = query.queryKey;
+          return Array.isArray(queryKey) && queryKey[0] === 'users';
+        }
+      }, (oldData: any) => {
+        if (!oldData) return oldData;
+        
+        // Handle both direct array and paginated response formats
+        if (Array.isArray(oldData)) {
+          return oldData.filter((user: any) => user.id.toString() !== userId);
+        } else if (oldData.data && Array.isArray(oldData.data)) {
+          return {
+            ...oldData,
+            data: oldData.data.filter((user: any) => user.id.toString() !== userId),
+            pagination: {
+              ...oldData.pagination,
+              total: Math.max(0, oldData.pagination.total - 1)
+            }
+          };
+        }
+        
+        return oldData;
+      });
+      
+      return { previousQueries };
+    },
+    onError: (err, userId, context) => {
+      console.log('❌ [DELETE_USER_DEBUG] Delete failed, rolling back optimistic update');
+      
+      // Rollback optimistic updates
+      if (context && typeof context === 'object' && 'previousQueries' in context) {
+        const typedContext = context as { previousQueries: Map<string, any> };
+        typedContext.previousQueries.forEach((data: any, queryKeyStr: string) => {
+          const queryKey = JSON.parse(queryKeyStr);
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+      
+      toast.error('Error Deleting User', { description: err.message || `Failed to delete user (ID: ${userId}).` });
     },
     onSuccess: (data, userId) => {
+      console.log('✅ [DELETE_USER_DEBUG] User deleted successfully, invalidating cache');
+      
       toast.success('User Deleted', { description: `User (ID: ${userId}) has been successfully deleted.` });
-      queryClient.invalidateQueries({ queryKey: queryKeys.users });
-    },
-    onError: (err: any, userId) => {
-      toast.error('Error Deleting User', { description: err.message || `Failed to delete user (ID: ${userId}).` });
+      
+      // Force invalidate and refetch all user queries to ensure UI updates
+      queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const queryKey = query.queryKey;
+          return Array.isArray(queryKey) && queryKey[0] === 'users';
+        }
+      });
+      
+      // Force refetch to ensure fresh data
+      queryClient.refetchQueries({ 
+        predicate: (query) => {
+          const queryKey = query.queryKey;
+          return Array.isArray(queryKey) && queryKey[0] === 'users';
+        }
+      });
     },
   });
 };
@@ -392,22 +498,24 @@ export const useDealsQuery = (filters?: Record<string, any>) => {
   const simpleQueryKey = [...queryKeys.deals, 'simple'];
   console.log('🔍 [USE_DEALS_QUERY_DEBUG] Simple query key:', simpleQueryKey);
 
-  const query = useQuery({
+  const query = useQuery<PaginatedResponse<Deal>, Error>({
     queryKey: [...queryKeys.deals, stableFilters],
     queryFn: async (): Promise<PaginatedResponse<Deal>> => {
       console.log('🔍 [USE_DEALS_QUERY_DEBUG] Making API call with params:', stableFilters);
-      const response = await apiClient.get<Deal[]>('/deals/deals/', {
-        params: stableFilters,
-      });
+      const response = await apiClient.get<Deal[]>('/deals/deals/', stableFilters);
       console.log('🔍 [USE_DEALS_QUERY_DEBUG] API response:', response.data);
       console.log('🔍 [USE_DEALS_QUERY_DEBUG] API response length:', response.data?.length);
+      
+      // Handle ApiResponse wrapper
+      const responseData = response.data;
+      
       // Transform flat array response to paginated structure
       return {
-        data: response.data || [],
+        data: Array.isArray(responseData) ? responseData : [],
         pagination: {
           page: 1,
-          limit: response.data?.length || 0,
-          total: response.data?.length || 0,
+          limit: Array.isArray(responseData) ? responseData.length : 0,
+          total: Array.isArray(responseData) ? responseData.length : 0,
           totalPages: 1,
         },
       };
@@ -440,10 +548,13 @@ export const useCreateDealMutation = () => {
   const { addNotification } = useUI();
   const { addRecentItem } = useApp();
   
-  return useMutation({
+  return useMutation<Deal, Error, Partial<Deal>>({
     mutationFn: async (dealData: Partial<Deal>): Promise<Deal> => {
       const response = await apiClient.post<Deal>('/deals/deals/', dealData);
-      return response.data!;
+      if (response.data) {
+        return response.data;
+      }
+      throw new Error('Invalid response data from server');
     },
     onSuccess: (data) => {
       // Invalidate all deal-related queries to ensure all tables update
@@ -511,21 +622,42 @@ export const useCreateDealMutation = () => {
 };
 
 // Clients Management
-export const useClientsQuery = (orgId: string, filters?: Record<string, any>) => {
+export const useClientsQuery = (filters?: Record<string, any>) => {
   const { user, isAuthInitialized } = useAuth();
   const { addNotification } = useUI();
 
-  const hasPermission = user ? hasRolePermission(user.role, 'manage:clients') : false;
+  // Debug permission checking - no need for manual role normalization now
+  const manageClientsPermission = user ? hasRolePermission(user.role, 'manage:clients') : false;
+  const viewAllClientsPermission = user ? hasRolePermission(user.role, 'view_all_clients') : false;
+  const hasPermission = user ? manageClientsPermission || viewAllClientsPermission : false;
 
-  const query = useQuery({
-    queryKey: [...queryKeys.clients, orgId, filters],
+  console.log('🔍 [USE_CLIENTS_QUERY_DEBUG] ===== USE CLIENTS QUERY DEBUG =====');
+  console.log('🔍 [USE_CLIENTS_QUERY_DEBUG] filters:', filters);
+  console.log('🔍 [USE_CLIENTS_QUERY_DEBUG] isAuthInitialized:', isAuthInitialized);
+  console.log('🔍 [USE_CLIENTS_QUERY_DEBUG] user role:', user?.role);
+  console.log('🔍 [USE_CLIENTS_QUERY_DEBUG] manage:clients permission:', manageClientsPermission);
+  console.log('🔍 [USE_CLIENTS_QUERY_DEBUG] view_all_clients permission:', viewAllClientsPermission);
+  console.log('🔍 [USE_CLIENTS_QUERY_DEBUG] hasPermission:', hasPermission);
+  console.log('🔍 [USE_CLIENTS_QUERY_DEBUG] user:', user);
+  console.log('🔍 [USE_CLIENTS_QUERY_DEBUG] query enabled:', isAuthInitialized && !!user && hasPermission);
+  console.log('🔍 [USE_CLIENTS_QUERY_DEBUG] =====================================');
+
+  const query = useQuery<PaginatedResponse<Client>, Error>({
+    queryKey: [...queryKeys.clients, filters],
     queryFn: async (): Promise<PaginatedResponse<Client>> => {
+      console.log('🔍 [USE_CLIENTS_QUERY_DEBUG] Making API call with params:', filters);
       // The API can return either a paginated response or a direct array
-      const response = await apiClient.get<PaginatedApiResponse<Client> | Client[]>('/clients/', { ...filters, organization: orgId });
-      const payload = response.data; // Use the .data property
+      // No organization filter needed - backend handles it automatically
+      const response = await apiClient.get<PaginatedApiResponse<Client> | Client[]>('/clients/', filters);
+      const payload = response.data; // Use the .data property from ApiResponse
+      
+      console.log('🔍 [USE_CLIENTS_QUERY_DEBUG] API response:', payload);
+      console.log('🔍 [USE_CLIENTS_QUERY_DEBUG] API response type:', typeof payload);
+      console.log('🔍 [USE_CLIENTS_QUERY_DEBUG] Is array:', Array.isArray(payload));
       
       if (Array.isArray(payload)) {
         // Handle direct array response
+        console.log('✅ [USE_CLIENTS_QUERY_DEBUG] Direct array response with', payload.length, 'clients');
         return {
           data: payload,
           pagination: { page: 1, limit: payload.length, total: payload.length, totalPages: 1 },
@@ -534,6 +666,7 @@ export const useClientsQuery = (orgId: string, filters?: Record<string, any>) =>
       
       if (payload && 'results' in payload) {
         // Handle DRF paginated response
+        console.log('✅ [USE_CLIENTS_QUERY_DEBUG] DRF paginated response with', payload.results?.length, 'clients');
         return {
           data: payload.results,
           pagination: { 
@@ -546,14 +679,38 @@ export const useClientsQuery = (orgId: string, filters?: Record<string, any>) =>
       }
       
       // Fallback for empty or unexpected responses
+      console.log('⚠️ [USE_CLIENTS_QUERY_DEBUG] Fallback - empty response');
       return { data: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } };
     },
-    enabled: isAuthInitialized && hasPermission,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    enabled: isAuthInitialized && !!user && hasPermission, // Enable based on auth state and permissions, not org ID
+    staleTime: 0, // Always consider data stale for fresh fetches
+    gcTime: 2 * 60 * 1000, // Keep in cache for 2 minutes
+    refetchOnWindowFocus: true,
+    refetchOnMount: 'always', // Always refetch when component mounts
+    refetchInterval: false, // Disable automatic polling
+    retry: (failureCount, error) => {
+      return failureCount < 3; // Retry up to 3 times
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+  });
+
+  // Log query status
+  console.log('🔍 [USE_CLIENTS_QUERY_DEBUG] Query status:', {
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    isError: query.isError,
+    data: query.data,
+    error: query.error,
+    status: query.status,
+    fetchStatus: query.fetchStatus,
+    enabled: isAuthInitialized && !!user && hasPermission,
+    hasUser: !!user,
+    hasPermission
   });
 
   // Handle errors using React Query v5 pattern
   if (query.error) {
+    console.error('❌ [USE_CLIENTS_QUERY_DEBUG] Query error:', query.error);
     addNotification({
       type: 'error',
       title: 'Error loading clients',
@@ -569,10 +726,13 @@ export const useCreateClientMutation = () => {
   const { addNotification } = useUI();
   const { addRecentItem } = useApp();
   
-  return useMutation({
+  return useMutation<Client, Error, CreateInput<Client>>({
     mutationFn: async (clientData: CreateInput<Client>): Promise<Client> => {
       const response = await apiClient.post<Client>('/clients/', clientData);
-      return response.data!;
+      if (response.data) {
+        return response.data;
+      }
+      throw new Error('Invalid response data from server');
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.clients });
@@ -584,7 +744,7 @@ export const useCreateClientMutation = () => {
         id: data.id,
         type: 'client',
         name: data.client_name,
-        url: `/org-admin/manage-clients/${data.id}`,
+        url: `/org_admin/manage-clients/${data.id}`,
       });
     },
     onError: (err: any) => {
@@ -597,10 +757,13 @@ export const useUpdateClientMutation = () => {
   const queryClient = useQueryClient();
   const { addNotification } = useUI();
   
-  return useMutation({
+  return useMutation<Client, Error, { id: string; data: UpdateInput<Client> }>({
     mutationFn: async ({ id, data }: { id: string; data: UpdateInput<Client> }): Promise<Client> => {
       const response = await apiClient.patch<Client>(`/clients/${id}/`, data);
-      return response.data!;
+      if (response.data) {
+        return response.data;
+      }
+      throw new Error('Invalid response data from server');
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.clients });
@@ -618,9 +781,10 @@ export const useDeleteClientMutation = () => {
   const queryClient = useQueryClient();
   const { addNotification } = useUI();
   
-  return useMutation({
+  return useMutation<void, Error, string>({
     mutationFn: async (id: string): Promise<void> => {
-      await apiClient.delete<void>(`/clients/${id}/`);
+      await apiClient.delete(`/clients/${id}/`);
+      // Delete returns ApiResponse<void>, no need to extract data
     },
     onSuccess: (data, id) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.clients });
@@ -638,14 +802,14 @@ export const useTeamsQuery = (filters?: Record<string, any>) => {
   const { isAuthInitialized } = useAuth();
   const { addNotification } = useUI();
 
-  const query = useQuery({
+  const query = useQuery<PaginatedResponse<Team>, Error>({
     queryKey: [...queryKeys.teams, filters],
     // Always return a PaginatedResponse so consumers can rely on .data & .pagination
     queryFn: async (): Promise<PaginatedResponse<Team>> => {
       const response = await apiClient.get<any>('/team/teams/', filters);
 
-      // Axios stores payload under .data – fall back to raw for fetch-polyfills/mocks
-      const payload = response?.data ?? response;
+      // Handle ApiResponse wrapper
+      const payload = response.data;
 
       // DRF style paginated { results, count, ... }
       if (payload && typeof payload === 'object' && 'results' in payload) {
@@ -700,10 +864,15 @@ export const useCreateTeamMutation = () => {
   const { addNotification } = useUI();
   const { addRecentItem } = useApp();
   
-  return useMutation({
-    mutationFn: async (teamData: any) => {
-      const resp = await apiClient.post<any>('/team/teams/', teamData);
-      return resp.data;
+  return useMutation<Team, Error, any>({
+    mutationFn: async (teamData: any): Promise<Team> => {
+      console.log('🔍 [TEAM_CREATE_DEBUG] Sending team data:', teamData);
+      const resp = await apiClient.post<Team>('/team/teams/', teamData);
+      console.log('✅ [TEAM_CREATE_DEBUG] API response:', resp);
+      if (resp.data) {
+        return resp.data;
+      }
+      throw new Error('Invalid response data from server');
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.teams, type: 'all' });
@@ -715,7 +884,7 @@ export const useCreateTeamMutation = () => {
         id: data.id,
         type: 'team',
         name: data.name,
-        url: `/org-admin/manage-teams/${data.id}`,
+        url: `/org_admin/manage-teams/${data.id}`,
       });
     },
     onError: (err: any) => {
@@ -728,10 +897,15 @@ export const useUpdateTeamMutation = () => {
   const queryClient = useQueryClient();
   const { addNotification } = useUI();
   
-  return useMutation({
+  return useMutation<Team, Error, { id: string; data: UpdateInput<Team> }>({
     mutationFn: async ({ id, data }: { id: string; data: UpdateInput<Team> }): Promise<Team> => {
-      const response = await apiClient.patch<Team>(`/teams/${id}/`, data);
-      return response.data!;
+      console.log('🔍 [TEAM_UPDATE_DEBUG] Updating team:', id, 'with data:', data);
+      const response = await apiClient.patch<Team>(`/team/teams/${id}/`, data);
+      console.log('✅ [TEAM_UPDATE_DEBUG] API response:', response);
+      if (response.data) {
+        return response.data;
+      }
+      throw new Error('Invalid response data from server');
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.teams });
@@ -757,9 +931,10 @@ export const useDeleteTeamMutation = () => {
   const queryClient = useQueryClient();
   const { addNotification } = useUI();
   
-  return useMutation({
+  return useMutation<void, Error, string>({
     mutationFn: async (teamId: string): Promise<void> => {
       await apiClient.delete(`/team/teams/${teamId}/`);
+      // Delete returns ApiResponse<void>, no need to extract data
     },
     onSuccess: (data, teamId) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.teams });
@@ -786,22 +961,26 @@ export const useLoginMutation = () => {
   const { addNotification } = useUI();
   const router = useRouter();
   
-  return useMutation({
+  return useMutation<any, Error, { email: string; password: string }>({
     mutationFn: async (credentials: { email: string; password: string }) => {
       const response = await apiClient.post('/auth/login/', credentials);
-      return response.data!;
-    },
-    onSuccess: (rawData) => {
-      const data: any = rawData;
-      login(data.token, data.user);
+      console.log('🔍 Raw login response:', response);
       
-      toast.success('Login successful', { description: `Welcome back, ${data.user.first_name}!` });
+      // Handle different response structures
+      if (response?.data) {
+        return response.data;
+      } else if (response && typeof response === 'object') {
+        // Direct response object
+        return response;
+      }
       
-      // Use the centralized redirection logic
-      redirectUserByRole(data.user, router, addNotification);
+      console.error('❌ Invalid login response structure:', response);
+      throw new Error('Invalid response data from server');
     },
+    // Remove automatic success/error handling to let LoginForm handle it manually
     onError: (err: any) => {
-      toast.error('Login failed', { description: err.message || 'Invalid credentials' });
+      console.error('❌ Login mutation error:', err);
+      // Don't show toast here - let the LoginForm handle it
     },
   });
 };
@@ -878,7 +1057,7 @@ export const useTableStateSync = (tableId: string) => {
       page: 1,
       pageSize: 10,
       filters: {},
-      sortBy: null,
+      sortBy: undefined,
       sortOrder: 'asc' as const,
     };
     setTableState(tableId, newState);
@@ -941,16 +1120,16 @@ export const useOrgAdminCommissionQuery = () => {
   const { addNotification } = useUI();
 
   const query = useQuery({
-    queryKey: [...queryKeys.commission, 'org-admin'],
+    queryKey: [...queryKeys.commission, 'org_admin'],
     queryFn: async (): Promise<Commission[]> => {
-      const response = await apiClient.get<Commission[]>('commission/commissions/org-admin/');
+      const response = await apiClient.get<Commission[]>('commission/commissions/org_admin/');
       // Handle undefined response data
       if (!response || response.data === undefined || response.data === null) {
         return [];
       }
       return Array.isArray(response.data) ? response.data : [];
     },
-    enabled: isAuthInitialized && hasPermission('manage:deals') && user?.role === 'org-admin',
+    enabled: isAuthInitialized && hasPermission('manage:deals') && user?.role === 'org_admin',
     staleTime: 0, // No stale time - always refetch
   });
 
@@ -988,7 +1167,7 @@ export const useCreateCommissionMutation = () => {
         id: data.id.toString(),
         type: 'deal',
         name: `${data.fullName} Commission`,
-        url: `/org-admin/commission/${data.id}`,
+        url: `/org_admin/commission/${data.id}`,
       });
     },
     onError: (err: any) => {

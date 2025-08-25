@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { type Client } from "@/lib/types/roles";
 import Link from "next/link";
+import { useMemo } from "react";
 
 interface ClientKanbanViewProps {
   clients: Client[];
@@ -31,15 +32,17 @@ const statusConfig = {
 } as const;
 
 export function ClientKanbanView({ clients }: ClientKanbanViewProps) {
-  // Group clients by status
-  const clientsByStatus = clients.reduce((acc, client) => {
-    const status = client.payment_status || "pending"; // Default to pending if status is null
-    if (!acc[status]) {
-      acc[status] = [];
-    }
-    acc[status].push(client);
-    return acc;
-  }, {} as Record<"clear" | "pending" | "bad_debt", Client[]>);
+  // Group clients by status instead of category
+  const clientsByStatus = useMemo(() => {
+    return clients.reduce((acc, client) => {
+      const status = client.status || "pending"; // Default to pending if status is null
+      if (!acc[status]) {
+        acc[status] = [];
+      }
+      acc[status].push(client);
+      return acc;
+    }, {} as Record<"clear" | "pending" | "bad_debt", Client[]>);
+  }, [clients]);
 
   // Ensure all statuses are represented even if empty
   const statuses: ("clear" | "pending" | "bad_debt")[] = ["clear", "pending", "bad_debt"];

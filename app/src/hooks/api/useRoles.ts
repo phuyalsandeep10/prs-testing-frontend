@@ -69,21 +69,20 @@ export const useRoles = () => {
     queryFn: async (): Promise<Role[]> => {
       const response = await apiClient.get<RolesResponse | Role[]>('/permissions/roles/');
       
+      // Handle ApiResponse<T> structure
+      const responseData = response.data;
+      
       // Handle undefined/null response
-      if (!response || response.data === undefined || response.data === null) {
+      if (!responseData || responseData === undefined || responseData === null) {
         return [];
       }
       
       // Handle both paginated and direct array responses
-      if (Array.isArray(response.data)) {
-        return response.data;
+      if (Array.isArray(responseData)) {
+        return responseData;
       }
       
-      if (Array.isArray(response)) {
-        return response;
-      }
-      
-      return (response as RolesResponse).results || [];
+      return (responseData as RolesResponse).results || [];
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000,
@@ -98,24 +97,23 @@ export const useOrganizationRoles = (organizationId: string) => {
     queryKey: roleKeys.organizationRoles(organizationId),
     queryFn: async (): Promise<Role[]> => {
       const response = await apiClient.get<RolesResponse | Role[]>(
-        `/permissions/roles/?organization=${organizationId}`
+        '/permissions/roles/', { organization: organizationId }
       );
       
+      // Handle ApiResponse<T> structure
+      const responseData = response.data;
+      
       // Handle undefined/null response
-      if (!response || response.data === undefined || response.data === null) {
+      if (!responseData || responseData === undefined || responseData === null) {
         return [];
       }
       
       // Handle both paginated and direct array responses
-      if (Array.isArray(response.data)) {
-        return response.data;
+      if (Array.isArray(responseData)) {
+        return responseData;
       }
       
-      if (Array.isArray(response)) {
-        return response;
-      }
-      
-      return (response as RolesResponse).results || [];
+      return (responseData as RolesResponse).results || [];
     },
     enabled: !!organizationId,
     staleTime: 5 * 60 * 1000,
@@ -128,7 +126,10 @@ export const useOrganizationRoles = (organizationId: string) => {
 export const useRole = (roleId: string) => {
   return useQuery({
     queryKey: roleKeys.detail(roleId),
-    queryFn: () => apiClient.get<Role>(`/permissions/roles/${roleId}/`),
+    queryFn: async () => {
+      const response = await apiClient.get<Role>(`/permissions/roles/${roleId}/`);
+      return response.data;
+    },
     enabled: !!roleId,
     staleTime: 5 * 60 * 1000,
   });
@@ -143,12 +144,15 @@ export const usePermissions = () => {
     queryFn: async (): Promise<Permission[]> => {
       const response = await apiClient.get<Permission[]>('/permissions/all/');
       
+      // Handle ApiResponse<T> structure
+      const responseData = response.data;
+      
       // Handle undefined/null response
-      if (!response || response.data === undefined || response.data === null) {
+      if (!responseData || responseData === undefined || responseData === null) {
         return [];
       }
       
-      return Array.isArray(response.data) ? response.data : [];
+      return Array.isArray(responseData) ? responseData : [];
     },
     staleTime: 10 * 60 * 1000, // Permissions rarely change
   });
@@ -163,8 +167,10 @@ export const useCreateRole = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateRoleData) => 
-      apiClient.post<Role>('/permissions/roles/', data),
+    mutationFn: async (data: CreateRoleData) => {
+      const response = await apiClient.post<Role>('/permissions/roles/', data);
+      return response.data;
+    },
     
     onSuccess: (newRole) => {
       // Invalidate roles list
@@ -197,8 +203,10 @@ export const useUpdateRole = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, ...data }: UpdateRoleData) =>
-      apiClient.put<Role>(`/permissions/roles/${id}/`, data),
+    mutationFn: async ({ id, ...data }: UpdateRoleData) => {
+      const response = await apiClient.put<Role>(`/permissions/roles/${id}/`, data);
+      return response.data;
+    },
     
     onSuccess: (updatedRole, variables) => {
       // Update the specific role in cache
@@ -231,8 +239,9 @@ export const useDeleteRole = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (roleId: number) =>
-      apiClient.delete(`/permissions/roles/${roleId}/`),
+    mutationFn: async (roleId: number) => {
+      await apiClient.delete(`/permissions/roles/${roleId}/`);
+    },
     
     onSuccess: (_, roleId) => {
       // Remove from cache
@@ -257,18 +266,28 @@ export const useCreateAdmin = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateAdminData) => 
-      apiClient.post<any>('/auth/users/', data),
+    mutationFn: async (data: CreateAdminData) => {
+      const response = await apiClient.post<any>('/auth/users/', data);
+      return response.data;
+    },
     
     onSuccess: (newAdmin) => {
+      console.log('Admin created successfully, invalidating queries and dispatching event...');
+      
       // Invalidate users queries if they exist
       queryClient.invalidateQueries({ queryKey: ['users'] });
       
       // Dispatch custom event for compatibility with existing code
       if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('adminCreated', { 
-          detail: newAdmin 
-        }));
+        console.log('Dispatching adminCreated event with detail:', newAdmin);
+        
+        // Add a small delay to ensure dashboard is ready to receive events
+        setTimeout(() => {
+          console.log('Dispatching adminCreated event after delay...');
+          window.dispatchEvent(new CustomEvent('adminCreated', { 
+            detail: newAdmin 
+          }));
+        }, 100);
       }
     },
     
@@ -287,7 +306,10 @@ export const usePrefetchRole = () => {
   return (roleId: string) => {
     queryClient.prefetchQuery({
       queryKey: roleKeys.detail(roleId),
-      queryFn: () => apiClient.get<Role>(`/permissions/roles/${roleId}/`),
+      queryFn: async () => {
+        const response = await apiClient.get<Role>(`/permissions/roles/${roleId}/`);
+        return response.data;
+      },
       staleTime: 5 * 60 * 1000,
     });
   };

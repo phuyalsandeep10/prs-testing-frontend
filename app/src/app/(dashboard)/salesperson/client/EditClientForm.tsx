@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { NationalitySelector } from "@/components/ui/nationality-selector";
+import { SearchableCountrySelect } from "@/components/ui/searchable-country-select";
 import { type Client } from "@/lib/types/roles";
 import { useUpdateClient } from "@/hooks/api";
 
@@ -51,20 +52,16 @@ export default function EditClientForm({
   onClientUpdated,
 }: EditClientFormProps) {
   const [isLoading, setIsLoading] = React.useState(false);
+  const [selectedCountryCode, setSelectedCountryCode] = React.useState("+977");
+  const [phoneDigits, setPhoneDigits] = React.useState("");
   const updateClientMutation = useUpdateClient();
-
-  // Debug logging for client data
-  React.useEffect(() => {
-    console.log("EditClientForm - Client data received:", client);
-    console.log("EditClientForm - Phone number from client:", client.phone_number);
-  }, [client]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       client_name: client.client_name || "",
       email: client.email || "",
-      phone_number: client.phone_number || "",
+      phone_number: "",
       nationality: client.nationality || "",
       status:
         client.status &&
@@ -80,16 +77,45 @@ export default function EditClientForm({
     },
   });
 
+  // Initialize country code and phone number from client data
+  React.useEffect(() => {
+    console.log("EditClientForm - Initializing with client phone:", client.phone_number);
+    if (client.phone_number) {
+      // Extract last 10 digits as phone number, rest as country code
+      const phoneStr = client.phone_number.replace(/\D/g, ''); // Remove all non-digits
+      if (phoneStr.length >= 10) {
+        const digits = phoneStr.slice(-10); // Last 10 digits
+        const countryCode = '+' + phoneStr.slice(0, -10); // Everything before last 10 digits with +
+        console.log("EditClientForm - Separating phone:", { 
+          full: client.phone_number, 
+          phoneStr,
+          countryCode, 
+          digits,
+          beforeStateUpdate: { selectedCountryCode, phoneDigits }
+        });
+        setSelectedCountryCode(countryCode);
+        setPhoneDigits(digits);
+        form.setValue('phone_number', digits);
+        console.log("EditClientForm - After state update - country code:", countryCode, "digits:", digits);
+      } else {
+        // If less than 10 digits, treat entire string as digits
+        const digits = phoneStr || '';
+        console.log("EditClientForm - Less than 10 digits, using all as digits:", digits);
+        setPhoneDigits(digits);
+        form.setValue('phone_number', digits);
+      }
+    }
+  }, [client.phone_number, form]);
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);
     try {
-      const phoneRaw = values.phone_number.trim();
       const payload = {
         id: client.id,
         client_name: values.client_name,
         email: values.email,
         nationality: values.nationality,
-        phone_number: phoneRaw,
+        phone_number: `${selectedCountryCode}${phoneDigits}`,
         status: values.status,
         satisfaction: values.satisfaction,
         remarks: values.remarks || "",
@@ -210,102 +236,41 @@ export default function EditClientForm({
               <FormField
                 control={form.control}
                 name="phone_number"
-                render={({ field }) => {
-                  const [countryCode, setCountryCode] = React.useState('+977');
-                  const [phoneNumber, setPhoneNumber] = React.useState('');
-                  const [initialized, setInitialized] = React.useState(false);
-
-                  // Initialize from field value only once
-                  React.useEffect(() => {
-                    console.log("EditClientForm - Phone field initialization:", {
-                      initialized,
-                      fieldValue: field.value,
-                      clientPhoneNumber: client.phone_number
-                    });
-                    
-                    if (!initialized && field.value) {
-                      const match = field.value.match(/^(\+\d+)(.*)$/);
-                      if (match) {
-                        console.log("EditClientForm - Phone regex match found:", match);
-                        setCountryCode(match[1]);
-                        setPhoneNumber(match[2].replace(/\D/g, '') || '');
-                      } else {
-                        // If no country code found, try to extract just the number
-                        const numberOnly = field.value.replace(/\D/g, '');
-                        console.log("EditClientForm - No country code, extracted number:", numberOnly);
-                        if (numberOnly) {
-                          setPhoneNumber(numberOnly);
-                        }
-                      }
-                      setInitialized(true);
-                    } else if (!initialized) {
-                      // Initialize with default values
-                      console.log("EditClientForm - Initializing with defaults");
-                      setInitialized(true);
-                    }
-                  }, [field.value, initialized, client.phone_number]);
-
-                  const updateFormValue = (newCountryCode: string, newPhoneNumber: string) => {
-                    const fullValue = newPhoneNumber ? `${newCountryCode}${newPhoneNumber}` : '';
-                    field.onChange(fullValue);
-                  };
-
-                  const handleCountryChange = (newCountryCode: string) => {
-                    setCountryCode(newCountryCode);
-                    updateFormValue(newCountryCode, phoneNumber);
-                  };
-
-                  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-                    const newPhoneNumber = e.target.value.replace(/\D/g, '').slice(0, 15);
-                    setPhoneNumber(newPhoneNumber);
-                    updateFormValue(countryCode, newPhoneNumber);
-                  };
-
-                  return (
-                    <FormItem>
-                      <FormLabel className="text-[14px] font-medium text-[#4F46E5] mb-2 block">
-                        Contact Number
-                        <span className="text-red-500 ml-1">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <div className="flex">
-                          <Select 
-                            value={countryCode}
-                            disabled={isLoading}
-                            onValueChange={handleCountryChange}
-                          >
-                            <SelectTrigger className="w-[120px] h-[48px] rounded-r-none border-r-0 border-2 border-[#4F46E5]">
-                              <SelectValue placeholder="Country" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="+977">🇳🇵 +977</SelectItem>
-                              <SelectItem value="+91">🇮🇳 +91</SelectItem>
-                              <SelectItem value="+1">🇺🇸 +1</SelectItem>
-                              <SelectItem value="+44">🇬🇧 +44</SelectItem>
-                              <SelectItem value="+86">🇨🇳 +86</SelectItem>
-                              <SelectItem value="+61">🇦🇺 +61</SelectItem>
-                              <SelectItem value="+33">🇫🇷 +33</SelectItem>
-                              <SelectItem value="+49">🇩🇪 +49</SelectItem>
-                              <SelectItem value="+81">🇯🇵 +81</SelectItem>
-                              <SelectItem value="+82">🇰🇷 +82</SelectItem>
-                              <SelectItem value="+65">🇸🇬 +65</SelectItem>
-                              <SelectItem value="+971">🇦🇪 +971</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <Input
-                            type="tel"
-                            className="h-[48px] border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-[16px] rounded-l-none border-l-0"
-                            placeholder="9807057526"
-                            value={phoneNumber}
-                            disabled={isLoading}
-                            onChange={handlePhoneChange}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage className="text-[12px] text-red-500 mt-1" />
-                    </FormItem>
-                  );
-                }}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-[#4F46E5] mb-2 block">
+                      Contact Number
+                      <span className="text-red-500 ml-1">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <div className="flex">
+                        <SearchableCountrySelect
+                          value={selectedCountryCode}
+                          onChange={(newCountryCode) => {
+                            console.log("Country code changed to:", newCountryCode);
+                            setSelectedCountryCode(newCountryCode);
+                          }}
+                          disabled={isLoading}
+                          className="w-[150px]"
+                        />
+                        <Input
+                          type="tel"
+                          className="h-10 sm:h-[48px] border-2 border-[#4F46E5] focus:border-[#4F46E5] focus:ring-[#4F46E5] text-sm sm:text-[16px] rounded-l-none border-l-0 rounded-r-[6px]"
+                          placeholder="9807057526"
+                          value={phoneDigits}
+                          onChange={(e) => {
+                            const digits = e.target.value.replace(/\D/g, '').slice(0, 15);
+                            console.log("Phone digits changed to:", digits);
+                            setPhoneDigits(digits);
+                            field.onChange(digits);
+                          }}
+                          disabled={isLoading}
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage className="text-xs sm:text-[12px] text-red-500 mt-1" />
+                  </FormItem>
+                )}
               />
               <FormField
                 control={form.control}

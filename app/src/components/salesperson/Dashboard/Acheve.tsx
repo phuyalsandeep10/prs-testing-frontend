@@ -26,7 +26,7 @@ const Acheve = () => {
   // Memoize derived data to avoid recalculating on every render
   const { currentAmount, targetAmount, percentage } = useMemo(() => {
     // Try both field names for compatibility
-    const current = parseFloat(data?.sales_progress?.current_sales || data?.sales_progress?.achieved || "0") || 0;
+    const current = parseFloat(data?.sales_progress?.achieved || "0") || 0;
     const target = parseFloat(data?.sales_progress?.target || "1") || 1;
     const percent = (current / target) * 100;
     return {

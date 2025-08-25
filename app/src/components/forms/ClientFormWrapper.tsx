@@ -130,7 +130,7 @@ export function ClientFormWrapper({
   };
 
   const form = useForm<any>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(schema as any),
     defaultValues: getDefaultValues(),
   });
 

@@ -119,13 +119,12 @@ export default function Sidebar() {
     // Only use user role if authenticated
     if (user && isAuthenticated) {
       const role = user?.role;
-      if (role === 'super-admin') return superAdminNav;
-      if (role === 'org-admin') return orgAdminNav;
+      if (role === 'super_admin') return superAdminNav;
+      if (role === 'org_admin') return orgAdminNav;
       if (role === 'verifier') return verifierNav;
-      if (role === 'senior-verifier') return seniorverifierNav;
       if (role === 'salesperson') return salespersonNav;
       if (role === 'supervisor') return supervisorNav;
-      if (role === 'team-member') return teamMemberNav;
+      if (role === 'team_member') return teamMemberNav;
     }
     
     // If not authenticated, return empty navigation (redirect handled in useEffect)

@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation } from "@tanstack/react-query";
 import { DealSchema } from "../Deal/DealSchema";
+import { normalizeFieldError, renderErrorMessage } from "@/utils/form-helpers";
 
 type DealFormData = z.infer<typeof DealSchema>;
 
@@ -82,7 +83,7 @@ const DealForm = () => {
                   />
                   {errors.dealId && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.dealId.message}
+                      {renderErrorMessage(errors.dealId)}
                     </p>
                   )}
                 </div>
@@ -103,7 +104,7 @@ const DealForm = () => {
                   />
                   {errors.clientName && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.clientName.message}
+                      {renderErrorMessage(errors.clientName)}
                     </p>
                   )}
                 </div>
@@ -124,7 +125,7 @@ const DealForm = () => {
                   />
                   {errors.dealName && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.dealName.message}
+                      {renderErrorMessage(errors.dealName)}
                     </p>
                   )}
                 </div>
@@ -149,7 +150,7 @@ const DealForm = () => {
                   </select>
                   {errors.payStatus && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.payStatus.message}
+                      {renderErrorMessage(errors.payStatus)}
                     </p>
                   )}
                 </div>
@@ -170,7 +171,7 @@ const DealForm = () => {
                   />
                   {errors.sourceType && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.sourceType.message}
+                      {renderErrorMessage(errors.sourceType)}
                     </p>
                   )}
                 </div>
@@ -191,7 +192,7 @@ const DealForm = () => {
                   />
                   {errors.dealValue && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.dealValue.message}
+                      {renderErrorMessage(errors.dealValue)}
                     </p>
                   )}
                 </div>
@@ -214,7 +215,7 @@ const DealForm = () => {
                   />
                   {errors.dealDate && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.dealDate.message}
+                      {renderErrorMessage(errors.dealDate)}
                     </p>
                   )}
                 </div>
@@ -235,7 +236,7 @@ const DealForm = () => {
                   />
                   {errors.dueDate && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.dueDate.message}
+                      {renderErrorMessage(errors.dueDate)}
                     </p>
                   )}
                 </div>
@@ -280,7 +281,7 @@ const DealForm = () => {
                   </select>
                   {errors.payMethod && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.payMethod.message}
+                      {renderErrorMessage(errors.payMethod)}
                     </p>
                   )}
                 </div>
@@ -300,7 +301,7 @@ const DealForm = () => {
                   />
                   {errors.dealRemarks && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.dealRemarks.message}
+                      {renderErrorMessage(errors.dealRemarks)}
                     </p>
                   )}
                 </div>
@@ -335,7 +336,7 @@ const DealForm = () => {
                   />
                   {errors.paymentDate && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.paymentDate.message}
+                      {renderErrorMessage(errors.paymentDate)}
                     </p>
                   )}
                 </div>
@@ -356,7 +357,7 @@ const DealForm = () => {
                   />
                   {errors.receivedAmount && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.receivedAmount.message}
+                      {renderErrorMessage(errors.receivedAmount)}
                     </p>
                   )}
                 </div>
@@ -377,7 +378,7 @@ const DealForm = () => {
                   />
                   {errors.chequeNumber && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.chequeNumber.message}
+                      {renderErrorMessage(errors.chequeNumber)}
                     </p>
                   )}
                 </div>
@@ -449,7 +450,7 @@ const DealForm = () => {
                   />
                   {errors.paymentRemarks && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.paymentRemarks.message}
+                      {renderErrorMessage(errors.paymentRemarks)}
                     </p>
                   )}
                 </div>

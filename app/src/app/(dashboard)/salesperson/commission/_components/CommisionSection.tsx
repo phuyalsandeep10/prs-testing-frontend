@@ -1,9 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import CommissionArc from "@/components/salesperson/commission/CommissionArc";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCommissionData } from "@/hooks/api";
+import { useCommissionPeriod } from "./CommissionPeriodProvider";
+import { useCommissionDataContext } from "./CommissionDataProvider";
+import { normalizeCommissionResponse } from "../_utils/apiResponseNormalizer";
 
 interface CommissionData {
   achieved: number;
@@ -13,18 +15,38 @@ interface CommissionData {
   subtitle: string;
 }
 
+interface CommissionResponse {
+  organization_goal?: number;
+  company_goal_chart?: {
+    achieved_percentage?: number;
+    sales_growth_percentage?: number;
+    current_sales?: number;
+  };
+  period_summary?: {
+    period?: string;
+  };
+}
+
 const CommissionSection: React.FC = () => {
-  // Use standardized hook for commission data
-  const { data: commissionResponse, isLoading, error } = useCommissionData('monthly');
+  // Use shared data context for coordinated API calls
+  const { commissionData: commissionResponse, commissionLoading: isLoading, commissionError: error } = useCommissionDataContext();
   
-  // Transform the data to match the expected format using the correct backend structure
-  const data = commissionResponse ? {
-    achieved: commissionResponse.company_goal_chart?.achieved_percentage ?? 0,
-    total: commissionResponse.organization_goal ?? 1,
-    increaseLabel: `${commissionResponse.company_goal_chart?.sales_growth_percentage ?? 0}%`,
-    salesAmount: `$${commissionResponse.company_goal_chart?.current_sales ?? 0}`,
-    subtitle: commissionResponse.period_summary?.period ?? "Monthly",
-  } : null;
+  // Memoize data transformation to prevent unnecessary recalculations
+  const data = useMemo((): CommissionData | null => {
+    if (!commissionResponse) return null;
+
+    // Use normalizer for consistent data structure
+    const normalizedData = normalizeCommissionResponse(commissionResponse);
+    const { organization_goal, company_goal_chart, period_summary } = normalizedData;
+
+    return {
+      achieved: company_goal_chart.achieved_percentage,
+      total: organization_goal,
+      increaseLabel: `${company_goal_chart.sales_growth_percentage >= 0 ? '+' : ''}${company_goal_chart.sales_growth_percentage.toFixed(1)}%`,
+      salesAmount: `$${company_goal_chart.current_sales.toLocaleString()}`,
+      subtitle: period_summary.period,
+    };
+  }, [commissionResponse]);
 
   if (isLoading) {
     return (
@@ -46,9 +68,20 @@ const CommissionSection: React.FC = () => {
   if (error) {
     return (
       <div className="w-full h-[322px] flex items-center justify-center p-[10px]">
-        <p className="text-red-500 text-xs text-center">
-          Error: {error.message}
-        </p>
+        <div className="text-center space-y-2">
+          <div className="text-red-500 text-sm font-medium">
+            Unable to load commission data
+          </div>
+          <p className="text-gray-500 text-xs">
+            {error.message || 'Please try again later'}
+          </p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="text-blue-500 hover:text-blue-600 text-xs underline"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }

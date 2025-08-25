@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useMemo } from "react";
 import Card from "@/components/dashboard/verifier/dashboard/OverviewComponent";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useQuery } from "@tanstack/react-query";
+import { useVerifierDataContext } from "./VerifierDataProvider";
+import { normalizeOverviewResponse } from "../_utils/apiResponseNormalizers";
 
 type StatItem = {
   title: string;
@@ -11,84 +12,60 @@ type StatItem = {
   className: string;
 };
 
-const fetchStats = async (token: string): Promise<StatItem[]> => {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/verifier/dashboard/`,
-    {
-      headers: {
-        Authorization: `Token ${token}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
-
-  if (!res.ok) {
-    const err = await res.text();
-    console.error("Dashboard stats fetch error:", err);
-    return [];
-  }
-
-  const data = await res.json();
-
-  return [
-    {
-      title: "Total Payments",
-      number: data.total_payments?.toString() ?? "0",
-      className: "bg-[#010D58]",
-    },
-    {
-      title: "Payment Success",
-      number: data.total_successful_payments?.toString() ?? "0",
-      className: "bg-[#027545]",
-    },
-    {
-      title: "Payment Unsuccessful",
-      number: data.total_unsuccess_payments?.toString() ?? "0",
-      className: "bg-[#9D0E04]",
-    },
-    {
-      title: "Verification Pending",
-      number: data.total_verification_pending_payments?.toString() ?? "0",
-      className: "bg-[#BE6A04]",
-    },
-    {
-      title: "Total Revenue",
-      number: data.total_revenue ?? "0.00",
-      className: "bg-[#00008B]",
-    },
-    {
-      title: "Avg. Transactional Value",
-      number: (
-        Number(data.total_revenue || 0) / (data.total_payments || 1)
-      ).toFixed(2),
-      className: "bg-[#65026C]",
-    },
-    {
-      title: "Refunded Amount",
-      number: data.total_refunded_amount ?? "0.00",
-      className: "bg-[#8C4F05]",
-    },
-  ];
-};
-
 const Overview = () => {
-  const [token, setToken] = useState<string | null>(null);
+  const { overviewData, overviewLoading, overviewError } = useVerifierDataContext();
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const storedToken = localStorage.getItem("authToken");
-      setToken(storedToken);
-    }
-  }, []);
+  // Memoize data transformation to prevent unnecessary recalculations
+  const data = useMemo((): StatItem[] => {
+    if (!overviewData) return [];
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["verifier-overview", token],
-    queryFn: () => fetchStats(token!),
-    enabled: !!token,
-    refetchOnWindowFocus: false,
-  });
+    // Debug log to check data structure
+    console.log('Overview raw data:', overviewData);
 
-  if (isLoading || !data) {
+    // Use normalizer for consistent data structure
+    const normalizedData = normalizeOverviewResponse(overviewData);
+    console.log('Overview normalized data:', normalizedData);
+
+    return [
+      {
+        title: "Total Payments",
+        number: normalizedData.total_payments.toString(),
+        className: "bg-[#010D58]",
+      },
+      {
+        title: "Payment Success",
+        number: normalizedData.total_successful_payments.toString(),
+        className: "bg-[#027545]",
+      },
+      {
+        title: "Payment Unsuccessful",
+        number: normalizedData.total_unsuccess_payments.toString(),
+        className: "bg-[#9D0E04]",
+      },
+      {
+        title: "Verification Pending",
+        number: normalizedData.total_verification_pending_payments.toString(),
+        className: "bg-[#BE6A04]",
+      },
+      {
+        title: "Total Revenue",
+        number: normalizedData.total_revenue,
+        className: "bg-[#00008B]",
+      },
+      {
+        title: "Avg. Transactional Value",
+        number: normalizedData.average_transaction_value.toFixed(2),
+        className: "bg-[#65026C]",
+      },
+      {
+        title: "Refunded Amount",
+        number: normalizedData.total_refunded_amount,
+        className: "bg-[#8C4F05]",
+      },
+    ];
+  }, [overviewData]);
+
+  if (overviewLoading || data.length === 0) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
         {Array.from({ length: 7 }).map((_, i) => (
@@ -98,11 +75,19 @@ const Overview = () => {
     );
   }
 
-  if (isError) {
+  if (overviewError) {
     return (
-      <p className="text-sm text-red-500 text-center mt-4">
-        Failed to load overview stats.
-      </p>
+      <div className="text-center mt-4">
+        <p className="text-sm text-red-500 mb-2">
+          Failed to load overview stats.
+        </p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="text-blue-500 hover:text-blue-600 text-xs underline"
+        >
+          Retry
+        </button>
+      </div>
     );
   }
 

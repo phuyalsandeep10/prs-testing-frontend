@@ -21,7 +21,7 @@ export const ClientDetailCard = React.memo<ClientDetailCardProps>(({ client, onC
       pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-300', label: 'Pending', icon: '⏳' },
       bad_debt: { bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-300', label: 'Bad Debt', icon: '⚠️' }
     };
-    const config = status ? statusConfig[status] : statusConfig.pending;
+    const config = status && status in statusConfig ? statusConfig[status as keyof typeof statusConfig] : statusConfig.pending;
     return (
       <div className={cn('inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold border', config.bg, config.text, config.border)}>
         <span className="text-base">{config.icon}</span>

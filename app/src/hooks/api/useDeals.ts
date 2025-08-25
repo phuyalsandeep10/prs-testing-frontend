@@ -104,10 +104,11 @@ export const useDeals = (filters: DealFilters = {}) => {
       if (filters.page) params.append('page', filters.page.toString());
       if (filters.limit) params.append('limit', filters.limit.toString());
 
-      const response = await apiClient.get<DealsResponse>(`/deals/deals/?${params.toString()}`);
+      const response = await apiClient.get<DealsResponse>('/deals/deals/', Object.fromEntries(params));
       
       // Handle both paginated and direct array responses
-      return Array.isArray(response) ? response : response.results || [];
+      const responseData = response.data;
+      return Array.isArray(responseData) ? responseData : responseData.results || [];
     },
     staleTime: 3 * 60 * 1000, // 3 minutes
     gcTime: 8 * 60 * 1000, // Reduced for better memory management
@@ -122,7 +123,10 @@ export const useDeals = (filters: DealFilters = {}) => {
 export const useDeal = (dealId: string) => {
   return useQuery({
     queryKey: dealKeys.detail(dealId),
-    queryFn: () => apiClient.get<Deal>(`/deals/deals/${dealId}/`),
+    queryFn: async () => {
+      const response = await apiClient.get<Deal>(`/deals/deals/${dealId}/`);
+      return response.data;
+    },
     enabled: !!dealId,
     staleTime: 5 * 60 * 1000,
   });
@@ -135,8 +139,9 @@ export const useClientDeals = (clientId: string) => {
   return useQuery({
     queryKey: dealKeys.list(JSON.stringify({ client: clientId })),
     queryFn: async (): Promise<Deal[]> => {
-      const response = await apiClient.get<DealsResponse>(`/deals/deals/?client=${clientId}`);
-      return Array.isArray(response) ? response : response.results || [];
+      const response = await apiClient.get<DealsResponse>('/deals/deals/', { client: clientId });
+      const responseData = response.data;
+      return Array.isArray(responseData) ? responseData : responseData.results || [];
     },
     enabled: !!clientId,
     staleTime: 3 * 60 * 1000,
@@ -160,9 +165,10 @@ export const usePayments = (filters: PaymentFilters = {}) => {
       if (filters.page) params.append('page', filters.page.toString());
       if (filters.limit) params.append('limit', filters.limit.toString());
 
-      const response = await apiClient.get<PaymentsResponse>(`/deals/payments/?${params.toString()}`);
+      const response = await apiClient.get<PaymentsResponse>('/deals/payments/', Object.fromEntries(params));
       
-      return Array.isArray(response) ? response : response.results || [];
+      const responseData = response.data;
+      return Array.isArray(responseData) ? responseData : responseData.results || [];
     },
     staleTime: 2 * 60 * 1000, // 2 minutes for payment data
     gcTime: 10 * 60 * 1000,
@@ -177,7 +183,8 @@ export const useDealPayments = (dealId: string) => {
     queryKey: dealKeys.dealPayments(dealId),
     queryFn: async (): Promise<Payment[]> => {
       const response = await apiClient.get<PaymentsResponse>(`/deals/${dealId}/payments/`);
-      return Array.isArray(response) ? response : response.results || [];
+      const responseData = response.data;
+      return Array.isArray(responseData) ? responseData : responseData.results || [];
     },
     enabled: !!dealId,
     staleTime: 2 * 60 * 1000,
@@ -195,15 +202,16 @@ export const useDealExpanded = (dealId: string | null) => {
       
       try {
         const response = await apiClient.get<any>(`/deals/deals/${dealId}/expand/`);
+        const responseData = response.data;
         
         // Only log in development to prevent console spam
         if (process.env.NODE_ENV === 'development') {
-          console.log('🔍 [EXPANDED_API] Full API response:', response);
+          console.log('🔍 [EXPANDED_API] Full API response:', responseData);
         }
         
         // The response contains the DealExpandedViewSerializer data directly
         // which has a payment_history field with the payment array
-        const paymentHistory = response?.payment_history;
+        const paymentHistory = responseData?.payment_history;
         
         if (process.env.NODE_ENV === 'development') {
           console.log('🔍 [EXPANDED_API] Payment history:', paymentHistory);
@@ -238,8 +246,10 @@ export const useCreateDeal = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateDealData) => 
-      apiClient.post<Deal>('/deals/deals/', data),
+    mutationFn: async (data: CreateDealData) => {
+      const response = await apiClient.post<Deal>('/deals/deals/', data);
+      return response.data;
+    },
     
     onSuccess: (newDeal) => {
       // Invalidate all deal-related queries to ensure all tables update
@@ -305,8 +315,10 @@ export const useUpdateDeal = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, ...data }: UpdateDealData) =>
-      apiClient.put<Deal>(`/deals/deals/${id}/`, data),
+    mutationFn: async ({ id, ...data }: UpdateDealData) => {
+      const response = await apiClient.put<Deal>(`/deals/deals/${id}/`, data);
+      return response.data;
+    },
     
     onSuccess: (updatedDeal, variables) => {
       // Update the specific deal in cache
@@ -332,8 +344,9 @@ export const useDeleteDeal = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (dealId: string) =>
-      apiClient.delete(`/deals/deals/${dealId}/`),
+    mutationFn: async (dealId: string) => {
+      await apiClient.delete(`/deals/deals/${dealId}/`);
+    },
     
     onSuccess: (_, dealId) => {
       // Remove from cache
@@ -358,7 +371,7 @@ export const useAddPayment = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreatePaymentData) => {
+    mutationFn: async (data: CreatePaymentData) => {
       const formData = new FormData();
       
       // Append all the fields
@@ -370,7 +383,8 @@ export const useAddPayment = () => {
       if (data.remarks) formData.append('remarks', data.remarks);
       if (data.receipt_file) formData.append('receipt_file', data.receipt_file);
       
-      return apiClient.upload<Payment>('/deals/payments/', formData);
+      const response = await apiClient.upload<Payment>('/deals/payments/', formData);
+      return response.data;
     },
     
     onSuccess: (newPayment) => {
@@ -402,7 +416,7 @@ export const useUpdatePaymentStatus = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ 
+    mutationFn: async ({ 
       paymentId, 
       status,
       notes 
@@ -410,11 +424,13 @@ export const useUpdatePaymentStatus = () => {
       paymentId: string; 
       status: 'verified' | 'rejected';
       notes?: string;
-    }) =>
-      apiClient.patch<Payment>(`/deals/payments/${paymentId}/`, { 
+    }) => {
+      const response = await apiClient.patch<Payment>(`/deals/payments/${paymentId}/`, { 
         verification_status: status,
         verification_notes: notes 
-      }),
+      });
+      return response.data;
+    },
     
     onSuccess: (updatedPayment) => {
       // Update payment in cache

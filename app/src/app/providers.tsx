@@ -14,6 +14,7 @@ import { useRealtimeSync } from "@/lib/realtime";
 import { useBackgroundSync } from "@/lib/offline";
 import { usePerformanceMonitor } from "@/lib/monitoring";
 import { NotificationProvider } from "@/contexts/NotificationContext";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 
 // Phase 4B Day 2: Advanced Features Provider
 function AdvancedFeaturesProvider({ children, queryClient }: { children: ReactNode; queryClient: any }) {
@@ -103,11 +104,13 @@ export default function Providers({ children }: { children: ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <NotificationProvider>
-        <AdvancedFeaturesProvider queryClient={queryClient}>
-          {children}
-        </AdvancedFeaturesProvider>
-      </NotificationProvider>
+      <AuthProvider>
+        <NotificationProvider>
+          <AdvancedFeaturesProvider queryClient={queryClient}>
+            {children}
+          </AdvancedFeaturesProvider>
+        </NotificationProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

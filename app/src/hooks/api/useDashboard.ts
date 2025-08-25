@@ -113,6 +113,19 @@ interface PaymentVerificationData {
   verified_count: number;
   rejected_count: number;
   total_amount_pending: number;
+  // Add missing properties for component compatibility
+  verified: {
+    count: number;
+    total: number;
+  };
+  pending: {
+    count: number;
+    total: number;
+  };
+  rejected: {
+    count: number;
+    total: number;
+  };
 }
 
 interface VerifierOverviewData {
@@ -130,8 +143,10 @@ interface VerifierOverviewData {
 export const useDashboard = () => {
   return useQuery({
     queryKey: dashboardKeys.main(),
-    queryFn: (): Promise<DashboardResponse> => 
-      apiClient.get('/dashboard/'),
+    queryFn: async (): Promise<DashboardResponse> => {
+      const response = await apiClient.get<DashboardResponse>('/dashboard/');
+      return response.data;
+    },
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 5 * 60 * 1000,
   });
@@ -143,8 +158,10 @@ export const useDashboard = () => {
 export const useCommissionData = (period: string = 'monthly') => {
   return useQuery({
     queryKey: dashboardKeys.commission(period),
-    queryFn: (): Promise<CommissionData> => 
-      apiClient.get(`/dashboard/commission/?period=${period}&include_details=true`),
+    queryFn: async (): Promise<CommissionData> => {
+      const response = await apiClient.get<CommissionData>(`/dashboard/commission/?period=${period}&include_details=true`);
+      return response.data;
+    },
     staleTime: 3 * 60 * 1000,
   });
 };
@@ -155,8 +172,10 @@ export const useCommissionData = (period: string = 'monthly') => {
 export const useStandings = () => {
   return useQuery({
     queryKey: dashboardKeys.standings(),
-    queryFn: (): Promise<StandingsData> => 
-      apiClient.get('/dashboard/standings/'),
+    queryFn: async (): Promise<StandingsData> => {
+      const response = await apiClient.get<StandingsData>('/dashboard/standings/');
+      return response.data;
+    },
     staleTime: 5 * 60 * 1000,
   });
 };
@@ -167,8 +186,10 @@ export const useStandings = () => {
 export const useStreaks = () => {
   return useQuery({
     queryKey: dashboardKeys.streaks(),
-    queryFn: (): Promise<StreakData> => 
-      apiClient.get('/dashboard/streaks/'),
+    queryFn: async (): Promise<StreakData> => {
+      const response = await apiClient.get<StreakData>('/dashboard/streaks/');
+      return response.data;
+    },
     staleTime: 10 * 60 * 1000, // 10 minutes
   });
 };
@@ -179,8 +200,10 @@ export const useStreaks = () => {
 export const useChartData = (period: string = 'monthly') => {
   return useQuery({
     queryKey: dashboardKeys.chart(period),
-    queryFn: (): Promise<ChartData> => 
-      apiClient.get(`/dashboard/chart/?period=${period}`),
+    queryFn: async (): Promise<ChartData> => {
+      const response = await apiClient.get<ChartData>(`/dashboard/chart/?period=${period}`);
+      return response.data;
+    },
     staleTime: 5 * 60 * 1000,
   });
 };
@@ -191,7 +214,10 @@ export const useChartData = (period: string = 'monthly') => {
 export const useGoals = () => {
   return useQuery({
     queryKey: dashboardKeys.goals(),
-    queryFn: () => apiClient.get('/dashboard/goals/'),
+    queryFn: async () => {
+      const response = await apiClient.get('/dashboard/goals/');
+      return response.data;
+    },
     staleTime: 10 * 60 * 1000,
   });
 };
@@ -202,8 +228,10 @@ export const useGoals = () => {
 export const usePaymentVerificationStatus = () => {
   return useQuery({
     queryKey: dashboardKeys.paymentVerification(),
-    queryFn: (): Promise<PaymentVerificationData> => 
-      apiClient.get('/dashboard/payment-verification/'),
+    queryFn: async (): Promise<PaymentVerificationData> => {
+      const response = await apiClient.get<PaymentVerificationData>('/dashboard/payment-verification/');
+      return response.data;
+    },
     staleTime: 1 * 60 * 1000, // 1 minute for payment data
   });
 };
@@ -216,8 +244,10 @@ export const usePaymentVerificationStatus = () => {
 export const useVerifierOverview = () => {
   return useQuery({
     queryKey: dashboardKeys.verifier.overview(),
-    queryFn: (): Promise<VerifierOverviewData> => 
-      apiClient.get('/verifier/overview/'),
+    queryFn: async (): Promise<VerifierOverviewData> => {
+      const response = await apiClient.get<VerifierOverviewData>('/verifier/overview/');
+      return response.data;
+    },
     staleTime: 1 * 60 * 1000, // 1 minute
   });
 };
@@ -228,9 +258,10 @@ export const useVerifierOverview = () => {
 export const useVerifierPayments = (status?: 'pending' | 'verified' | 'rejected') => {
   return useQuery({
     queryKey: [...dashboardKeys.verifier.payments(), status],
-    queryFn: () => {
+    queryFn: async () => {
       const params = status ? `?status=${status}` : '';
-      return apiClient.get(`/verifier/payments/${params}`);
+      const response = await apiClient.get(`/verifier/payments/${params}`);
+      return response.data;
     },
     staleTime: 1 * 60 * 1000,
   });
@@ -242,7 +273,10 @@ export const useVerifierPayments = (status?: 'pending' | 'verified' | 'rejected'
 export const useVerifierRefunds = () => {
   return useQuery({
     queryKey: dashboardKeys.verifier.refunds(),
-    queryFn: () => apiClient.get('/verifier/refunds/'),
+    queryFn: async () => {
+      const response = await apiClient.get('/verifier/refunds/');
+      return response.data;
+    },
     staleTime: 2 * 60 * 1000,
   });
 };
@@ -253,7 +287,10 @@ export const useVerifierRefunds = () => {
 export const useVerifierAudits = () => {
   return useQuery({
     queryKey: dashboardKeys.verifier.audits(),
-    queryFn: () => apiClient.get('/verifier/audits/'),
+    queryFn: async () => {
+      const response = await apiClient.get('/verifier/audits/');
+      return response.data;
+    },
     staleTime: 5 * 60 * 1000,
   });
 };
@@ -264,7 +301,10 @@ export const useVerifierAudits = () => {
 export const usePaymentDistribution = () => {
   return useQuery({
     queryKey: [...dashboardKeys.verifier.overview(), 'distribution'],
-    queryFn: () => apiClient.get('/verifier/payment-distribution/'),
+    queryFn: async () => {
+      const response = await apiClient.get('/verifier/payment-distribution/');
+      return response.data;
+    },
     staleTime: 5 * 60 * 1000,
   });
 };
@@ -545,8 +585,8 @@ export const useOrgDashboard = () => {
       }
 
       try {
-        const response = await apiClient.get<OrgDashboardResponse>('/org-admin/dashboard/');
-        return response;
+        const response = await apiClient.get<OrgDashboardResponse>('/org_admin/dashboard/');
+        return response.data;
       } catch (error) {
         console.log('API failed, falling back to mock data for org admin dashboard');
         // Simulate API delay
@@ -572,8 +612,8 @@ export const useTeamPerformance = () => {
       }
 
       try {
-        const response = await apiClient.get<TeamMemberData[]>('/org-admin/team-performance/');
-        return response;
+        const response = await apiClient.get<TeamMemberData[]>('/org_admin/team-performance/');
+        return response.data;
       } catch (error) {
         console.log('API failed, falling back to mock data for team performance');
         await new Promise(resolve => setTimeout(resolve, 300));
@@ -598,8 +638,8 @@ export const useDealPipeline = () => {
       }
 
       try {
-        const response = await apiClient.get<DealStageData[]>('/org-admin/deal-pipeline/');
-        return response;
+        const response = await apiClient.get<DealStageData[]>('/org_admin/deal-pipeline/');
+        return response.data;
       } catch (error) {
         console.log('API failed, falling back to mock data for deal pipeline');
         await new Promise(resolve => setTimeout(resolve, 300));
@@ -624,8 +664,8 @@ export const useOrgAnalytics = () => {
       }
 
       try {
-        const response = await apiClient.get<AnalyticsData>('/org-admin/analytics/');
-        return response;
+        const response = await apiClient.get<AnalyticsData>('/org_admin/analytics/');
+        return response.data;
       } catch (error) {
         console.log('API failed, falling back to mock data for analytics');
         await new Promise(resolve => setTimeout(resolve, 300));
@@ -650,8 +690,8 @@ export const useOrgActivities = () => {
       }
 
       try {
-        const response = await apiClient.get<ActivityData[]>('/org-admin/activities/');
-        return response;
+        const response = await apiClient.get<ActivityData[]>('/org_admin/activities/');
+        return response.data;
       } catch (error) {
         console.log('API failed, falling back to mock data for activities');
         await new Promise(resolve => setTimeout(resolve, 200));
@@ -686,8 +726,8 @@ export const useSystemStatus = () => {
           api_services: string;
           storage: string;
           last_backup: string;
-        }>('/org-admin/system-status/');
-        return response;
+        }>('/org_admin/system-status/');
+        return response.data;
       } catch (error) {
         console.log('API failed, falling back to mock data for system status');
         await new Promise(resolve => setTimeout(resolve, 100));

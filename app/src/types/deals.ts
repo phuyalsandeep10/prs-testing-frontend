@@ -63,6 +63,10 @@ export interface Deal {
   // Aliases provided by backend serializer
   client_name: string;
   pay_status: 'initial payment' | 'partial_payment' | 'full_payment';
+  
+  // Calculated fields from backend
+  total_paid?: number;
+  remaining_balance?: number;
 }
 
 export interface Client {

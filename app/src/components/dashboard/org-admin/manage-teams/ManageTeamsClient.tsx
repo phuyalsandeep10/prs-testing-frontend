@@ -9,12 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { TeamsTable } from './TeamsTable';
 import { PermissionGate } from '@/components/common/PermissionGate';
 import {
-  useTeamsQuery,
-  useCreateTeamMutation,
-  useUpdateTeamMutation,
-  useDeleteTeamMutation,
-  useTableStateSync,
-} from '@/hooks/useIntegratedQuery';
+  useTeams,
+  useCreateTeam,
+  useUpdateTeam,
+  useDeleteTeam,
+} from '@/hooks/api';
+import { useTableStateSync } from '@/hooks/useIntegratedQuery';
 import { useProjects } from '@/hooks/api';
 import { useAuth, useUI } from '@/stores';
 import { AddNewTeamForm } from './AddNewTeamForm';
@@ -22,20 +22,21 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 // ------------------- Types -------------------
 interface UiTeam {
-  id: string;
+  id: string | number;
   name: string;
-  team_lead: {
-    id: string;
-    full_name: string;
-    username: string;
+  team_lead?: {
+    id: string | number;
+    full_name?: string;
+    username?: string;
   } | null;
-  members: {
-    id: string;
-    full_name: string;
-  }[];
+  members?: Array<{
+    id: string | number;
+    full_name?: string;
+    username?: string;
+  }>;
   contact_number?: string;
-  projects?: { id: string; name: string }[];
-  created_at: string;
+  projects?: Array<{ id: string | number; name: string }>;
+  created_at?: string;
 }
 
 // Team data type matching TeamsTable component interface
@@ -67,26 +68,26 @@ export function ManageTeamsClient() {
     resetFilters,
   } = useTableStateSync('teams-table');
 
-  // Data query
+  // Data query - use new standardized hooks
   const {
-    data: teamsData,
+    data: teams = [],
     isLoading,
     error,
     refetch,
-  } = useTeamsQuery(tableState);
+  } = useTeams({
+    search: tableState.search,
+    page: tableState.page,
+    limit: tableState.pageSize,
+  });
 
   // Get projects for mapping
   const orgIdNum = user?.organizationId ? parseInt(user.organizationId, 10) : undefined;
   const { data: projects = [] } = useProjects(orgIdNum);
 
-  // Mutations
-  const createTeamMutation = useCreateTeamMutation();
-  const updateTeamMutation = useUpdateTeamMutation();
-  const deleteTeamMutation = useDeleteTeamMutation();
-
-
-
-  const teams: UiTeam[] = React.useMemo(() => (teamsData?.data ?? []) as any, [teamsData]);
+  // Mutations - use new standardized hooks
+  const createTeamMutation = useCreateTeam();
+  const updateTeamMutation = useUpdateTeam();
+  const deleteTeamMutation = useDeleteTeam();
 
   // Transform API data to match TeamsTable component interface
   const transformTeamsForTable = useCallback((teams: UiTeam[]): TransformedTeam[] => {
@@ -101,17 +102,17 @@ export function ManageTeamsClient() {
       console.log('Team projects raw:', team.projects);
       
       const transformedTeam = {
-        id: team.id.toString(),
-        teamName: team.name,
+        id: String(team.id),
+        teamName: team.name || "Unnamed Team",
         teamLead: team.team_lead 
           ? team.team_lead.full_name || team.team_lead.username || "Unknown Lead"
           : "No Lead",
         contactNumber: team.contact_number || "N/A",
         teamMembers:
           team.members?.map((m) => ({
-            id: m.id.toString(),
-            name: m.full_name || "Unknown Member",
-            avatar: `https://ui-avatars.com/api/?name=${m.full_name}&background=random`,
+            id: String(m.id),
+            name: m.full_name || m.username || "Unknown Member",
+            avatar: `https://ui-avatars.com/api/?name=${m.full_name || m.username || 'Unknown'}&background=random`,
           })) || [],
         assignedProjects:
           team.projects?.map((project) => project.name).join(", ") || "No projects",
@@ -136,10 +137,9 @@ export function ManageTeamsClient() {
 
   // Lightweight debug to verify data flow – remove or comment in production
   useEffect(() => {
-    console.log('[TEAMS_TABLE_DEBUG] raw teamsData ->', teamsData);
-    console.log('[TEAMS_TABLE_DEBUG] derived teams[] ->', teams);
+    console.log('[TEAMS_TABLE_DEBUG] teams[] ->', teams);
     console.log('[TEAMS_TABLE_DEBUG] transformed teams[] ->', transformedTeams);
-  }, [teamsData, teams, transformedTeams]);
+  }, [teams, transformedTeams]);
 
   // ------------------- Handlers -------------------
 
@@ -160,7 +160,7 @@ export function ManageTeamsClient() {
 
   const handleEditTeam = (team: TransformedTeam) => {
     // Find the original team data for editing
-    const originalTeam = teams.find(t => t.id === team.id);
+    const originalTeam = teams.find(t => t.id === parseInt(team.id, 10));
     if (!originalTeam) return;
     
     openModal({
@@ -198,8 +198,8 @@ export function ManageTeamsClient() {
   }, [transformedTeams, tableState.search]);
 
   // Simple metrics
-  const totalTeams = teamsData?.pagination.total || 0;
-  const totalMembers = teams.reduce((acc, t) => acc + t.members.length, 0);
+  const totalTeams = teams.length;
+  const totalMembers = teams.reduce((acc, t) => acc + (t.members?.length || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -275,7 +275,7 @@ export function ManageTeamsClient() {
               pagination={{
                 page: tableState.page,
                 pageSize: tableState.pageSize,
-                total: teamsData?.pagination.total || 0,
+                total: totalTeams,
                 onPageChange: setPage,
               }}
             />

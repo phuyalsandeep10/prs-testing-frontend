@@ -1,80 +1,23 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useMemo } from "react";
 import AuditComponents from "@/components/dashboard/verifier/dashboard/AuditComponents";
 import { Skeleton } from "@/components/ui/skeleton";
-
-interface AuditLog {
-  action: string;
-  timestamp: string;
-  user: string;
-  details: string;
-}
-
-interface ParsedAudit {
-  timestamp: string;
-  verifier: string;
-  actions: string;
-  status: string;
-  txnid: string;
-}
-
-const fetchAuditData = async (token: string): Promise<ParsedAudit[]> => {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/verifier/dashboard/audit-logs/`,
-    {
-      headers: {
-        Authorization: `Token ${token}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
-
-  if (!res.ok) {
-    const error = await res.text();
-    console.error("Audit Logs Fetch Error:", error);
-    throw new Error("Failed to fetch audit logs");
-  }
-
-  const json = await res.json();
-  const results: AuditLog[] = json.results;
-
-  return results.map((log) => {
-    const invoiceMatch = log.details.match(/Invoice (\S+)/);
-    const txnid = invoiceMatch ? invoiceMatch[1] : "N/A";
-
-    let status = "Pending";
-    if (log.action === "Verified") status = "Success";
-    else if (log.action === "Rejected") status = "Failed";
-
-    return {
-      timestamp: new Date(log.timestamp).toLocaleString(),
-      verifier: log.user,
-      actions: log.action,
-      status,
-      txnid,
-    };
-  });
-};
+import { useVerifierDataContext } from "./VerifierDataProvider";
+import { normalizeAuditLogsResponse } from "../_utils/apiResponseNormalizers";
 
 const AuditSection = () => {
-  const [token, setToken] = useState<string | null>(null);
+  const { auditLogsData, auditLogsLoading, auditLogsError } = useVerifierDataContext();
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setToken(localStorage.getItem("authToken"));
-    }
-  }, []);
+  // Memoize data transformation to prevent unnecessary recalculations
+  const data = useMemo(() => {
+    if (!auditLogsData) return [];
 
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ["audit-logs", token],
-    queryFn: () => fetchAuditData(token!),
-    enabled: !!token,
-    refetchOnWindowFocus: false,
-  });
+    // Use normalizer for consistent data structure
+    return normalizeAuditLogsResponse({ results: auditLogsData }).slice(0, 6);
+  }, [auditLogsData]);
 
-  if (isLoading || !token || !data) {
+  if (auditLogsLoading || data.length === 0) {
     return (
       <div className="pt-3 rounded-[6px] w-fit">
         <div className="pl-4 py-1 mb-3">
@@ -98,22 +41,26 @@ const AuditSection = () => {
     );
   }
 
-  if (isError) {
+  if (auditLogsError) {
     return (
       <div className="border border-[#A9A9A9] pt-3 rounded-[6px] w-full">
-        <p className="text-sm text-red-500 p-4">Failed to load audit logs.</p>
+        <p className="text-sm text-red-500 p-4 mb-2">Failed to load audit logs.</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="text-blue-500 hover:text-blue-600 text-xs underline ml-4 mb-4"
+        >
+          Retry
+        </button>
       </div>
     );
   }
-
-  const limitedData = Array.isArray(data) ? data.slice(0, 6) : [];
 
   return (
     <div className="border border-[#A9A9A9] pt-3 rounded-[6px] w-full">
       <h1 className="text-[#465FFF] text-[20px] font-semibold mb-3 pl-4 py-1">
         Audit Logs
       </h1>
-      <AuditComponents data={limitedData} />
+      <AuditComponents data={data} />
     </div>
   );
 };

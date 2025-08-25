@@ -1,13 +1,29 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import styles from './Notification.module.css';
 import { useNotifications, useUnreadCount, useMarkAsRead, useMarkAllAsRead } from "@/hooks/useNotifications";
 import type { Notification as NotificationType } from "@/types";
 import { formatDistanceToNow, startOfDay, isSameDay, subDays } from "date-fns";
-import { Bell, Check, X, Loader2 } from "lucide-react";
+import { 
+  Bell, 
+  Check, 
+  X, 
+  Loader2, 
+  Search, 
+  Filter, 
+  MoreHorizontal, 
+  Trash2, 
+  Clock,
+  Zap,
+  Star,
+  AlertTriangle,
+  Activity,
+  Settings
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 
 import { cn } from "@/lib/utils";
 import {
@@ -22,26 +38,24 @@ import {
 import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 
-// Custom DialogContent without built-in close button for notifications
-const NotificationContent = React.forwardRef<
+// Revolutionary Notification Content Component
+const RevolutionaryContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
 >(({ className, children, ...props }, ref) => (
   <DialogPortal>
-    <DialogOverlay />
+    <DialogOverlay className="bg-slate-900/20 backdrop-blur-sm" />
     <DialogPrimitive.Content
       ref={ref}
-      className={cn(
-        "fixed z-[10000] grid w-full gap-4 border bg-background shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
-        className
-      )}
+      className={cn(styles.notificationContent, className)}
       {...props}
     >
+      <div className={styles.matrixBackground} />
       {children}
     </DialogPrimitive.Content>
   </DialogPortal>
 ));
-NotificationContent.displayName = "NotificationContent";
+RevolutionaryContent.displayName = "RevolutionaryContent";
 
 // Utility: group notifications by relative date labels
 const groupByDate = (items: NotificationType[]): Record<string, NotificationType[]> => {
@@ -64,14 +78,13 @@ interface NotificationProps {
   anchorRef?: React.RefObject<HTMLElement>;
 }
 
-// Define notification category type based on backend
 export type NotificationCategory = 'all' | 'messages' | 'tasks' | 'alerts' | string;
 
-// Tab type with category support
 interface Tab {
   value: NotificationCategory;
   label: string;
   count: number;
+  icon: React.ReactNode;
 }
 
 const NotificationComponent: React.FC<NotificationProps> = ({
@@ -81,10 +94,11 @@ const NotificationComponent: React.FC<NotificationProps> = ({
 }) => {
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [position, setPosition] = useState({ top: 0, right: 0 });
-  // Tabs (All, Messages, Tasks, Alerts)
   const [activeTab, setActiveTab] = useState<NotificationCategory>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedNotifications, setSelectedNotifications] = useState<Set<string>>(new Set());
+  const [showBulkActions, setShowBulkActions] = useState(false);
 
-  
   const { data: notificationsData, isLoading } = useNotifications({
     unread_only: filter === 'unread',
     limit: 20
@@ -99,7 +113,7 @@ const NotificationComponent: React.FC<NotificationProps> = ({
     if (isOpen && anchorRef?.current) {
       const rect = anchorRef.current.getBoundingClientRect();
       setPosition({
-        top: rect.bottom + 4, // 4px gap below the bell icon
+        top: rect.bottom + 8,
         right: window.innerWidth - rect.right,
       });
     }
@@ -114,67 +128,77 @@ const NotificationComponent: React.FC<NotificationProps> = ({
   };
 
   const handleNotificationClick = (notification: NotificationType) => {
-    // Mark as read when clicked
     if (!notification.isRead) {
       handleMarkAsRead(notification.id);
     }
     
-    // Navigate to action URL if available
     if (notification.actionUrl) {
       window.location.href = notification.actionUrl;
     }
   };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'urgent': return 'bg-red-500';
-      case 'high': return 'bg-orange-500';
-      case 'medium': return 'bg-blue-500';
-      case 'low': return 'bg-gray-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
-  const getTypeIcon = (type: string) => {
+  const getHolographicIcon = (type: string) => {
     switch (type) {
-      case 'deal_created': return '📋';
-      case 'deal_updated': return '📤';
-      case 'deal_status_changed': return '✅';
+      case 'deal_created': return '🚀';
+      case 'deal_updated': return '📈';
+      case 'deal_status_changed': return '⭐';
       case 'client_created': return '👤';
-      case 'user_created': return '👤';
+      case 'user_created': return '🆕';
       case 'team_created': return '👥';
-      case 'payment_received': return '💰';
-      case 'commission_created': return '💸';
-      case 'system_alert': return '🔧';
+      case 'payment_received': return '💎';
+      case 'commission_created': return '💰';
+      case 'system_alert': return '⚡';
       case 'new_organization': return '🏢';
-      default: return '��';
+      case 'test_notification': return '🧪';
+      default: return '🔔';
     }
   };
 
   // Handle paginated response robustly
-  let notifications: NotificationType[] = [];
+  let allNotifications: NotificationType[] = [];
   if (notificationsData) {
     if (Array.isArray(notificationsData)) {
-      notifications = notificationsData;
+      allNotifications = notificationsData;
     } else if (
       typeof notificationsData === 'object' &&
       notificationsData !== null &&
       'results' in notificationsData &&
       Array.isArray((notificationsData as { results: unknown }).results)
     ) {
-      notifications = (notificationsData as { results: NotificationType[] }).results;
+      allNotifications = (notificationsData as { results: NotificationType[] }).results;
     } else if (
       typeof notificationsData === 'object' &&
       notificationsData !== null &&
       'data' in notificationsData &&
       Array.isArray((notificationsData as { data: unknown }).data)
     ) {
-      notifications = (notificationsData as { data: NotificationType[] }).data;
+      allNotifications = (notificationsData as { data: NotificationType[] }).data;
     }
   }
-  // notifications now always an array
 
-  const categories = notifications.reduce<Record<string, { label: string; count: number }>>((acc, n) => {
+  // Filter notifications based on search query and active tab
+  const notifications = useMemo(() => {
+    let filtered = allNotifications;
+    
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(n => 
+        n.title.toLowerCase().includes(query) ||
+        n.message.toLowerCase().includes(query) ||
+        n.notificationType.toLowerCase().includes(query)
+      );
+    }
+    
+    // Filter by active tab
+    if (activeTab !== 'all') {
+      filtered = filtered.filter(n => n.category === activeTab);
+    }
+    
+    return filtered;
+  }, [allNotifications, searchQuery, activeTab]);
+
+  const categories = allNotifications.reduce<Record<string, { label: string; count: number }>>((acc, n) => {
     if (!acc[n.category]) {
       acc[n.category] = { count: 0, label: n.category.charAt(0).toUpperCase() + n.category.slice(1) };
     }
@@ -184,152 +208,268 @@ const NotificationComponent: React.FC<NotificationProps> = ({
     return acc;
   }, {});
 
+  const handleSelectNotification = (id: string, checked: boolean) => {
+    const newSelected = new Set(selectedNotifications);
+    if (checked) {
+      newSelected.add(id);
+    } else {
+      newSelected.delete(id);
+    }
+    setSelectedNotifications(newSelected);
+    setShowBulkActions(newSelected.size > 0);
+  };
+
+  const handleSelectAll = () => {
+    const unreadIds = notifications.filter(n => !n.isRead).map(n => n.id);
+    setSelectedNotifications(new Set(unreadIds));
+    setShowBulkActions(unreadIds.length > 0);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedNotifications(new Set());
+    setShowBulkActions(false);
+  };
+
+  const handleBulkMarkAsRead = () => {
+    selectedNotifications.forEach(id => {
+      const notification = notifications.find(n => n.id === id);
+      if (notification && !notification.isRead) {
+        markAsRead.mutate(id);
+      }
+    });
+    handleClearSelection();
+  };
+
   const tabs: Tab[] = [
-    { value: 'all', label: 'All', count: unreadCount ?? 0 },
-    ...Object.entries(categories).map(([category, data]) => ({
-      value: category as NotificationCategory,
-      label: data.label,
-      count: data.count
-    }))
+    { value: 'all', label: 'All', count: unreadCount ?? 0, icon: <Activity className="h-2.5 w-2.5" /> },
+    ...Object.entries(categories).map(([category, data]) => {
+      let icon = <Bell className="h-2.5 w-2.5" />;
+      if (category === 'business') icon = <Star className="h-2.5 w-2.5" />;
+      if (category === 'system') icon = <Settings className="h-2.5 w-2.5" />;
+      if (category === 'security') icon = <AlertTriangle className="h-2.5 w-2.5" />;
+      
+      return {
+        value: category as NotificationCategory,
+        label: data.label,
+        count: data.count,
+        icon
+      };
+    })
   ];
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <NotificationContent
-        className={`p-0 bg-white shadow-2xl w-[540px] max-w-[98vw] h-[700px] max-h-[95vh] rounded-2xl border border-gray-100 mx-auto mt-12 flex flex-col ${styles.notificationContent}`}
+      <RevolutionaryContent
+        className="w-[372px] max-w-[98vw] h-[468px] max-h-[95vh] rounded-2xl mx-auto mt-8 flex flex-col overflow-hidden"
         style={{
           '--top': `${position.top}px`,
           '--right': `${position.right}px`,
         } as React.CSSProperties}
         onInteractOutside={(e) => {
-          // Prevent closing when clicking on the bell icon
           if (anchorRef?.current?.contains(e.target as Node)) {
             e.preventDefault();
           }
         }}
       >
-        {/* Accessibility: DialogTitle for screen readers */}
         <DialogTitle asChild>
-          <VisuallyHidden>Notifications</VisuallyHidden>
+          <VisuallyHidden>Quantum Notifications</VisuallyHidden>
         </DialogTitle>
-        {/* Header */}
-        <div className="flex items-center justify-between px-8 pt-7 pb-3 border-b border-gray-100 w-full bg-white z-10">
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Notifications</h2>
-          <button
-            onClick={() => { window.location.href = '/notifications'; }}
-            className="text-xs font-semibold text-blue-600 hover:underline tracking-wide uppercase"
-          >
-            VIEW ALL
-          </button>
+
+        {/* Revolutionary Header */}
+        <div className={cn(styles.modernHeader, "px-5 pt-5 pb-4 w-full z-20 sticky top-0")}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className={cn(styles.headerTitle, "text-lg font-black tracking-tight")}>
+              🔔 Notifications
+            </h2>
+            
+            <div className="flex items-center gap-3">
+              {showBulkActions && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleBulkMarkAsRead}
+                    className={cn(styles.cyberpunkButton, "flex items-center gap-1")}
+                  >
+                    <Zap className="h-2 w-2" />
+                    Process ({selectedNotifications.size})
+                  </button>
+                  <button
+                    onClick={handleClearSelection}
+                    className={cn(styles.cyberpunkButton, "!border-red-500 !text-red-400")}
+                  >
+                    <X className="h-2 w-2" />
+                  </button>
+                </div>
+              )}
+              
+            </div>
+          </div>
+          
+          {/* Quantum Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-2.5 w-2.5 text-slate-400" />
+            <Input
+              type="text"
+              placeholder="Search notifications..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className={cn(styles.quantumSearch, "pl-8 h-8 text-xs font-medium")}
+            />
+          </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 px-8 pt-2 pb-2 border-b border-gray-100 select-none text-sm font-semibold w-full bg-white z-10 sticky top-0">
-          {tabs.map((tab: Tab) => (
-            <button
-              key={tab.value}
-              onClick={() => setActiveTab(tab.value)}
-              className={cn(
-                'relative px-2 py-1 rounded transition-colors duration-150',
-                activeTab === tab.value
-                  ? 'text-blue-700 font-bold border-b-2 border-blue-600 bg-transparent'
-                  : 'text-gray-600 hover:bg-gray-100'
-              )}
-              style={{ minWidth: 60, fontSize: '13px' }}
-            >
-              {tab.label}
-              {tab.count > 0 && (
-                <span className="ml-1 inline-flex items-center justify-center text-[11px] font-semibold bg-gray-200 text-blue-700 rounded px-1 min-w-[16px] h-[16px] align-middle">
-                  {tab.count}
-                </span>
-              )}
-            </button>
-          ))}
+        {/* Floating Tabs */}
+        <div className="px-5 pb-4 w-full z-10">
+          <div className={styles.floatingTabs}>
+            {tabs.map((tab: Tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setActiveTab(tab.value)}
+                className={cn(
+                  styles.floatingTab,
+                  activeTab === tab.value ? styles.active : ""
+                )}
+              >
+                <div className="flex items-center gap-2">
+                  {tab.icon}
+                  <span>{tab.label}</span>
+                  {tab.count > 0 && (
+                    <span className={styles.glowingBadge}>
+                      {tab.count}
+                    </span>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Notifications List */}
-        <div
-          className="flex-1 px-0 py-0 overflow-y-auto focus:outline-none bg-gray-50"
-          role="list"
-          aria-live="polite"
-        >
+        {/* Neural Network Content */}
+        <div className={cn(styles.neuralNetwork, "flex-1 overflow-y-auto mx-4 mb-4")}>
           {isLoading ? (
-            <div className="space-y-4 py-8 px-8">
+            <div className="space-y-3 p-4">
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="h-20 w-full rounded-xl bg-gray-200/60 animate-pulse"
+                  className={cn(styles.loadingOrb, "h-14 w-full")}
                 />
               ))}
             </div>
           ) : notifications.length === 0 ? (
-            <div className="py-24 text-center text-gray-400 flex flex-col items-center justify-center">
-              <Bell className="h-12 w-12 mx-auto mb-3 text-gray-200" />
-              <p className="text-lg font-semibold">No notifications</p>
+            <div className="py-16 text-center flex flex-col items-center justify-center">
+              <div className={cn(styles.holographicIcon, "w-12 h-12 flex items-center justify-center text-2xl mb-4")}>
+                🌌
+              </div>
+              <p className={cn(styles.emptyState, "text-sm font-bold mb-1")}>All Clear! ✨</p>
+              <p className={cn(styles.textMuted, "text-xs")}>You're all caught up with your notifications</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-2 px-8 py-4">
+            <div className="p-4 space-y-4">
               {Object.entries(groupByDate(notifications)).map(([label, items]) => (
-                <div key={label} className="mb-0 first:mt-0">
-                  <p className="text-xs font-bold text-gray-400 mb-2 px-1 select-none uppercase tracking-widest">{label}</p>
-                  <div className="flex flex-col gap-2">
-                    {items.map((notification) => (
+                <div key={label} className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent flex-1" />
+                    <h3 className={cn(styles.textMuted, "text-[10px] font-bold uppercase tracking-wider px-2")}>
+                      {label}
+                    </h3>
+                    <div className="h-px bg-gradient-to-r from-transparent via-slate-600 to-transparent flex-1" />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {items.map((notification, index) => (
                       <div
                         key={notification.id}
                         className={cn(
-                          "flex items-center gap-4 p-4 rounded-xl bg-white shadow-sm border border-gray-100 transition cursor-pointer hover:bg-blue-50 group",
-                          !notification.isRead ? "border-l-4 border-blue-600" : "border-l-4 border-transparent"
+                          styles.morphicCard,
+                          !notification.isRead ? styles.unreadCard : "",
+                          "flex items-center gap-3 p-3 cursor-pointer group"
                         )}
-                        onClick={() => handleNotificationClick(notification)}
-                        role="listitem"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            handleNotificationClick(notification);
-                          }
+                        style={{
+                          animationDelay: `${index * 100}ms`
                         }}
+                        onClick={() => handleNotificationClick(notification)}
                       >
-                        {/* Icon/avatar */}
-                        <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 text-blue-600 text-xl font-bold">
-                          {getTypeIcon(notification.notificationType)}
+                        {/* Bulk Selection Checkbox */}
+                        {showBulkActions && (
+                          <div className="flex-shrink-0">
+                            <input
+                              type="checkbox"
+                              checked={selectedNotifications.has(notification.id)}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                handleSelectNotification(notification.id, e.target.checked);
+                              }}
+                              className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
+                            />
+                          </div>
+                        )}
+                        
+                        {/* Holographic Icon */}
+                        <div className={cn(styles.holographicIcon, "flex-shrink-0 w-10 h-10 flex items-center justify-center text-sm")}>
+                          {getHolographicIcon(notification.notificationType)}
                         </div>
+                        
                         {/* Content */}
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="text-base font-semibold text-gray-900 truncate pr-4">
-                              {notification.title}
-                            </h4>
-                            {!notification.isRead && <span className="ml-2 px-2 py-0.5 text-xs font-bold bg-blue-50 text-blue-600 rounded-full">New</span>}
+                          <div className="flex items-start gap-2 mb-1">
+                            <div className={cn(
+                              styles.priorityOrb,
+                              styles[notification.priority || 'medium']
+                            )} />
+                            
+                            <div className="flex-1">
+                              <h4 className={cn(styles.textTitle, "text-sm font-bold mb-1 line-clamp-1")}>
+                                {notification.title}
+                              </h4>
+                              {!notification.isRead && (
+                                <span className={styles.glowingBadge}>
+                                  NEW
+                                </span>
+                              )}
+                            </div>
                           </div>
+                          
                           {notification.message && (
-                            <p className="text-sm text-gray-500 mb-1 line-clamp-2">
+                            <p className={cn(styles.textContent, "text-xs mb-2 line-clamp-2")}>
                               {notification.message}
                             </p>
                           )}
-                          <div className="flex items-center justify-between text-xs text-gray-400 mt-1">
-                            <span>
+                          
+                          <div className="flex items-center justify-between">
+                            <span className={cn(styles.textMuted, "text-[10px] flex items-center gap-1")}>
+                              <Clock className="h-2 w-2" />
                               {notification.createdAt
                                 ? formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })
                                 : "Unknown time"}
                             </span>
-                            <div className="flex gap-2">
+                            
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                               {!notification.isRead && (
                                 <button
                                   onClick={e => { e.stopPropagation(); handleMarkAsRead(notification.id); }}
-                                  className="text-blue-600 font-semibold hover:underline px-2 py-0.5 rounded transition"
+                                  className={styles.cyberpunkButton}
+                                  title="Mark as read"
                                 >
-                                  Mark as read
+                                  <Check className="h-2 w-2" />
                                 </button>
                               )}
+                              
                               {notification.actionUrl && (
                                 <button
-                                  onClick={e => { e.stopPropagation(); window.location.href = notification.actionUrl; }}
-                                  className="text-gray-500 hover:text-blue-600 hover:underline px-2 py-0.5 rounded transition"
+                                  onClick={e => { e.stopPropagation(); window.location.href = notification.actionUrl!; }}
+                                  className={styles.cyberpunkButton}
+                                  title="View details"
                                 >
-                                  View
+                                  <Zap className="h-2 w-2" />
                                 </button>
                               )}
+                              
+                              <button
+                                onClick={e => { e.stopPropagation(); }}
+                                className={styles.cyberpunkButton}
+                                title="Options"
+                              >
+                                <MoreHorizontal className="h-2 w-2" />
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -342,27 +482,51 @@ const NotificationComponent: React.FC<NotificationProps> = ({
           )}
         </div>
 
-        {/* Footer */}
-        <div className="py-4 px-8 border-t border-gray-100 flex items-center justify-between bg-white rounded-b-2xl gap-4">
-          <Button
-            onClick={handleMarkAllAsRead}
-            className="inline-flex items-center gap-1 text-blue-600 hover:underline text-base font-semibold bg-transparent p-0 shadow-none"
-            disabled={markAllAsRead.isPending}
-            variant="ghost"
-          >
-            {markAllAsRead.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Marking...
-              </>
-            ) : (
-              'Mark all as read'
+        {/* Holographic Footer */}
+        <div className={cn(styles.holoFooter, "py-3 px-5 flex items-center justify-between")}>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleMarkAllAsRead}
+              className={cn(styles.cyberpunkButton, "flex items-center gap-1")}
+              disabled={markAllAsRead.isPending || notifications.filter(n => !n.isRead).length === 0}
+            >
+              {markAllAsRead.isPending ? (
+                <>
+                  <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Star className="h-2.5 w-2.5" />
+                  Clear All
+                </>
+              )}
+            </button>
+            
+            {!showBulkActions && notifications.filter(n => !n.isRead).length > 0 && (
+              <button
+                onClick={handleSelectAll}
+                className={styles.cyberpunkButton}
+              >
+                <Activity className="h-2.5 w-2.5 mr-1" />
+                Select Unread
+              </button>
             )}
-          </Button>
-          {/* Load more button (if pagination is needed) */}
-          {/* <Button className="text-gray-500 bg-gray-100 hover:bg-gray-200 font-semibold px-4 py-2 rounded-lg" onClick={handleLoadMore}>Load more</Button> */}
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {searchQuery && (
+              <div className={cn(styles.textMuted, "text-[10px]")}>
+                {notifications.length} result{notifications.length !== 1 ? 's' : ''}
+              </div>
+            )}
+            
+            <div className={cn(styles.textAccent, "text-xs font-bold")}>
+              {unreadCount ? `${unreadCount} unread` : 'All caught up! ✨'}
+            </div>
+          </div>
         </div>
-      </NotificationContent>
+      </RevolutionaryContent>
     </Dialog>
   );
 };

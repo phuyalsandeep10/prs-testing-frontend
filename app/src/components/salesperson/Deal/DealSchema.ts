@@ -35,7 +35,10 @@ const RequiredPaymentSchema = z.object({
     .refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
       message: "Received Amount must be a positive number",
     }),
-  chequeNumber: z.string().min(1, { message: "Cheque Number is required" }),
+  chequeNumber: z.string()
+    .min(1, { message: "Cheque Number is required" })
+    .min(6, { message: "Cheque Number must be at least 6 characters" })
+    .max(20, { message: "Cheque Number must not exceed 20 characters" }),
   uploadReceipt: z
     .any()
     .refine((files) => files?.length > 0, {
@@ -57,7 +60,10 @@ const RequiredPaymentSchema = z.object({
 const OptionalPaymentSchema = z.object({
   paymentDate: z.string().optional(),
   receivedAmount: z.string().optional(),
-  chequeNumber: z.string().optional(),
+  chequeNumber: z.string()
+    .min(6, { message: "Cheque Number must be at least 6 characters" })
+    .max(20, { message: "Cheque Number must not exceed 20 characters" })
+    .optional(),
   uploadReceipt: z.any().optional(),
   paymentRemarks: z.string().optional(),
 });
@@ -65,14 +71,14 @@ const OptionalPaymentSchema = z.object({
 // Schema factory function
 export const createDealSchema = (isEditMode: boolean = false, originalDealValue?: number) => {
   const paymentSchema = isEditMode ? OptionalPaymentSchema : RequiredPaymentSchema;
-  let schema = BaseDealSchema.merge(paymentSchema);
+  let schema: any = BaseDealSchema.merge(paymentSchema);
   
   // Add cross-field validations only for add mode or when payment data is provided in edit mode
   if (!isEditMode) {
-    schema = schema.refine((data) => {
+    schema = schema.refine((data: any) => {
       // Cross-field validation: Payment amount vs Deal value based on Payment Status
       const dealValue = parseDecimal(data.dealValue);
-      const receivedAmount = parseDecimal(data.receivedAmount);
+      const receivedAmount = parseDecimal(data.receivedAmount || '0');
       
       if (data.payStatus === "Full Pay") {
         // For Full Pay, received amount must equal deal value (with small tolerance for floating point)
@@ -86,8 +92,9 @@ export const createDealSchema = (isEditMode: boolean = false, originalDealValue?
     }, {
       message: "For Full Pay, received amount must equal deal value. For Partial Pay, received amount must be less than deal value.",
       path: ["receivedAmount"], // Error will show on receivedAmount field
-    }).refine((data) => {
+    }).refine((data: any) => {
       // Validate payment date is not in the past (allow current and future dates)
+      if (!data.paymentDate) return true;
       const paymentDate = new Date(data.paymentDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0); // Start of today
@@ -96,7 +103,7 @@ export const createDealSchema = (isEditMode: boolean = false, originalDealValue?
     }, {
       message: "Payment date cannot be in the past",
       path: ["paymentDate"],
-    }).refine((data) => {
+    }).refine((data: any) => {
       // Validate deal date is not after due date
       const dealDate = new Date(data.dealDate);
       const dueDate = new Date(data.dueDate);
@@ -108,7 +115,7 @@ export const createDealSchema = (isEditMode: boolean = false, originalDealValue?
     });
   } else {
     // For edit mode, validate deal date vs due date
-    schema = schema.refine((data) => {
+    schema = schema.refine((data: any) => {
       // Validate deal date is not after due date
       const dealDate = new Date(data.dealDate);
       const dueDate = new Date(data.dueDate);
@@ -121,7 +128,7 @@ export const createDealSchema = (isEditMode: boolean = false, originalDealValue?
 
     // Add deal value decrease validation for edit mode if original value is provided
     if (originalDealValue !== undefined) {
-      schema = schema.refine((data) => {
+      schema = schema.refine((data: any) => {
         const newDealValue = parseDecimal(data.dealValue);
         return newDealValue >= originalDealValue;
       }, {

@@ -20,12 +20,17 @@ const PaymentVerificationModal: React.FC<PaymentVerificationModalProps> = ({
   onVerificationSuccess,
 }) => {
   const handleSave = (data: any) => {
-    // If this was a verification and we have a success callback, call it
-    if (mode === "verification" && data.success && onVerificationSuccess) {
-      onVerificationSuccess();
+    try {
+      // If this was a verification and we have a success callback, call it
+      if (mode === "verification" && data.success && onVerificationSuccess) {
+        onVerificationSuccess();
+      }
+      
+      onOpenChange(false);
+    } catch (error) {
+      console.error('Error in payment verification callback:', error);
+      // Don't close modal if there's an error, let user retry
     }
-    
-    onOpenChange(false);
   };
 
   const handleCancel = () => {

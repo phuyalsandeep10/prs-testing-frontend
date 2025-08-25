@@ -1,6 +1,7 @@
 "use client";
 
-import { UserRole, Permission, User } from '@/lib/types/roles';
+import { UserRole, User } from '@/types';
+import { Permission } from '@/lib/types/roles';
 import { 
   hasPermission as coreHasPermission, 
   canAccessRoute as coreCanAccessRoute,
@@ -121,19 +122,20 @@ export class PermissionService {
         // Clear existing cache for this user
         this.clearUserCache(user.id.toString());
         
-        // Fetch fresh permissions from server
-        const response = await apiClient.get(`/auth/permissions/${user.id}/`);
-        
-        if (response.permissions) {
-          // Pre-warm cache with server permissions
+        // Use local permissions from user object instead of API call
+        // The user object already contains the permissions array
+        if (user.permissions && user.permissions.length > 0) {
+          // Pre-warm cache with user permissions
           const userId = user.id.toString();
-          response.permissions.forEach((permission: Permission) => {
+          user.permissions.forEach((permission: Permission) => {
             const key = this.getCacheKey(userId, 'hasPermission', permission);
             this.permissionCache.set(key, true);
             this.cacheTimestamps.set(key, Date.now());
           });
           
-          console.log(`✅ Refreshed ${response.permissions.length} permissions for user ${user.id}`);
+          console.log(`✅ Refreshed ${user.permissions.length} permissions for user ${user.id} from local data`);
+        } else {
+          console.log(`ℹ️  No permissions found in user object for user ${user.id}`);
         }
         
         // Pre-warm route access cache
@@ -262,14 +264,14 @@ export class PermissionService {
    */
   async validatePermissionWithServer(user: User, permission: Permission): Promise<boolean> {
     try {
-      const response = await apiClient.post('/auth/validate-permission/', {
-        user_id: user.id,
-        permission,
-      });
+      // For now, use local permission validation since the server endpoint doesn't exist
+      // In the future, this could be enhanced to call a real server validation endpoint
+      console.log(`🔍 Validating permission ${permission} for user ${user.id} using local logic`);
       
-      return response.valid === true;
+      // Use local permission check as fallback
+      return coreHasPermission(user.role, permission);
     } catch (error) {
-      console.error('❌ Server permission validation failed:', error);
+      console.error('❌ Permission validation failed:', error);
       // Fall back to local check
       return coreHasPermission(user.role, permission);
     }

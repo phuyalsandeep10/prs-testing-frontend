@@ -8,6 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DealSchema } from "../../../salesperson/Deal/DealSchema";
 import { apiClient } from "@/lib/api-client";
 import { Client } from "@/types/deals";
+import { getErrorMessage, createSafeFieldError } from '@/utils/form-helpers';
 
 type DealFormData = z.infer<typeof DealSchema>;
 
@@ -49,17 +50,30 @@ const transformDataForApi = (data: DealFormData) => {
 };
 
 const fetchClients = async (): Promise<Client[]> => {
-  const response = await apiClient.get<Client[]>("/clients/");
-  return response.data || [];
+  const response = await apiClient.get<any>("/clients/");
+  // Handle different response structures
+  if (Array.isArray(response)) {
+    return response as Client[];
+  }
+  if (response && typeof response === 'object' && 'results' in response) {
+    return (response.results as Client[]) || [];
+  }
+  if (response && typeof response === 'object' && 'data' in response) {
+    const data = response.data;
+    if (Array.isArray(data)) return data as Client[];
+    if (data && typeof data === 'object' && 'results' in data) {
+      return (data.results as Client[]) || [];
+    }
+  }
+  return [];
 };
 
 const submitDealData = async (data: DealFormData) => {
   console.log('Raw form data:', data);
   const transformedData = transformDataForApi(data);
   console.log('Transformed data for API:', transformedData);
-  console.log('Transformed data for API:', transformedData);
   const response = await apiClient.post('/deals/deals/', transformedData);
-  return response.data;
+  return response;
 };
 
 const DealForm = () => {
@@ -180,7 +194,8 @@ const DealForm = () => {
                   </select>
                   {errors.clientName && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.clientName.message}
+
+                      {getErrorMessage(errors.clientName)}
                     </p>
                   )}
                 </div>
@@ -201,7 +216,7 @@ const DealForm = () => {
                   />
                   {errors.dealName && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.dealName.message}
+                      {getErrorMessage(errors.dealName)}
                     </p>
                   )}
                 </div>
@@ -226,7 +241,7 @@ const DealForm = () => {
                   </select>
                   {errors.payStatus && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.payStatus.message}
+                      {getErrorMessage(errors.payStatus)}
                     </p>
                   )}
                 </div>
@@ -247,7 +262,7 @@ const DealForm = () => {
                   />
                   {errors.sourceType && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.sourceType.message}
+                      {getErrorMessage(errors.sourceType)}
                     </p>
                   )}
                 </div>
@@ -268,7 +283,7 @@ const DealForm = () => {
                   />
                   {errors.dealValue && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.dealValue.message}
+                      {getErrorMessage(errors.dealValue)}
                     </p>
                   )}
                 </div>
@@ -289,7 +304,7 @@ const DealForm = () => {
                   </select>
                   {errors.payMethod && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.payMethod.message}
+                      {getErrorMessage(errors.payMethod)}
                     </p>
                   )}
                 </div>
@@ -312,7 +327,7 @@ const DealForm = () => {
                   />
                   {errors.dealDate && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.dealDate.message}
+                      {getErrorMessage(errors.dealDate)}
                     </p>
                   )}
                 </div>
@@ -333,7 +348,7 @@ const DealForm = () => {
                   />
                   {errors.dueDate && (
                     <p className="mt-1 text-sm text-red-600">
-                      {errors.dueDate.message}
+                      {getErrorMessage(errors.dueDate)}
                     </p>
                   )}
                 </div>

@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { useCommissionData } from "@/hooks/api";
 import RegularClientCard from "@/components/salesperson/commission/RegularClientCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCommissionDataContext } from "./CommissionDataProvider";
+import { normalizeCommissionResponse } from "../_utils/apiResponseNormalizer";
 
 interface ClientItem {
   name: string;
@@ -11,20 +12,21 @@ interface ClientItem {
 }
 
 export default function RegularClientSection() {
-  // Use standardized commission hook
+  // Use shared data context for coordinated API calls
   const {
-    data: commissionData,
-    isLoading,
-    error: isError,
-  } = useCommissionData('monthly'); // Get monthly commission data which includes all-time clients
+    commissionData,
+    commissionLoading: isLoading,
+    commissionError: isError,
+  } = useCommissionDataContext();
 
-  // Transform commission data to client items format
+  // Transform commission data to client items format using normalizer
   const clients: ClientItem[] = useMemo(() => {
-    if (!commissionData?.regular_clients_all_time) return [];
+    if (!commissionData) return [];
     
-    return commissionData.regular_clients_all_time.map((client: any) => ({
-      name: client.client_name || client.client__client_name || client.name,
-      investedPrice: `$ ${Number(client.total_value || client.value || 0).toLocaleString()}`,
+    const normalizedData = normalizeCommissionResponse(commissionData);
+    return normalizedData.regular_clients_all_time.map((client) => ({
+      name: client.client_name,
+      investedPrice: `$ ${client.total_value.toLocaleString()}`,
     }));
   }, [commissionData]);
 

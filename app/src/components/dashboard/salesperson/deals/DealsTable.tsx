@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo, useState, useCallback, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useDealsQuery } from "@/hooks/useDeals";
 import { ColumnDef, Row } from "@tanstack/react-table";
 import { format } from "date-fns";
 
@@ -26,31 +26,6 @@ import {
 } from "@/components/ui/table";
 import { useDealExpanded } from "@/hooks/api/useDeals";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
-
-interface ApiResponse {
-  count: number;
-  next: string | null;
-  previous: string | null;
-  results: Deal[];
-}
-
-// Fetch deals function
-const fetchDeals = async (searchTerm: string): Promise<Deal[]> => {
-  try {
-    // Add pagination parameters to get more deals and ensure we get the latest ones
-    const response = await apiClient.get<ApiResponse>("/deals/deals/", {
-      search: searchTerm,
-      page: 1,
-      limit: 25, // Use the actual limit that works
-      ordering: "-created_at", // Sort by creation date descending to get newest first
-    });
-    // The apiClient.get() method returns the data directly, not wrapped in a .data property
-    const dealsData = response.results;
-    return dealsData || []; // Return the data array from the response
-  } catch (error) {
-    throw error;
-  }
-};
 
 // Tooltip component for payment amounts
 interface PaymentTooltipProps {
@@ -128,12 +103,26 @@ const DealsTable: React.FC<DealsTableProps> = ({
   const router = useRouter();
   // const roleConfig = useRoleBasedColumns();
 
-  const { data, isLoading, isError, error, refetch } = useQuery<Deal[], Error>({
-    queryKey: ["deals", searchTerm],
-    queryFn: () => fetchDeals(searchTerm),
-    refetchOnWindowFocus: true, // Table always renders from cache, so optimistic updates are shown instantly
-    refetchOnMount: true,
-  });
+  // Use standardized React Query hook that properly handles cache invalidation
+  const { 
+    data: dealsResponse, 
+    isLoading, 
+    isError, 
+    error, 
+    refetch 
+  } = useDealsQuery({ 
+    search: searchTerm,
+    ordering: "-created_at" 
+  }) as { 
+    data: any; 
+    isLoading: boolean; 
+    isError: boolean; 
+    error: Error | null; 
+    refetch: () => void; 
+  };
+
+  // Extract deals data from the paginated response
+  const data = dealsResponse?.data || [];
 
   useEffect(() => {
     // Refetch data when component mounts or search term changes
@@ -155,7 +144,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
 
     const searchLower = searchTerm.toLowerCase();
     return data.filter(
-      (deal) =>
+      (deal: any) =>
         deal.deal_name.toLowerCase().includes(searchLower) ||
         deal.client_name.toLowerCase().includes(searchLower) ||
         deal.pay_status?.toLowerCase().includes(searchLower) ||
@@ -178,18 +167,34 @@ const DealsTable: React.FC<DealsTableProps> = ({
   const handleExpand = useCallback(
     (row: any) => {
       const dealId = row.original.deal_id;
+      console.log("🔍 [DASHBOARD_DEALS] handleExpand called for dealId:", dealId);
+      console.log("🔍 [DASHBOARD_DEALS] Current expandedRows:", expandedRows);
+      
       const newExpandedRows = { ...expandedRows };
       const isExpanded = !newExpandedRows[dealId];
-
+      
+      console.log("🔍 [DASHBOARD_DEALS] Setting expandedRows[", dealId, "] to:", isExpanded);
+      
       newExpandedRows[dealId] = isExpanded;
       setExpandedRows(newExpandedRows);
+      
+      console.log("🔍 [DASHBOARD_DEALS] New expandedRows:", newExpandedRows);
     },
     [expandedRows, setExpandedRows]
   );
 
   // Component for expanded row content using React Query
   const ExpandedRowContent = ({ dealId }: { dealId: string }) => {
+    console.log("🔍 [DASHBOARD_DEALS] ExpandedRowContent rendered for dealId:", dealId);
     const { data: nestedData, isLoading, error } = useDealExpanded(dealId);
+    
+    console.log("🔍 [DASHBOARD_DEALS] useDealExpanded result:", {
+      dealId,
+      isLoading,
+      error: error?.message,
+      dataLength: nestedData?.length || 0,
+      data: nestedData
+    });
 
     if (isLoading) {
       return (
@@ -300,7 +305,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
       {
         accessorKey: "deal_remarks",
         header: "Remarks",
-        cell: ({ row }) => (
+        cell: ({ row }: { row: any }) => (
           <div className="text-[12px] text-gray-700 max-w-xs truncate">
             {row.original.deal_remarks}
           </div>
@@ -309,7 +314,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
       {
         accessorKey: "deal_value",
         header: "Deal Value",
-        cell: ({ row }) => (
+        cell: ({ row }: { row: any }) => (
           <div className="text-[12px] font-medium text-gray-900">
             {formatCurrency(row.original.deal_value, row.original.currency || 'USD')}
           </div>
@@ -318,7 +323,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
       {
         accessorKey: "deal_date",
         header: "Deal Date",
-        cell: ({ row }) => {
+        cell: ({ row }: { row: any }) => {
           const dealDate = row.original.deal_date;
           if (!dealDate) {
             return <div className="text-[12px] text-gray-700">N/A</div>;
@@ -346,13 +351,13 @@ const DealsTable: React.FC<DealsTableProps> = ({
       {
         accessorKey: "payments_read",
         header: "Payment",
-        cell: ({ row }) => {
+        cell: ({ row }: { row: any }) => {
           const payments = row.original.payments_read;
           if (!payments || payments.length === 0) return "No Payments";
 
           return (
             <div className="inline-block">
-              {payments.map((p, index) => {
+              {payments.map((p: any, index: number) => {
                 const paymentNumber = index === 0 ? "First" : 
                                     index === 1 ? "Second" : 
                                     index === 2 ? "Third" : 
@@ -364,19 +369,21 @@ const DealsTable: React.FC<DealsTableProps> = ({
                   verified: "bg-green-500 text-white border-green-600",
                   pending: "bg-orange-400 text-white border-orange-500",
                   rejected: "bg-red-500 text-white border-red-600",
-                };
+                } as const;
 
                 // Format the payment amount - use verified amount if available, otherwise use received amount
                 const amountToShow = p.verified_amount || p.received_amount;
                 const currency = row.original.currency || 'USD';
                 const amount = formatCurrency(amountToShow, currency);
 
+                // Safely access status with type checking
+                const status = p.status as keyof typeof badgeClass;
+                const badgeClassName = badgeClass[status] || badgeClass.pending;
+
                 return (
                   <PaymentTooltip key={index} amount={amount}>
                     <span
-                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border me-2 ${
-                        badgeClass[p.status] || badgeClass.pending
-                      }`}
+                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border me-2 ${badgeClassName}`}
                     >
                       {paymentNumber}
                     </span>
@@ -390,7 +397,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
       {
         id: "payment_method",
         header: "Pay Method",
-        cell: ({ row }) => {
+        cell: ({ row }: { row: any }) => {
           const payments = row.original;
           if (!payments.payment_method || payments.length === 0) {
             return <div className="text-[12px] text-gray-700">N/A</div>;
@@ -452,7 +459,7 @@ const DealsTable: React.FC<DealsTableProps> = ({
             <div className="flex items-center justify-center gap-1">
               {MainActionButtons}
               <ExpandButton
-                isExpanded={!!expandedRows[row.original.deal_id]}
+                isExpanded={!!currentExpandedRows[row.id]}
                 onToggle={() => handleExpand(row)}
               />
             </div>
@@ -599,7 +606,14 @@ const DealsTable: React.FC<DealsTableProps> = ({
         cell: ({ row }) => {
           const verifiedBy = row.original.verified_by;
           // Show verifier name for verified/rejected payments, N/A for pending
-          const displayText = verifiedBy?.full_name || verifiedBy || "N/A";
+          let displayText = "N/A";
+          if (verifiedBy) {
+            if (typeof verifiedBy === 'string') {
+              displayText = verifiedBy;
+            } else if (typeof verifiedBy === 'object') {
+              displayText = verifiedBy.full_name || verifiedBy.name || verifiedBy.email || "N/A";
+            }
+          }
           const isVerified = row.original.status === "verified";
           const isRejected = row.original.status === "rejected";
           
@@ -641,6 +655,8 @@ const DealsTable: React.FC<DealsTableProps> = ({
       const deal = row.original as Deal;
       const dealId = deal.deal_id;
       
+      console.log("🔍 [DASHBOARD_DEALS] expandedContent called for row:", row.id, "dealId:", dealId);
+      
       return <ExpandedRowContent dealId={dealId} />;
     },
     []
@@ -668,12 +684,15 @@ const DealsTable: React.FC<DealsTableProps> = ({
   };
 
   // Export function for deals
-  const handleExport = useCallback((data: Deal[]) => {
+  const handleExport = useCallback((data: Deal[] | unknown[]) => {
+    const dealsData = data as Deal[];
+    
+    // Create CSV content
     const csvContent = [
       // CSV Header
-      ['Deal ID', 'Deal Name', 'Client Name', 'Deal Value', 'Currency', 'Deal Date', 'Due Date', 'Payment Status', 'Verification Status', 'Remarks'].join(','),
+      ['Deal ID', 'Deal Name', 'Client Name', 'Deal Value', 'Currency', 'Deal Date', 'Due Date', 'Payment Status', 'Sales Person', 'Remarks'].join(','),
       // CSV Data
-      ...data.map(deal => [
+      ...dealsData.map(deal => [
         deal.deal_id,
         `"${deal.deal_name}"`,
         `"${deal.client_name}"`,
@@ -682,24 +701,36 @@ const DealsTable: React.FC<DealsTableProps> = ({
         deal.deal_date,
         deal.due_date || '',
         deal.pay_status,
-        deal.verification_status,
+        `"${deal.created_by?.full_name || ''}"`,
         `"${deal.deal_remarks || ''}"`
       ].join(','))
     ].join('\n');
 
+    // Download CSV file
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `salesperson_deals_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `deals_${new Date().toISOString().split('T')[0]}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   }, []);
 
-  // Use controlled expansion state if provided, otherwise use internal state
-  const currentExpandedRows = expandedRows;
+  // Convert dealId-based expandedRows to row.id-based for UnifiedTable
+  const currentExpandedRows = useMemo(() => {
+    const result: Record<string, boolean> = {};
+    (filteredData || []).forEach((deal: any, index: number) => {
+      const dealId = deal.deal_id;
+      // UnifiedTable uses ${dealId}-${index} as row.id
+      const rowId = `${dealId}-${index}`;
+      if (expandedRows[dealId]) {
+        result[rowId] = true;
+      }
+    });
+    return result;
+  }, [expandedRows, filteredData]);
 
   // const handleExpand = useCallback((newExpandedRows: Record<string, boolean>) => {
   //   if (onExpandedRowsChange) {
@@ -741,8 +772,8 @@ const DealsTable: React.FC<DealsTableProps> = ({
   if (isError && error) {
     return (
       <div className="text-red-500 p-4">
-        Error: {error.message}
-        {error.stack && <pre>{error.stack}</pre>}
+        Error: {error instanceof Error ? error.message : String(error)}
+        {error instanceof Error && error.stack && <pre>{error.stack}</pre>}
       </div>
     );
   }
@@ -759,12 +790,19 @@ const DealsTable: React.FC<DealsTableProps> = ({
           columns={columns as ColumnDef<unknown>[]}
           data={filteredData || []}
           loading={isLoading}
-          error={error?.message || null}
+          error={error ? (error instanceof Error ? error.message : String(error)) : undefined}
           expandedContent={expandedContent}
           expandedRows={currentExpandedRows}
           onExpandedRowsChange={(newExpandedRows) => {
-            console.log("Expanded rows changed:", newExpandedRows);
-            setExpandedRows(newExpandedRows);
+            const newDealExpandedRows: Record<string, boolean> = {};
+            Object.entries(newExpandedRows).forEach(([rowId, isExpanded]) => {
+              // Extract dealId from rowId format: ${dealId}-${index}
+              const dealId = rowId.split('-').slice(0, -1).join('-'); // Remove last part (index)
+              if (dealId) {
+                newDealExpandedRows[dealId] = isExpanded;
+              }
+            });
+            setExpandedRows(newDealExpandedRows);
             // React Query will automatically fetch data when ExpandedRowContent is rendered
           }}
           onExport={handleExport}
