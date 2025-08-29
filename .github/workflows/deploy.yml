@@ -20,17 +20,17 @@ jobs:
 
       - name: Install dependencies
         run: npm install
-        working-directory: ./PRS   # <-- folder with package.json
+        working-directory: ./PRS/app   # <-- folder with package.json
 
       - name: Build the project
         run: npm run build
-        working-directory: ./PRS
+        working-directory: ./PRS/app
 
       - name: Start the app in background
         run: |
           npm run start &
           sleep 10   # give the server time to boot
-        working-directory: ./PRS
+        working-directory: ./PRS/app
 
       - name: Check if site is running (health check)
         run: curl -f http://localhost:3000 || exit 1
