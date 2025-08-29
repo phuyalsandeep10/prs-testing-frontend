@@ -27,17 +27,17 @@ jobs:
 
       - name: Install dependencies
         run: npm install
-        working-directory: ./app   # <-- adjust based on where package.json is found
+        working-directory: ./app   # <-- adjust if your package.json is in ./app in the repo
 
       - name: Build the project
         run: npm run build
-        working-directory: ./app   # same as above
+        working-directory: ./app
 
       - name: Start the app in background
         run: |
           npm run start &
           sleep 10
-        working-directory: ./app   # same as above
+        working-directory: ./app
 
       - name: Check if site is running (health check)
         run: curl -f http://localhost:3000 || exit 1
@@ -57,7 +57,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            cd /home/ubuntu/PRS/app   # <-- folder containing package.json on server
+            cd /home/ubuntu/frontend-payment-project/app  # <-- updated folder containing package.json
 
             # Sync with GitHub
             git fetch origin main
@@ -70,10 +70,10 @@ jobs:
 
             # Restart PM2 properly
             pm2 delete prs || true
-            pm2 start npm --name "psr" -- run start
+            pm2 start npm --name "prs" -- run start
             pm2 list
 
-            echo "✅ Deployment completed successfully done"
+            echo "✅ Deployment completed successfully"
 
       - name: Verify production site
         run: curl -f https://portal.chatboq.com || exit 1
