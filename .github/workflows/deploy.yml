@@ -1,0 +1,70 @@
+      
+name: Chatboq total CI/CD
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 'latest'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build the project
+        run: npm run build
+
+      - name: Start the app in background
+        run: |
+          npm run start &
+          sleep 10   # give the server time to boot
+
+      - name: Check if site is running (health check)
+        run: curl -f http://localhost:3000 || exit 1
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to production server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            cd /home/ubuntu/PRS
+
+            # Force sync with GitHub
+            git fetch origin main
+            git reset --hard origin/main
+           
+            # Remove old dependencies and build
+            rm -rf node_modules .next
+            npm install
+            npm run build
+            
+            # Restart PM2 properly
+            pm2 delete chatboq-web || true
+            pm2 start npm --name "psr" -- run start
+            pm2 list
+            echo "✅ Deployment completed successfully"
+
+      - name: Verify production site
+        run: curl -f https://portal.chatboq.com || exit 1
+
