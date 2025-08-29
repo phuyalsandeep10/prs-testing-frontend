@@ -70,7 +70,7 @@ jobs:
 
             # Restart PM2 properly
             pm2 delete prs || true
-            pm2 start npm --name "prs" -- run start
+            pm2 start npm --name "psr" -- run start
             pm2 list
 
             echo "✅ Deployment completed successfully"
