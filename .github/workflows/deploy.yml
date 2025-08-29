@@ -18,9 +18,12 @@ jobs:
         with:
           node-version: 'latest'
 
+      - name: Check repo structure
+        run: ls -R ./PRS
+
       - name: Install dependencies
         run: npm install
-        working-directory: ./PRS/app   # <-- folder with package.json
+        working-directory: ./PRS/app   # must match folder with package.json
 
       - name: Build the project
         run: npm run build
@@ -29,7 +32,7 @@ jobs:
       - name: Start the app in background
         run: |
           npm run start &
-          sleep 10   # give the server time to boot
+          sleep 10
         working-directory: ./PRS/app
 
       - name: Check if site is running (health check)
@@ -50,7 +53,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            cd /home/ubuntu/PRS  # <-- folder MUST contain package.json
+            cd /home/ubuntu/PRS/app   # folder containing package.json on server
 
             # Sync with GitHub
             git fetch origin main
