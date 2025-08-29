@@ -73,7 +73,7 @@ jobs:
             pm2 start npm --name "prs" -- run start
             pm2 list
 
-            echo "✅ Deployment completed successfully"
+            echo "✅ Deployment completed successfully done"
 
       - name: Verify production site
         run: curl -f https://portal.chatboq.com || exit 1
