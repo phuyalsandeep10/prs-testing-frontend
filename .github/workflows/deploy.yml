@@ -1,4 +1,3 @@
-      
 name: Chatboq total CI/CD
 
 on:
@@ -21,14 +20,17 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+        working-directory: ./PRS   # <-- folder with package.json
 
       - name: Build the project
         run: npm run build
+        working-directory: ./PRS
 
       - name: Start the app in background
         run: |
           npm run start &
           sleep 10   # give the server time to boot
+        working-directory: ./PRS
 
       - name: Check if site is running (health check)
         run: curl -f http://localhost:3000 || exit 1
@@ -48,23 +50,23 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            cd /home/ubuntu/PRS
+            cd /home/ubuntu/PRS  # <-- folder MUST contain package.json
 
-            # Force sync with GitHub
+            # Sync with GitHub
             git fetch origin main
             git reset --hard origin/main
-           
-            # Remove old dependencies and build
+
+            # Clean old dependencies and build
             rm -rf node_modules .next
             npm install
             npm run build
-            
+
             # Restart PM2 properly
-            pm2 delete chatboq-web || true
-            pm2 start npm --name "psr" -- run start
+            pm2 delete prs || true
+            pm2 start npm --name "prs" -- run start
             pm2 list
+
             echo "✅ Deployment completed successfully"
 
       - name: Verify production site
         run: curl -f https://portal.chatboq.com || exit 1
-
